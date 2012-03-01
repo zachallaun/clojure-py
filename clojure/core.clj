@@ -829,7 +829,8 @@
 	  (if (py.bytecode/COMPARE_OP "is not" meta _meta)
 	        (ChunkedCons meta chunk _more)
 		self))
-
+	
+	(meta [self] _meta)
 
 	(next [self]
 	  (if (py.bytecode/COMPARE_OP ">" (py/len chunk) 1)

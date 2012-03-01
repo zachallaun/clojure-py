@@ -798,7 +798,6 @@ class Name(object):
             s = s + str(RT.nextID())
         return s
 
-
 def evalForm(form, ns):
     comp = Compiler()
     comp.setNS(ns)
@@ -813,6 +812,11 @@ def ismacro(macro):
             return True
             
     return False
+    
+def meta(form):
+    if hasattr(form, "meta"):
+        return form.meta()
+    return None
         
 def macroexpand(form, comp, one = False):
     if isinstance(form.first(), Symbol):
@@ -824,7 +828,6 @@ def macroexpand(form, comp, one = False):
         if isinstance(dreffed, Var):
             dreffed = itm.deref()
             
-        
         # Handle macros here
         # TODO: Break this out into a seperate function
         if ismacro(itm) or ismacro(dreffed):
