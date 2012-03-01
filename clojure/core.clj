@@ -450,7 +450,7 @@
   {:added "1.0"}
   ([] "")
   ([x]
-   (py/if (nil? x) "" (.__str__ x)))
+   (py/if (nil? x) "" (py/str x)))
   ([x & ys]
      (let [lst (py/list (.__str__ x))
            lst (loop [remain ys]
