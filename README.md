@@ -1,3 +1,14 @@
+# mrmekon's fork
+
+I hate it when people don't explain what their fork is.
+
+This is a fork of clojure-py shortly after it was announced on HackerNews.  I wanted to write a script that would determine whether it was operating on the JVM or in Python.  I made a few small changes to allow that.
+
+I don't know clojure well, nor the implementation of clojure-py.  I changed the way 'str' is handled in clojure-py so it will handle a class type, and I added a temporary 'println' implementation. 
+
+My test script simply checks the class of a built-in, converts it to a string, and compares it to known strings.
+
+
 # clojure-py
 
 An implementation of Clojure in pure Python.
