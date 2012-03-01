@@ -16,9 +16,9 @@ Viewing the code at https://github.com/halgari/clojure-py/blob/master/clojure/co
 
 One note: clojure-py implements the new "property vs calling method" design used in ClojureScript:
 
-   (.__name__ (module)) ; same as module.__name__() in python
+      (.__name__ (module)) ; same as module.__name__() in python
    
-   (.-__name__ (module)) ; same as module.__name__ in python
+      (.-__name__ (module)) ; same as module.__name__ in python
    
 
 ## How can I help?
