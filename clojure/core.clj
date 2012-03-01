@@ -458,10 +458,10 @@
   ([x]
    (py/if (nil? x) "" (py/str x)))
   ([x & ys]
-     (let [lst (py/list (.__str__ x))
+     (let [lst (py/list (py/str x))
            lst (loop [remain ys]
                  (py/if remain
-                   (do (.append lst (.__str__ (first remain)))
+                   (do (.append lst (py/str (first remain)))
                        (recur (next remain)))
                    lst))]
            (.join "" lst))))
