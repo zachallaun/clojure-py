@@ -6,6 +6,7 @@ from clojure.lang.cljexceptions import (InvalidArgumentException,
                                         ArityException,
                                         IllegalArgumentException)
 import clojure.lang.rt as RT
+from clojure.lang.symbol import Symbol
 import sys, new
 
 namespaces = AtomicReference(EMPTY_MAP)
@@ -55,12 +56,19 @@ def findOrCreate(name):
     return mod
 
 def remove(name):
-    if name.equals(RT.CLOJURE_NS.name):
-        raise IllegalArgumentException("Cannot remove clojure namespace");
 
-    while name in namespaces.get():
-        newns = namespaces.get().without(name)
-        namespaces.compareAndSet(namespaces, newns)
+    if isinstance(name, new.module):
+        name = name.__name__
+    if isinstance(name, Symbol):
+        name = name.name
+    if name not in sys.modules:
+        raise KeyError("module " + name + " not found")
+    if name == "clojure.core":
+        raise IllegalArgumentException("Cannot remove clojure namespace");
+    del sys.modules[name]
+    return None
+            
+    
 
 def find(name):
     from clojure.lang.symbol import Symbol

@@ -2237,4 +2237,46 @@
    :static true}
   [coll] (clojure.lang.persistenthashset/create (seq coll)))
 
+(defn find-ns
+  "Returns the namespace named by the symbol or nil if it doesn't exist."
+  {:added "1.0"}
+  [sym] (clojure.lang.namespace/find sym))
+
+(defn create-ns
+  "Create a new namespace named by the symbol if one doesn't already
+  exist, returns it or the already-existing namespace of the same
+  name."
+  {:added "1.0"}
+  [sym] (clojure.lang.namespace/findOrCreate sym))
+
+(defn remove-ns
+  "Removes the namespace named by the symbol. Use with caution.
+  Cannot be used to remove the clojure namespace."
+  {:added "1.0"}
+  [sym] (clojure.lang.namespace/remove sym))
+
+
+
+(defn all-ns
+  "Returns a sequence of all namespaces."
+  {:added "1.0"
+   :static true}
+  [] (seq (py/tuple (.itervalues sys/modules))))
+
+(defn the-ns
+  "If passed a namespace, returns it. Else, when passed a symbol,
+  returns the namespace named by it, throwing an exception if not
+  found."
+  {:added "1.0"}
+  [x]
+  (if (instance? new/module x)
+    x
+    (or (find-ns x) (throw (py/Exception (str "No namespace: " x " found"))))))
+
+(defn ns-name
+  "Returns the name of the namespace, a symbol."
+  {:added "1.0"
+   :static true}
+  [ns]
+  (symbol (.-__name__ (the-ns ns))))
 

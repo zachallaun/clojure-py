@@ -467,4 +467,15 @@
     (assert-equal (let [f (memfn join ch)]
                        (f "," ["1" "2"])) 
                   "1,2"))
+(deftest set-tests
+    (set [1 2 3 4 5]))
 
+(deftest find-ns-tests
+    (assert-true (not (nil? (find-ns 'clojure.core)))))
+
+(deftest create-ns-tests
+    (assert-true (identical? (find-ns 'clojure.core) (create-ns 'clojure.core)))
+    (assert-true (not (nil? (create-ns 'foo.bar)))))
+
+(deftest ns-name-tests
+    (assert-equal (ns-name 'clojure.core) 'clojure.core))
