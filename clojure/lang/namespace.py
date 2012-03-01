@@ -1,8 +1,12 @@
 from clojure.lang.areference import AReference
 from clojure.lang.atomicreference import AtomicReference
 from clojure.lang.persistenthashmap import EMPTY as EMPTY_MAP
-from clojure.lang.cljexceptions import InvalidArgumentException, IllegalStateException, ArityException
+from clojure.lang.cljexceptions import (InvalidArgumentException,
+                                        IllegalStateException,
+                                        ArityException,
+                                        IllegalArgumentException)
 import clojure.lang.rt as RT
+from clojure.lang.symbol import Symbol
 import sys, new
 
 namespaces = AtomicReference(EMPTY_MAP)
@@ -17,9 +21,8 @@ def addDefaultImports(mod):
         if i.startswith("_"):
             continue
         setattr(mod, i, getattr(stdimps, i))
-    if "clojure" in sys.modules:
-        core = sys.modules["clojure"].core
-        setattr(getattr(mod, "clojure"), "core", core)
+    if "clojure.core" in sys.modules:
+        core = sys.modules["clojure.core"]
         for i in dir(core):
             if i.startswith("_"):
                 continue
@@ -36,33 +39,45 @@ def findOrCreateIn(module, parts):
     mod = new.module(module.__name__ + "." + part)
     setattr(module, part, mod)
     return findOrCreateIn(mod, parts)
+    
+
 
 def findOrCreate(name):
     from clojure.lang.symbol import Symbol
-    if isinstance(name, Symbol) and name.name is not None:
+    if isinstance(name, Symbol):
         name = name.name
-    parts = name.split(".")
+    if name in sys.modules:
+        return sys.modules[name]
 
-    if parts[0] in sys.modules:
-        mod = sys.modules[parts[0]]
-    else:
-        mod = new.module(parts[0])
-        sys.modules[parts[0]] = mod
+    mod = new.module(name)
+    sys.modules[name] = mod
 
-    mod = findOrCreateIn(mod, parts[1:])
     addDefaultImports(mod)
     return mod
 
 def remove(name):
-    if name.equals(RT.CLOJURE_NS.name):
-        raise IllegalArgumentException("Cannot remove clojure namespace");
 
-    while name in namespaces.get():
-        newns = namespaces.get().without(name)
-        namespaces.compareAndSet(namespaces, newns)
+    if isinstance(name, new.module):
+        name = name.__name__
+    if isinstance(name, Symbol):
+        name = name.name
+    if name not in sys.modules:
+        raise KeyError("module " + name + " not found")
+    if name == "clojure.core":
+        raise IllegalArgumentException("Cannot remove clojure namespace");
+    del sys.modules[name]
+    return None
+            
+    
 
 def find(name):
-    return namespaces.get()[name]
+    from clojure.lang.symbol import Symbol
+    import new
+    if isinstance(name, new.module):
+        return name
+    if isinstance(name, Symbol):
+        name = name.name    
+    return sys.modules[name]
 
 def findItem(ns, sym):
     from clojure.lang.symbol import Symbol
@@ -72,7 +87,7 @@ def findItem(ns, sym):
                 return None
             return getattr(ns, sym.name)
         if sym.ns is not None:
-            mod = findModule(sym.ns)
+            mod = find(sym.ns)
             if hasattr(mod, sym.name):
                 return getattr(mod, sym.name)
             return None
@@ -105,7 +120,8 @@ def intern(ns, sym):
 
     if sym.ns is not None:
         raise InvalidArgumentException("Can't intern namespace-qualified symbol")
-    map = ns
+
+    ns = find(ns)
     v = Var(ns, sym)
     setattr(ns, sym.name, v)
     return v

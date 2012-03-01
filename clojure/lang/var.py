@@ -81,11 +81,11 @@ class Var(ARef, Settable, IFn, IRef):
         return not isinstance(self.root, Unbound)
 
     def bindRoot(self, root):
-        import rt as RT
         self.validate(self.getValidator(), root)
         oldroot = self.root
         self.root = root
         self.rev += 1
+        return self
 
     def deref(self):
         b = self.getThreadBinding()
@@ -107,15 +107,6 @@ class Var(ARef, Settable, IFn, IRef):
     def setMacro(self):
         self.alterMeta(lambda x, y, z: x.assoc(y, z), macrokey, True)
 
-    def __call__(self, *args):
-        return self.deref()(*args)
-
-    def __getitem__(self, item):
-        return self.deref().__getitem__(item)
-
-    def __str__(self):
-        return str(self.deref())
-
     def __repr__(self):
         if self.ns is not None:
             return "#" + str(self.ns.__name__) + "/" + str(self.sym)
@@ -132,12 +123,12 @@ def var(root=UKNOWN):
 
 
 def getThreadBindingFrame():
-    f = Val.dvals.get(lambda: Frame())
+    f = Val.dvals.get(lambda: Frame())#FIXME: Val undefined
     return f
 
 
 def cloneThreadBindingFrame():
-    f = Val.dvals.get(lambda: Frame()).clone()
+    f = Val.dvals.get(lambda: Frame()).clone()#FIXME: Val undefined
     return f
 
 
@@ -164,14 +155,22 @@ def find(sym):
 
 
 def intern(ns, name):
-    if isinstance(ns, Namespace):
-        return ns.intern(name)
-    ns = Namespace.findOrCreate(symbol(ns))
-    return intern(ns, name)
+    from namespace import findOrCreate, intern as nsintern
+    import new 
+    
+    if isinstance(ns, new.module):
+        return nsintern(ns, name)
+    ns = findOrCreate(symbol(ns))
+    return nsintern(ns, name)
+    
+def define(ns, name, root):
+    v = intern(ns, name)
+    v.bindRoot(root)
+    return v
 
 
 def internPrivate(nsName, sym):
-    ns = Namespace.findOrCreate(symbol(nsName))
+    ns = Namespace.findOrCreate(symbol(nsName))#FIXME: undefined Namespace
     ret = intern(ns, symbol(sym))
     ret.setMeta(Var.privateMeta)
     return ret

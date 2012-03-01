@@ -1,6 +1,7 @@
 from clojure.lang.ifn import IFn
 from clojure.lang.cljexceptions import AbstractMethodCall, ArityException
 from clojure.lang.ipersistentset import IPersistentSet
+from clojure.lang.apersistentmap import createKeySeq
 import clojure.lang.rt as RT
 
 class APersistentSet(object, IPersistentSet, IFn):
@@ -17,7 +18,7 @@ class APersistentSet(object, IPersistentSet, IFn):
         return len(self.impl)
 
     def seq(self):
-        return RT.keys(self.impl)
+        return createKeySeq(self.impl.seq())
 
     def __call__(self, *args):
         if len(args) != 1:

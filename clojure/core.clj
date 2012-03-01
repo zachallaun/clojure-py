@@ -46,8 +46,7 @@
  ^{:macro true
    :added "1.0"}
  fn (fn* fn [&form &env & decl] 
-         (.withMeta (cons 'fn* decl) 
-                    (.meta &form))))
+         (cons 'fn* decl)))
 
 (def
     ^{:arglists '([& args])
@@ -56,7 +55,7 @@
  _assoc (fn* assoc [col k v]
                    (py/if col
                       (.assoc col k v)
-                      (clojure.lang.rt.map k v))))
+                      (clojure.lang.rt/map k v))))
 
 (def
  ^{:arglists '(^clojure.lang.ISeq [coll])
@@ -81,7 +80,7 @@
    :doc "Return true if x implements ISeq"
    :added "1.0"
    :static true}
- seq? (fn seq? [x] (instance? clojure.lang.iseq.ISeq x)))
+ seq? (fn seq? [x] (instance? clojure.lang.iseq/ISeq x)))
 
 (def
  ^{:arglists '([coll])
@@ -126,7 +125,7 @@
                        (let [s (seq x)]
                            (py/if s
                                (.more s)
-                               clojure.lang.persistentlist.EMPTY)))))
+                               clojure.lang.persistentlist/EMPTY)))))
 
 (def
  ^{:doc "Same as (first (next x))"
@@ -175,14 +174,14 @@
    :doc "Return true if x implements IPersistentMap"
    :added "1.0"
    :static true}
- map? (fn ^:static map? [x] (instance? clojure.lang.ipersistentmap.IPersistentMap x)))
+ map? (fn ^:static map? [x] (instance? clojure.lang.ipersistentmap/IPersistentMap x)))
 
 (def
  ^{:arglists '([x])
    :doc "Return true if x implements IPersistentVector"
    :added "1.0"
    :static true}
- vector? (fn vector? [x] (instance? clojure.lang.ipersistentvector.IPersistentVector x)))
+ vector? (fn vector? [x] (instance? clojure.lang.ipersistentvector/IPersistentVector x)))
 
 (def
  ^{:arglists '([map key val] [map key val & kvs])
@@ -240,7 +239,7 @@
    :doc "Clojure version of RT.conj"
    :added "1.0"}
  _conj (fn _conj [coll x] (py/if (nil? coll)
-                            clojure.lang.persistentlist.EMPTY
+                            clojure.lang.persistentlist/EMPTY
                             (.cons coll x))))
 
 
@@ -289,7 +288,7 @@
            (let [arglist (first fdecl)
                  ;elide implicit macro args
                  arglist (py/if (.__eq__ '&form (first arglist)) 
-                           (clojure.lang.rt.subvec arglist 2 (py/len arglist))
+                           (clojure.lang.rt/subvec arglist 2 (py/len arglist))
                            arglist)
                  body (next fdecl)]
              (py/if (map? (first body))
@@ -343,9 +342,9 @@
                       iname (second inline)]
                   ;; same as: (py/if (and (= 'fn ifn) (not (symbol? iname))) ...)
                   (py/if (py/if (.__eq__ 'fn ifn)
-                        (py/if (instance? clojure.lang.symbol.Symbol iname) false true))
+                        (py/if (instance? clojure.lang.symbol/Symbol iname) false true))
                     ;; inserts the same fn name to the inline fn if it does not have one
-                    (assoc m :inline (cons ifn (cons (clojure.lang.symbol.Symbol/intern (.concat (.getName name) "__inliner"))
+                    (assoc m :inline (cons ifn (cons (clojure.lang.symbol/symbol (.concat (.getName name) "__inliner"))
                                                      (next inline))))
                     m))
               m (conj (py/if (meta name) (meta name) {}) m)
@@ -365,7 +364,7 @@
   ([coll]
     (py/if (nil? coll)
         nil
-        (clojure.lang.persistentvector.vec coll))))
+        (clojure.lang.persistentvector/vec coll))))
 
 (def
  ^{:doc "Like defn, but the resulting function name is declared as a
@@ -444,6 +443,12 @@
   {:added "1.0"}
   [x] (py/if x false true))
 
+(defn println
+  "Pass through one string to Python print.  This is just for debugging,
+   and is not a proper final solution."
+  {}
+  [x] (py/print x))
+
 (defn str
   "With no args, returns the empty string. With one arg x, returns
   x.__str__().  (str nil) returns the empty string. With more than
@@ -451,12 +456,12 @@
   {:added "1.0"}
   ([] "")
   ([x]
-   (py/if (nil? x) "" (.__str__ x)))
+   (py/if (nil? x) "" (py/str x)))
   ([x & ys]
-     (let [lst (py/list (.__str__ x))
+     (let [lst (py/list (py/str x))
            lst (loop [remain ys]
                  (py/if remain
-                   (do (.append lst (.__str__ (first remain)))
+                   (do (.append lst (py/str (first remain)))
                        (recur (next remain)))
                    lst))]
            (.join "" lst))))
@@ -464,19 +469,19 @@
 (defn symbol?
   "Return true if x is a Symbol"
   {:added "1.0"}
-  [x] (instance? clojure.lang.symbol.Symbol x))
+  [x] (instance? clojure.lang.symbol/Symbol x))
 
 (defn keyword?
   "Return true if x is a Keyword"
   {:added "1.0"}
-  [x] (instance? clojure.lang.cljkeyword.Keyword x))
+  [x] (instance? clojure.lang.cljkeyword/Keyword x))
 
 (defn symbol
   "Returns a Symbol with the given namespace and name."
   {:tag clojure.lang.Symbol
    :added "1.0"}
-  ([name] (py/if (symbol? name) name (clojure.lang.symbol.Symbol.intern name)))
-  ([ns name] (clojure.lang.symbol.Symbol.intern ns name)))
+  ([name] (py/if (symbol? name) name (clojure.lang.symbol/symbol name)))
+  ([ns name] (clojure.lang.symbol/symbol ns name)))
 
 
 (defn inc
@@ -530,7 +535,7 @@
       (list 'py/if (first clauses)
             (py/if (next clauses)
                 (second clauses)
-                (throw (IllegalArgumentException.
+                (throw (IllegalArgumentException
                          "cond requires an even number of forms")))
             (cons 'clojure.core/cond (next (next clauses))))))
 
@@ -587,7 +592,7 @@
     "Creates a new clas with the given name, that is inherited from
     classes and has the given member functions."
     [name classes members]
-    (py/type (.-name name) (apply tuple (conj classes py/object)) (.toDict members)))
+    (py/type (.-name name) (apply py/tuple (conj classes py/object)) (.toDict members)))
 
 (defn make-init
     "Creates a __init__ method for use in deftype"
@@ -612,12 +617,12 @@
            props
            (recur (next remain) 
                   (conj (conj props (first remain))
-                        (list 'getattr selfname (.-name (first remain))))))))
+                        (list 'py/getattr selfname (.-name (first remain))))))))
 
 (defn prop-wrap-fn
-    [members f]
+    [name members f]
     (list 'fn 
- 	  (first f) 
+ 	  (clojure.lang.symbol/symbol (str name "_" (first f))) 
 	  (second f)
           (list* 'let-macro 
 		(make-props members 
@@ -625,8 +630,8 @@
 		(next (next f)))))
 
 (defn prop-wrap-multi
-    [members f]
-    (let [name (first f)
+    [name members f]
+    (let [name (clojure.lang.symbol/symbol (str name "_" (first f))) 
           f (next f)
           wrapped (loop [remain f
                          wr []]
@@ -646,17 +651,17 @@
                         
          
 (defn prop-wrap
-    [members f]
+    [name members f]
     (if (vector? (fnext f))
-	(prop-wrap-fn members f)
-	(prop-wrap-multi members f)))
+	(prop-wrap-fn name members f)
+	(prop-wrap-multi name members f)))
 
 
 (defmacro deftype
     [name fields & specs]
     (loop [specs (seq specs)
            inherits []
-           fns (if (= (len fields) 0) {} {"__init__" (make-init fields)})]
+           fns (if (= (py/len fields) 0) {} {"__init__" (make-init fields)})]
           (cond (not specs)
                     (list 'def name (list 'py/type (.-name name) 
                                                    (list 'py/tuple 
@@ -666,12 +671,14 @@
                     (recur (next specs) 
                            (conj inherits (first specs))
                            fns)
-                (instance? clojure.lang.ipersistentlist.IPersistentList (first specs))
+                (instance? clojure.lang.ipersistentlist/IPersistentList
+                           (first specs))
                     (recur (next specs)
                            inherits
                            (assoc fns (py/str (ffirst specs))
-                           	   	      (prop-wrap fields (first specs)))))))
-(def definterface deftype) 
+                           	   	      (prop-wrap name fields (first specs)))))))
+(def definterface deftype)
+(set-macro definterface)
 
 ;;;;;;;;;;;;;;;;;Lazy Seq and Chunked Seq;;;;;;;;;;;;;;;;
 
@@ -684,22 +691,22 @@
 		(LazySeq nil nil (.seq self) meta))
 	(sval [self]
 		(when (not (nil? fnc))
-			  (setattr self "sv" (fnc))
-			  (setattr self "fnc" nil))
+			  (py/setattr self "sv" (fnc))
+			  (py/setattr self "fnc" nil))
 		(py/if (not (nil? sv))
 			sv
 		s))
-	clojure.lang.iseq.ISeq
+	clojure.lang.iseq/ISeq
 	(seq [self]
 		(.sval self)
 		(when (not (nil? sv))
 		      (let [ls sv]
-		           (setattr self "sv" nil)
-          		   (setattr self "s"
-       		 	 	         (loop [ls ls]
-					   (py/if (instance? LazySeq ls)
-					          (recur (.sval ls))
-					          (seq ls))))))
+		           (py/setattr self "sv" nil)
+          		   (py/setattr self "s"
+       		 	 	   (loop [ls ls]
+					         (py/if (instance? LazySeq ls)
+					                (recur (.sval ls))
+					                (seq ls))))))
 		s)
 	(__len__ [self]
 	    (loop [c 0
@@ -767,26 +774,18 @@
   seq calls. See also - realized?"
   {:added "1.0"}
   [& body]
-  (list 'clojure.core.LazySeq (list* '^{:once true} fn* [] body) nil nil nil))    
+  (list 'clojure.core/LazySeq (list* '^{:once true} fn* [] body) nil nil nil))    
 
 
 (definterface IChunkedSeq [] 
-	clojure.lang.sequential.Sequential
-	clojure.lang.iseq.ISeq
+	clojure.lang.sequential/Sequential
+
+	clojure.lang.iseq/ISeq
 	(chunkedFirst [self] nil)
 	(chunkedNext [self] nil)
 	(chunkedMore [self] nil))
 
 
-(deftype ChunkBuffer [buffer end]
-    (add [self o]
-        (py.bytecode/STORE_SUBSCR o buffer end)
-        (setattr self "end" (inc end)))
-    (chunk [self]
-        (let [ret (ArrayChunk buffer 0 end)]
-             (setattr self "buffer" nil)
-             ret))
-    (__len__ [self] end))
 
 (deftype ArrayChunk [array off end]
     (__getitem__ 
@@ -816,17 +815,28 @@
              ret))))
 
 
+(deftype ChunkBuffer [buffer end]
+    (add [self o]
+        (py.bytecode/STORE_SUBSCR o buffer end)
+        (py/setattr self "end" (inc end)))
+    (chunk [self]
+        (let [ret (ArrayChunk buffer 0 end)]
+             (py/setattr self "buffer" nil)
+             ret))
+    (__len__ [self] end))
 
 (deftype ChunkedCons [_meta chunk _more]
 
-	clojure.lang.aseq.ASeq
+	clojure.lang.aseq/ASeq
+
 	(first [self]
 	       (py.bytecode/BINARY_SUBSCR chunk 0))
 	(withMeta [self meta]
 	  (if (py.bytecode/COMPARE_OP "is not" meta _meta)
 	        (ChunkedCons meta chunk _more)
 		self))
-
+	
+	(meta [self] _meta)
 
 	(next [self]
 	  (if (py.bytecode/COMPARE_OP ">" (py/len chunk) 1)
@@ -834,7 +844,7 @@
 	      (.chunkedNext self)))
 
 	(more [self]
-	  (cond (py.bytecode/COMPARE_OP ">" (len chunk) 1)
+	  (cond (py.bytecode/COMPARE_OP ">" (py/len chunk) 1)
 		        (ChunkedCons nil (.dropFirst chunk) _more)
 		    (py.bytecode/COMPARE_OP "is" _more nil)
 		        '()
@@ -1222,7 +1232,7 @@
   {:added "1.0"}
    [n] (if (integer? n)
         (zero? (bit-and n 1))
-        (throw (TypeError (str "Argument must be an integer: " n)))))
+        (throw (py/TypeError (str "Argument must be an integer: " n)))))
 
 (defn odd?
   "Returns true if n is odd, throws an exception if n is not an integer"
@@ -1274,17 +1284,18 @@
 (defn coll?
   "Returns true if x implements IPersistentCollection"
   {:added "1.0"}
-  [x] (instance? clojure.lang.ipersistentcollection.IPersistentCollection x))
+  [x] (instance? clojure.lang.ipersistentcollection/IPersistentCollection x))
 
 (defn list?
   "Returns true if x implements IPersistentList"
   {:added "1.0"}
-  [x] (instance? clojure.lang.ipersistentlist.IPersistentList x))
+  [x] (instance? clojure.lang.ipersistentlist/IPersistentList
+ x))
 
 (defn set?
   "Returns true if x implements IPersistentSet"
   {:added "1.0"}
-  [x] (instance? clojure.lang.ipersistentset.IPersistentSet x))
+  [x] (instance? clojure.lang.ipersistentset/IPersistentSet x))
 
 (defn pylist?
   "Returns true if coll is a native python list"
@@ -1316,7 +1327,7 @@
   ([map key]
    (get map key nil))
   ([map key not-found]
-   (cond (instance? clojure.lang.ilookup.ILookup map)
+   (cond (instance? clojure.lang.ilookup/ILookup map)
            (.valAt map key not-found)
          
          :else
@@ -1344,11 +1355,11 @@
   [map key] 
     (cond (nil? map)
            nil
-          (instance? clojure.lang.associative.Associative map)
+          (instance? clojure.lang.associative/Associative map)
            (.entryAt map key)
           :else
            (if (contains? map key)
-               (clojure.lang.mapentry.MapEntry key (get map key))
+               (clojure.lang.mapentry/MapEntry key (get map key))
                nil)))
 
 (defn select-keys
@@ -1371,7 +1382,7 @@
    :static true}
   [map] 
     (if (map? map)
-         (clojure.lang.apersistentmap.createKeySeq (seq map))
+         (clojure.lang.apersistentmap/createKeySeq (seq map))
          (seq (.keys map))))
 
 (defn vals 
@@ -1380,7 +1391,7 @@
    :static true}
   [map] 
     (if (map? map)
-         (clojure.lang.apersistentmap.createValueSeq (seq map))
+         (clojure.lang.apersistentmap/createValueSeq (seq map))
          (seq (.items map))))
 
 (defn key
@@ -1397,12 +1408,18 @@
   [e]
     (. e (getValue)))
 
+(defn unicode?
+  "Returns true if x is unicode"
+  [x]
+  (instance? py/unicode x))
 
 (defn name
   "Returns the name String of a string, symbol or keyword."
   {:added "1.0"}
   [x]
-  (if (string? x) x (.getName x )))
+  (cond (string? x) x 
+        (unicode? x) x
+        :else (.getName x )))
 
 (defn namespace
   "Returns the namespace String of a symbol or keyword, or nil if not present."
@@ -1460,7 +1477,7 @@
 (defmacro assert-args
   [& pairs]
   `(do (when-not ~(first pairs)
-         (throw (Exception
+         (throw (py/Exception
                   (str (first ~'&form) " requires " ~(second pairs) " in " ~'__name__ ":" (:line (meta ~'&form))))))
      ~(let [more (nnext pairs)]
         (when more
@@ -2105,7 +2122,7 @@
     (let [module (.-name module)
           copies (map #(list 'py.bytecode/STORE_GLOBAL
                              (name %)
-                             (list 'getattr 'itms (name %)))
+                             (list 'py/getattr 'itms (name %)))
                         syms)
           symnames (list* (map name syms))]
                   
@@ -2137,7 +2154,7 @@
 (defn num
   "Coerce to Number"
   {:added "1.0"}
-  [x] (float x))
+  [x] (py/float x))
 
 (defn float?
   "Returns true if n is a floating point number"
@@ -2159,6 +2176,19 @@
    :static true}
   [x]
   (or (float? x) (int? x)))
+
+(defn keyword
+  "Returns a keyword for the given string"
+  [x]
+  (clojure.lang.cljkeyword/keyword (symbol x)))
+
+(defn nth
+  ([coll x]
+      (py.bytecode/BINARY_SUBSCR coll x))
+  ([coll x default]
+      (if (contains? coll x)
+          (py.bytecode/BINARY_SUBSCR coll x)
+          default)))
 
 (import '(clojure.lang.lispreader readString))
 
@@ -2225,5 +2255,165 @@
   {:added "1.0"
    :static true}
   [coll] (clojure.lang.persistenthashset/create (seq coll)))
+
+(defn find-ns
+  "Returns the namespace named by the symbol or nil if it doesn't exist."
+  {:added "1.0"}
+  [sym] (clojure.lang.namespace/find sym))
+
+(defn create-ns
+  "Create a new namespace named by the symbol if one doesn't already
+  exist, returns it or the already-existing namespace of the same
+  name."
+  {:added "1.0"}
+  [sym] (clojure.lang.namespace/findOrCreate sym))
+
+(defn remove-ns
+  "Removes the namespace named by the symbol. Use with caution.
+  Cannot be used to remove the clojure namespace."
+  {:added "1.0"}
+  [sym] (clojure.lang.namespace/remove sym))
+
+
+
+(defn all-ns
+  "Returns a sequence of all namespaces."
+  {:added "1.0"
+   :static true}
+  [] (seq (py/tuple (.itervalues sys/modules))))
+
+(defn the-ns
+  "If passed a namespace, returns it. Else, when passed a symbol,
+  returns the namespace named by it, throwing an exception if not
+  found."
+  {:added "1.0"}
+  [x]
+  (if (instance? new/module x)
+    x
+    (or (find-ns x) (throw (py/Exception (str "No namespace: " x " found"))))))
+
+(defn ns-name
+  "Returns the name of the namespace, a symbol."
+  {:added "1.0"
+   :static true}
+  [ns]
+  (symbol (.-__name__ (the-ns ns))))
+
+
+(defn take-nth
+  "Returns a lazy seq of every nth item in coll."
+  {:added "1.0"
+   :static true}
+  [n coll]
+    (lazy-seq
+     (when-let [s (seq coll)]
+       (cons (first s) (take-nth n (drop n s))))))
+
+(defn interleave
+  "Returns a lazy seq of the first item in each coll, then the second etc."
+  {:added "1.0"
+   :static true}
+  ([c1 c2]
+     (lazy-seq
+      (let [s1 (seq c1) s2 (seq c2)]
+        (when (and s1 s2)
+          (cons (first s1) (cons (first s2) 
+                                 (interleave (rest s1) (rest s2))))))))
+  ([c1 c2 & colls] 
+     (lazy-seq 
+      (let [ss (map seq (conj colls c2 c1))]
+        (when (every? identity ss)
+          (concat (map first ss) (apply interleave (map rest ss))))))))
+
+
+
+;redefine let and loop  with destructuring
+(defn destructure [bindings]
+  (let [bents (partition 2 bindings)
+        pb (fn pb [bvec b v]
+               (let [pvec
+                     (fn [bvec b val]
+                       (let [gvec (gensym "vec__")]
+                         (loop [ret (-> bvec (conj gvec) (conj val))
+                                n 0
+                                bs b
+                                seen-rest? false]
+                           (if (seq bs)
+                             (let [firstb (first bs)]
+                               (cond
+                                (= firstb '&) (recur (pb ret (second bs) (list `nthnext gvec n))
+                                                     n
+                                                     (nnext bs)
+                                                     true)
+                                (= firstb :as) (pb ret (second bs) gvec)
+                                :else (if seen-rest?
+                                        (throw (py/Exception "Unsupported binding form, only :as can follow & parameter"))
+                                        (recur (pb ret firstb  (list `nth gvec n nil))
+                                               (inc n)
+                                               (next bs)
+                                               seen-rest?))))
+                             ret))))
+                     pmap
+                     (fn [bvec b v]
+                       (let [gmap (or (:as b) (gensym "map__"))
+                             defaults (:or b)]
+                         (loop [ret (-> bvec (conj gmap) (conj v)
+                                        (conj gmap) (conj `(if (seq? ~gmap) (apply hash-map ~gmap) ~gmap)))
+                                bes (reduce1
+                                     (fn [bes entry]
+                                       (reduce1 #(assoc %1 %2 ((val entry) %2))
+                                               (dissoc bes (key entry))
+                                               ((key entry) bes)))
+                                     (dissoc b :as :or)
+                                     {:keys #(keyword (str %)), :strs str, :syms #(list `quote %)})]
+                           (if (seq bes)
+                             (let [bb (key (first bes))
+                                   bk (val (first bes))
+                                   has-default (contains? defaults bb)]
+                               (recur (pb ret bb (if has-default
+                                                   (list `get gmap bk (defaults bb))
+                                                   (list `get gmap bk)))
+                                      (next bes)))
+                             ret))))]
+                 (cond
+                  (symbol? b) (-> bvec (conj b) (conj v))
+                  (vector? b) (pvec bvec b v)
+                  (map? b) (pmap bvec b v)
+                  :else (throw (py/Exception (str "Unsupported binding form: " b))))))
+        process-entry (fn [bvec b] (pb bvec (first b) (second b)))]
+    (if (every? symbol? (map first bents))
+      bindings
+      (reduce1 process-entry [] bents))))
+
+(defmacro let
+  "binding => binding-form init-expr
+
+  Evaluates the exprs in a lexical context in which the symbols in
+  the binding-forms are bound to their respective init-exprs or parts
+  therein."
+  {:added "1.0", :special-form true, :forms '[(let [bindings*] exprs*)]}
+  [bindings & body]
+  (assert-args
+     (vector? bindings) "a vector for its binding"
+     (even? (count bindings)) "an even number of forms in binding vector")
+  `(let* ~(destructure bindings) ~@body))
+
+(defn ^{:private true}
+  maybe-destructured
+  [params body]
+  (if (every? symbol? params)
+    (cons params body)
+    (loop [params params
+           new-params []
+           lets []]
+      (if params
+        (if (symbol? (first params))
+          (recur (next params) (conj new-params (first params)) lets)
+          (let [gparam (gensym "p__")]
+            (recur (next params) (conj new-params gparam)
+                   (-> lets (conj (first params)) (conj gparam)))))
+        `(~new-params
+          (let ~lets
+            ~@body))))))
 
 

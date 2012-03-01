@@ -5,10 +5,11 @@ from clojure.lang.persistentvector import PersistentVector
 from clojure.lang.ipersistentvector import IPersistentVector
 from clojure.lang.ipersistentmap import IPersistentMap
 from clojure.lang.ipersistentlist import IPersistentList
-from clojure.lang.var import Var
+from clojure.lang.var import Var, define, intern as internVar, var as createVar
 from clojure.util.byteplay import *
 import clojure.util.byteplay as byteplay
 from clojure.lang.cljkeyword import Keyword, keyword
+from clojure.lang.namespace import find as findNamespace
 import new
 import clojure.lang.rt as RT
 from clojure.lang.lispreader import _AMP_
@@ -57,16 +58,17 @@ def compileDef(comp, form):
     comp.pushName(sym.name)
 
     code = []
+    v = internVar(comp.getNS(), sym)
+    v.setDynamic(True)
+    v.setMeta(sym.meta())
+    code.append((LOAD_CONST, v))
+    code.append((LOAD_ATTR, "bindRoot"))
     code.extend(comp.compile(value))
-    code.append((DUP_TOP, 0))
-    code.append((STORE_GLOBAL, sym.name))
-
-
-    if sym.meta() is not None:
-        code.extend(comp.compileAccessList(symbol("clojure.lang.rt.setMeta")))
-        code.append((ROT_TWO, 0))
-        code.append((LOAD_CONST, sym.meta()))
-        code.append((CALL_FUNCTION, 2))
+    code.append((CALL_FUNCTION, 1))
+    code.append((LOAD_CONST, v.setDynamic))
+    code.append((LOAD_CONST, False))
+    code.append((CALL_FUNCTION, 1))
+    code.append((POP_TOP, None))
 
     comp.popName()
     return code
@@ -81,12 +83,17 @@ def compileBytecode(comp, form):
     arg = None
     if hasarg:
         arg = form.first()
-        if not isinstance(arg, (int, str)):
-            raise CompilerException("first argument to "+ codename + " must be int or str", form)
+        if not isinstance(arg, (int, str, unicode)) \
+           and bc is not LOAD_CONST:
+            raise CompilerException("first argument to "+ codename + " must be int, unicode, or str", form)
+        
+        arg = evalForm(arg, comp.getNS().__name__)
         form = form.next()
+        
     se = byteplay.getse(bc, arg)
-    if se[0] != len(form) or se[1] > 1:
-        raise CompilerException("literal bytecode " + codename + " not supported", form)
+    if form != None and se[0] != 0:
+        if (se[0] != len(form) or se[1] > 1):
+            raise CompilerException("literal bytecode " + codename + " not supported", form)
     s = form
     code = []
     while s is not None:
@@ -195,7 +202,7 @@ def compileDot(comp, form):
         raise CompilerException(". form must have two arguments", form)
     clss = form.next().first()
     member = form.next().next().first()
-    code = comp.compile(clss)
+
 
     if isinstance(member, Symbol):
         attr = member.name
@@ -211,7 +218,13 @@ def compileDot(comp, form):
                 args.append(comp.compile(f.first()))
                 f = f.next()
 
-    code.append((LOAD_ATTR, attr))
+    alias = comp.getAlias(clss)
+    if alias:
+        code = alias.compile(comp)
+        code.append((LOAD_ATTR, attr))
+    else:
+        code = comp.compile(symbol(clss, attr))
+        
     for x in args:
         code.extend(x)
     code.append((CALL_FUNCTION, len(args)))
@@ -333,7 +346,7 @@ def compileFn(comp, name, form, orgform):
     if not clist:
         c = new.function(c.to_code(), comp.ns.__dict__, name.name)
 
-    return [(LOAD_CONST, c)]
+    return [(LOAD_CONST, c)], c
     
 def cleanRest(name):
     label = Label("isclean")
@@ -363,9 +376,9 @@ class MultiFn(object):
 
         self.locals, self.args, self.lastisargs, self.argsname = unpackArgs(argv)
         endLabel = Label("endLabel")
-        argcode = [(LOAD_FAST, '__argsv__'),
-            (LOAD_ATTR, '__len__'),
-            (CALL_FUNCTION, 0),
+        argcode = [(LOAD_CONST, len),
+            (LOAD_FAST, '__argsv__'),
+            (CALL_FUNCTION, 1),
             (LOAD_CONST, len(self.args) - (1 if self.lastisargs else 0)),
             (COMPARE_OP, ">=" if self.lastisargs else "==")]
         argcode.extend(emitJump(endLabel))
@@ -406,6 +419,7 @@ class MultiFn(object):
 def compileMultiFn(comp, name, form):
     s = form
     argdefs = []
+    
     while s is not None:
         argdefs.append(MultiFn(comp, s.first()))
         s = s.next()
@@ -431,10 +445,12 @@ def compileMultiFn(comp, name, form):
 
     clist = map(lambda x: x.sym.name, comp.closureList())
     c = Code(code, clist, argslist, hasvararg, False, True, str(symbol(comp.getNS().__name__, name.name)), comp.filename, 0, None)
+
     if not clist:
         c = new.function(c.to_code(), comp.ns.__dict__, name.name)
 
-    return [(LOAD_CONST, c)]
+    
+    return [(LOAD_CONST, c)], c
 
 def compileImplcitDo(comp, form):
     code = []
@@ -452,11 +468,13 @@ def compileImplcitDo(comp, form):
 def compileFNStar(comp, form):
     haslocalcaptures = False
     aliases = []
-    if len(comp.aliases) > 0: # we got a closure to deal with
+    if len(comp.aliases) > 0: # we might have closures to deal with
         for x in comp.aliases:
+            
             comp.pushAlias(x, Closure(x))
             aliases.append(x)
         haslocalcaptures = True
+        
 
     orgform = form
     if len(form) < 2:
@@ -473,17 +491,22 @@ def compileFNStar(comp, form):
         form = form.next()
 
     name = symbol(name)
-    gensym = symbol("_"+name.name + str(RT.nextID()))
-
-    if haslocalcaptures:
-        comp.pushAlias(name, LocalMacro(name, gensym))
+    
+    # This is fun stuff here. The idea is that we want closures to be able
+    # to call themselves. But we can't get a pointer to a closure until after
+    # it's created, which is when we actually run this code. So, we're going to
+    # create a tmp local that is None at first, then pass that in as a possible
+    # closure cell. Then after we create the closure with MAKE_CLOSURE we'll 
+    # populate this var with the correct value
+    
+    selfalias = Closure(name)
+    
+    comp.pushAlias(name, selfalias)
 
     if isinstance(form.first(), IPersistentVector):
-        code = compileFn(comp, name, form, orgform)
+        code, ptr = compileFn(comp, name, form, orgform)
     else:
-        code = compileMultiFn(comp, name, form)
-
-
+        code, ptr = compileMultiFn(comp, name, form)
 
     if pushed:
         comp.popName()
@@ -492,30 +515,36 @@ def compileFNStar(comp, form):
     fcode = []
 
     if haslocalcaptures:
-	comp.popAlias(name)
-
-    if haslocalcaptures:
         comp.popAliases(aliases)
 
     if clist:
         for x in clist:
-            fcode.extend(comp.getAlias(x.sym).compile(comp))  # Load our local version
-            fcode.append((STORE_DEREF, x.sym.name))            # Store it in a Closure Cell
+            if x is not selfalias:   #we'll populate selfalias later
+                fcode.extend(comp.getAlias(x.sym).compile(comp))  # Load our local version
+                fcode.append((STORE_DEREF, x.sym.name))            # Store it in a Closure Cell
             fcode.append((LOAD_CLOSURE, x.sym.name))           # Push the cell on the stack
         fcode.append((BUILD_TUPLE, len(clist)))
         fcode.extend(code)
         fcode.append((MAKE_CLOSURE, 0))
         code = fcode
 
-    if haslocalcaptures:
+    if selfalias in clist:
+        prefix = []
+        prefix.append((LOAD_CONST, None))
+        prefix.extend(selfalias.compileSet(comp))
+        prefix.extend(code)
+        code = prefix
         code.append((DUP_TOP, None))
-        code.append((STORE_GLOBAL, gensym.name))
+        code.extend(selfalias.compileSet(comp))
+
+    comp.popAlias(symbol(name)) #closure
+
 
     return code
 
 def compileVector(comp, form):
     code = []
-    code.extend(comp.compile(symbol("clojure.lang.rt.vector")))
+    code.extend(comp.compile(symbol("clojure.lang.rt", "vector")))
     for x in form:
         code.extend(comp.compile(x))
     code.append((CALL_FUNCTION, len(form)))
@@ -555,7 +584,7 @@ def compileMap(comp, form):
     s = form.seq()
     c = 0
     code = []
-    code.extend(comp.compile(symbol("clojure.lang.rt.map")))
+    code.extend(comp.compile(symbol("clojure.lang.rt", "map")))
     while s is not None:
         kvp = s.first()
         code.extend(comp.compile(kvp.getKey()))
@@ -598,14 +627,9 @@ def compileBuiltin(comp, form):
     return [(LOAD_CONST, getBuiltin(name))]
 
 def getBuiltin(name):
-    ## PyPy defines `__builtins__` as a module...CPython as a dict
-    ## see http://pypy.readthedocs.org/en/latest/cpython_differences.html#miscellaneous
-    ## for more info
-    if isinstance(__builtins__, dict):
-        if name in __builtins__:
-            return __builtins__[name]
-    elif hasattr(__builtins__, name):
-        return getattr(__builtins__, name)
+    import __builtin__
+    if hasattr(__builtin__, name):
+        return getattr(__builtin__, name)
 
     raise CompilerException("Python builtin not found " + name, name)
 
@@ -730,6 +754,8 @@ class Closure(AAlias):
     def compile(self, comp):
         self.isused = True
         return [(LOAD_DEREF, self.sym.name)]
+    def compileSet(self, comp):
+        return [(STORE_DEREF, self.sym.name)]
 
 
 class LocalMacro(AAlias):
@@ -741,6 +767,17 @@ class LocalMacro(AAlias):
     def compile(self, comp):
         code = comp.compile(self.macroform)
         return code
+        
+class SelfReference(AAlias):
+    def __init__(self, var, rest = None):
+        AAlias.__init__(self, rest)
+        self.var = var
+        self.isused = False
+    def compile(self, comp):
+        self.isused = True
+        return [(LOAD_CONST, self.var),
+                (LOAD_ATTR, "deref"),
+                (CALL_FUNCTION, 0)]
 
 class Name(object):
     """Slot for a name"""
@@ -761,39 +798,55 @@ class Name(object):
             s = s + str(RT.nextID())
         return s
 
-
 def evalForm(form, ns):
     comp = Compiler()
     comp.setNS(ns)
     code = comp.compile(form)
     return comp.executeCode(code)
     
+    
+def ismacro(macro):
+    if not isinstance(macro, type) \
+            and (hasattr(macro, "meta") and macro.meta() and macro.meta()[_MACRO_])\
+            or (hasattr(macro, "macro?") and getattr(macro, "macro?")):
+            return True
+            
+    return False
+    
+def meta(form):
+    if hasattr(form, "meta"):
+        return form.meta()
+    return None
+        
 def macroexpand(form, comp, one = False):
     if isinstance(form.first(), Symbol):
-        macro = findItem(comp.getNS(), form.first())
+        if form.first().ns == 'py' or form.first().ns == "py.bytecode":
+            return form, False
+       
+        itm = findItem(comp.getNS(), form.first())
+        dreffed = itm
+        if isinstance(dreffed, Var):
+            dreffed = itm.deref()
+            
         # Handle macros here
         # TODO: Break this out into a seperate function
-        if macro is not None:
-            if not isinstance(macro, type) \
-            and (hasattr(macro, "meta") and macro.meta()[_MACRO_])\
-            or (hasattr(macro, "macro?") and getattr(macro, "macro?")):
-                args = RT.seqToTuple(form.next())
-                
-                macroform = macro
-                if hasattr(macro, "_macro-form"):
-                    macroform = getattr(macro, "_macro-form")
-    
-                mresult = macro(macroform, None, *args)
-                
-                if hasattr(mresult, "withMeta") \
-                   and hasattr(form, "meta"):
-                    mresult = mresult.withMeta(form.meta())
-                    
-                if one:
-                    return mresult
-                else:
-                    return comp.compile(mresult)
-    return None
+        if ismacro(itm) or ismacro(dreffed):
+            macro = dreffed
+            args = RT.seqToTuple(form.next())
+            
+            macroform = macro
+            if hasattr(macro, "_macro-form"):
+                macroform = getattr(macro, "_macro-form")
+
+            mresult = macro(macroform, None, *args)
+            
+            if hasattr(mresult, "withMeta") \
+               and hasattr(form, "meta"):
+                mresult = mresult.withMeta(form.meta())
+            mresult = comp.compile(mresult)   
+            return mresult, True
+
+    return form, False
     
 class Compiler():
     def __init__(self):
@@ -883,9 +936,9 @@ class Compiler():
     def compileForm(self, form):
         if form.first() in builtins:
             return builtins[form.first()](self, form)
-        c = macroexpand(form, self)
-        if c:
-            return c
+        form, ret = macroexpand(form, self)
+        if ret:
+            return form
         if isinstance(form.first(), Symbol):
             if form.first().ns == "py.bytecode":
                 return compileBytecode(self, form)
@@ -905,22 +958,49 @@ class Compiler():
         return c
 
     def compileAccessList(self, sym):
-        accessList = self.getAccessList(sym)
-        if accessList[0] == 'py':
-            return [(LOAD_CONST, getBuiltin(accessList[1]))]
-        return [(LOAD_GLOBAL, accessList[0])] + [(LOAD_ATTR, attr) for attr in accessList[1:]]
+        if sym.ns == 'py':
+            return [(LOAD_CONST, getBuiltin(sym.name))]
 
-    def getAccessList(self, sym):
-        if sym.ns is not None\
-            and sym.ns == self.getNS().__name__:
-            return [sym.name]
+        code = self.getAccessCode(sym)
+        return code
+
+    def getAccessCode(self, sym):
+        if (sym.ns is not None and sym.ns == self.getNS().__name__) \
+           or sym.ns is None:
+            if not hasattr(self.getNS(), sym.name):
+                raise CompilerException("could not resolve " + str(sym) + " " \
+                                        + sym.name + " not found in " + self.getNS().__name__, sym)
+            var = getattr(self.getNS(), sym.name)
+            if isinstance(var, Var):
+                if (var.isDynamic()):
+                    return [(LOAD_CONST, var.deref),
+                            (CALL_FUNCTION, 0)]
+                else:
+                    return [(LOAD_CONST, var.deref())]
+            return [(LOAD_GLOBAL, sym.name)]
+                
         splt = []
         if sym.ns is not None:
-            splt.extend(sym.ns.split("."))
+            module = findNamespace(sym.ns) 
+            if not hasattr(module, sym.name):
+                raise CompilerException(str(module) + " does not define " + sym.name, None)
+            attr = getattr(module, sym.name)
+            if isinstance(attr, Var):
+                splt.append((LOAD_CONST, attr.deref))
+                splt.append((CALL_FUNCTION, 0))
+            else:
+                splt.append((LOAD_CONST, module))
+                splt.append((LOAD_ATTR, sym.name))
+            return splt
+            
+        code = LOAD_ATTR if sym.ns else LOAD_GLOBAL
+        if not sym.ns and sym.name.find(".") != -1 and sym.name != "..":
+            raise CompilerException("unqualified dotted forms not supported: " + str(sym), sym)
+        
         if len(sym.name.replace(".", "")):
-            splt.extend(sym.name.split("."))
+            splt.extend((code, attr) for attr in sym.name.split("."))
         else:
-            splt.append(sym.name)
+            splt.append((code, sym.name))
         return splt
 
     def compileSymbol(self, sym):
@@ -950,7 +1030,6 @@ class Compiler():
     def compile(self, itm):
         from clojure.lang.persistentlist import PersistentList, EmptyList
         from clojure.lang.cons import Cons
-
         c = []
         lineset = False
         if hasattr(itm, "meta") and itm.meta() is not None:
@@ -977,6 +1056,8 @@ class Compiler():
         elif isinstance(itm, bool):
             c.extend(compileBool(self, itm))
         elif isinstance(itm, EmptyList):
+            c.append((LOAD_CONST, itm))
+        elif isinstance(itm, unicode):
             c.append((LOAD_CONST, itm))
         else:
             raise CompilerException("Don't know how to compile" + str(type(itm)), None)
