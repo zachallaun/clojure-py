@@ -6,11 +6,19 @@ An implementation of Clojure in pure Python.
 
 It is our belief that static virtual machines make very poor runtimes for dynamic languages. They constrain the languages to their view of what the "world should look like" and limit the options available to language implementors. We are attempting to prove this by writing an implementation of Clojure that runs on the Python VM. We believe that with a proper dynamic JIT (like pypy) a version of clojure running on a dynamic VM can outperform its JVM and CLR counterparts. 
 
+Aside from that, there are many Python libraries like PySide (Qt GUI), numpy, scipy, and stackless that do not have JVM counterparts, or at least the Python implemntations are easier to use and learn. clojure-py will integrate tightly with thy Python VM and will be able to use all of these libraries.
+
 ## Basic concepts
 
 Python builtins are available under the py/ namespace. Actual python bytecodes can be injected via py.bytecodes/OP
 
 Viewing the code at https://github.com/halgari/clojure-py/blob/master/clojure/core.clj is probably the best way to get a feeling of what is possible, and how clojure-py implements certain functions.
+
+One note: clojure-py implements the new "property vs calling method" design used in ClojureScript:
+
+   (.__name__ (module)) ; same as module.__name__() in python
+   (.-__name__ (module)) ; same as module.__name__ in python
+   
 
 ## How can I help?
 
