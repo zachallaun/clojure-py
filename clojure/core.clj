@@ -2177,6 +2177,19 @@
   [x]
   (or (float? x) (int? x)))
 
+(defn keyword
+  "Returns a keyword for the given string"
+  [x]
+  (clojure.lang.cljkeyword/keyword (symbol x)))
+
+(defn nth
+  ([coll x]
+      (py.bytecode/BINARY_SUBSCR coll x))
+  ([coll x default]
+      (if (contains? coll x)
+          (py.bytecode/BINARY_SUBSCR coll x)
+          default)))
+
 (import '(clojure.lang.lispreader readString))
 
 (defn read-string
@@ -2285,4 +2298,122 @@
    :static true}
   [ns]
   (symbol (.-__name__ (the-ns ns))))
+
+
+(defn take-nth
+  "Returns a lazy seq of every nth item in coll."
+  {:added "1.0"
+   :static true}
+  [n coll]
+    (lazy-seq
+     (when-let [s (seq coll)]
+       (cons (first s) (take-nth n (drop n s))))))
+
+(defn interleave
+  "Returns a lazy seq of the first item in each coll, then the second etc."
+  {:added "1.0"
+   :static true}
+  ([c1 c2]
+     (lazy-seq
+      (let [s1 (seq c1) s2 (seq c2)]
+        (when (and s1 s2)
+          (cons (first s1) (cons (first s2) 
+                                 (interleave (rest s1) (rest s2))))))))
+  ([c1 c2 & colls] 
+     (lazy-seq 
+      (let [ss (map seq (conj colls c2 c1))]
+        (when (every? identity ss)
+          (concat (map first ss) (apply interleave (map rest ss))))))))
+
+
+
+;redefine let and loop  with destructuring
+(defn destructure [bindings]
+  (let [bents (partition 2 bindings)
+        pb (fn pb [bvec b v]
+               (let [pvec
+                     (fn [bvec b val]
+                       (let [gvec (gensym "vec__")]
+                         (loop [ret (-> bvec (conj gvec) (conj val))
+                                n 0
+                                bs b
+                                seen-rest? false]
+                           (if (seq bs)
+                             (let [firstb (first bs)]
+                               (cond
+                                (= firstb '&) (recur (pb ret (second bs) (list `nthnext gvec n))
+                                                     n
+                                                     (nnext bs)
+                                                     true)
+                                (= firstb :as) (pb ret (second bs) gvec)
+                                :else (if seen-rest?
+                                        (throw (py/Exception "Unsupported binding form, only :as can follow & parameter"))
+                                        (recur (pb ret firstb  (list `nth gvec n nil))
+                                               (inc n)
+                                               (next bs)
+                                               seen-rest?))))
+                             ret))))
+                     pmap
+                     (fn [bvec b v]
+                       (let [gmap (or (:as b) (gensym "map__"))
+                             defaults (:or b)]
+                         (loop [ret (-> bvec (conj gmap) (conj v)
+                                        (conj gmap) (conj `(if (seq? ~gmap) (apply hash-map ~gmap) ~gmap)))
+                                bes (reduce1
+                                     (fn [bes entry]
+                                       (reduce1 #(assoc %1 %2 ((val entry) %2))
+                                               (dissoc bes (key entry))
+                                               ((key entry) bes)))
+                                     (dissoc b :as :or)
+                                     {:keys #(keyword (str %)), :strs str, :syms #(list `quote %)})]
+                           (if (seq bes)
+                             (let [bb (key (first bes))
+                                   bk (val (first bes))
+                                   has-default (contains? defaults bb)]
+                               (recur (pb ret bb (if has-default
+                                                   (list `get gmap bk (defaults bb))
+                                                   (list `get gmap bk)))
+                                      (next bes)))
+                             ret))))]
+                 (cond
+                  (symbol? b) (-> bvec (conj b) (conj v))
+                  (vector? b) (pvec bvec b v)
+                  (map? b) (pmap bvec b v)
+                  :else (throw (py/Exception (str "Unsupported binding form: " b))))))
+        process-entry (fn [bvec b] (pb bvec (first b) (second b)))]
+    (if (every? symbol? (map first bents))
+      bindings
+      (reduce1 process-entry [] bents))))
+
+(defmacro let
+  "binding => binding-form init-expr
+
+  Evaluates the exprs in a lexical context in which the symbols in
+  the binding-forms are bound to their respective init-exprs or parts
+  therein."
+  {:added "1.0", :special-form true, :forms '[(let [bindings*] exprs*)]}
+  [bindings & body]
+  (assert-args
+     (vector? bindings) "a vector for its binding"
+     (even? (count bindings)) "an even number of forms in binding vector")
+  `(let* ~(destructure bindings) ~@body))
+
+(defn ^{:private true}
+  maybe-destructured
+  [params body]
+  (if (every? symbol? params)
+    (cons params body)
+    (loop [params params
+           new-params []
+           lets []]
+      (if params
+        (if (symbol? (first params))
+          (recur (next params) (conj new-params (first params)) lets)
+          (let [gparam (gensym "p__")]
+            (recur (next params) (conj new-params gparam)
+                   (-> lets (conj (first params)) (conj gparam)))))
+        `(~new-params
+          (let ~lets
+            ~@body))))))
+
 
