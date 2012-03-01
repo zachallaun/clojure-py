@@ -443,6 +443,12 @@
   {:added "1.0"}
   [x] (py/if x false true))
 
+(defn println
+  "Pass through one string to Python print.  This is just for debugging,
+   and is not a proper final solution."
+  {}
+  [x] (py/print x))
+
 (defn str
   "With no args, returns the empty string. With one arg x, returns
   x.__str__().  (str nil) returns the empty string. With more than
