@@ -14,11 +14,13 @@ def test(times):
     rem = times
     while True:
         if rem > 0:
-            fact(20000)
+            fact(20)
             rem = rem - 1
             continue
         else:
             return
 
-
-test(20)
+import time
+c = time.time()
+test(19999999)
+print "Elapsed time: " + str((time.time() - c) * 1000) + " msecs"

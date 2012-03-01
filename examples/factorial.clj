@@ -16,6 +16,6 @@
 ;; clojure jvm : 25 sec
 ;; clojure pypy : 48 sec
 
-(time (test 1999999))
+(time (test 19999999))
 
 

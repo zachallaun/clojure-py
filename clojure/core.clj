@@ -1401,12 +1401,18 @@
   [e]
     (. e (getValue)))
 
+(defn unicode?
+  "Returns true if x is unicode"
+  [x]
+  (instance? py/unicode x))
 
 (defn name
   "Returns the name String of a string, symbol or keyword."
   {:added "1.0"}
   [x]
-  (if (string? x) x (.getName x )))
+  (cond (string? x) x 
+        (unicode? x) x
+        :else (.getName x )))
 
 (defn namespace
   "Returns the namespace String of a symbol or keyword, or nil if not present."

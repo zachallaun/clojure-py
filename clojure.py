@@ -1,2 +1,5 @@
 import clojure.main
-clojure.main.main()
+
+if __name__ == "__main__":
+    clojure.main.main()
+

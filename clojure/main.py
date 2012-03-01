@@ -34,11 +34,14 @@ def import_hook(name, globals=None, locals=None, fromlist=None, level = -1):
     
    
     conv = name.replace(".", "/")
-    for p in sys.path:
+    for p in ["."] + sys.path:
         f = p + "/" + conv + ".clj"
         if os.path.exists(f):
             requireClj(f)
-            return _old_import_(name, globals, locals, fromlist, level)
+            try:
+                return sys.modules[name]
+            except KeyError:
+                raise ImportError("could not find module " + name + " after loading " + f)
             
     raise ImportError("module " + name + " not found")
 
@@ -91,9 +94,10 @@ def requireClj(filename, stopafter=None):
     except IOError as e:
         pass
 
+requireClj(os.path.dirname(__file__) + "/core.clj")
 
 def main():
-    requireClj(os.path.dirname(__file__) + "/core.clj")
+
 
     RT.init()
     comp = Compiler()

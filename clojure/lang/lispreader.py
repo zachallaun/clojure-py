@@ -331,6 +331,8 @@ def matchSymbol(s):
     if m is not None:
         ns = m.group(1)
         name = m.group(2)
+        if name.endswith(".") and not name.startswith("."):
+            name = name[:-1]
         if ns is not None and ns.endswith(":/") or name.endswith(":")\
             or s.find("::") != -1:
                 return None
