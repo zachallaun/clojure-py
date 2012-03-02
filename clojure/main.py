@@ -39,8 +39,8 @@ def import_hook(name, globals=None, locals=None, fromlist=None, level = -1):
         if os.path.exists(f):
             requireClj(f)
             try:
-                return sys.modules[name]
-            except KeyError:
+                return _old_import_(name, globals, locals, fromlist, level)
+            except ImportError:
                 raise ImportError("could not find module " + name + " after loading " + f)
             
     raise ImportError("module " + name + " not found")
@@ -94,7 +94,8 @@ def requireClj(filename, stopafter=None):
     except IOError as e:
         pass
 
-requireClj(os.path.dirname(__file__) + "/core.clj")
+#requireClj(os.path.dirname(__file__) + "/core.clj")
+import clojure.core
 
 def main():
 
