@@ -31,7 +31,7 @@ class Keyword(IFn, Named):
         return obj[self]
 
     def __repr__(self):
-        return str(self.sym)
+        return ":" + str(self.sym)
 
 def keyword(*args):
     if len(args) == 1:

@@ -19,7 +19,7 @@ import re
 import new
 import sys
 
-_MACRO_ = keyword(symbol(":macro"))
+_MACRO_ = keyword(symbol("macro"))
 version = (sys.version_info[0] * 10) + sys.version_info[1]
 
 def emitJump(label):

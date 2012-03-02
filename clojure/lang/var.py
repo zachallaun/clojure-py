@@ -12,7 +12,7 @@ from clojure.lang.cljkeyword import keyword
 import persistentarraymap
 
 privateKey = keyword(symbol("private"))
-macrokey = keyword(symbol(":macro"))
+macrokey = keyword(symbol("macro"))
 dvals = ThreadLocal()
 privateMeta = persistentarraymap.create([privateKey, True])
 UKNOWN = symbol("UNKNOWN")

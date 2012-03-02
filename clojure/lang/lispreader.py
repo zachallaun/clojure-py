@@ -339,12 +339,11 @@ def matchSymbol(s):
         if s.startswith("::"):
             return "FIX"
         ns = ns if ns is None else ns[:-1]
-        iskeyword = s.find(':') == 0
-        sym = symbol(ns, name[(1 if iskeyword else 0):])
+        iskeyword = s.startswith(':')
         if iskeyword:
-            return keyword(s)
+            return keyword(s[1:])
         else:
-            return sym
+            return symbol(ns, name)
     return None
 
 def setReader(rdr, leftbrace):
