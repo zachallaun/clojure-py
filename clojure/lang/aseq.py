@@ -23,6 +23,16 @@ class ASeq(Obj, Sequential, ISeq, IHashEq, Iterable):
             ms = ms.next()
             se = se.next()
         return ms is None
+        
+    def __getitem__(self, idx):
+        s = self.seq()
+        c = 0
+        while s is not None:
+            if c == idx:
+                return s.first()
+            c += 1
+            s = s + 1
+        return None
 
     def seq(self):
         return self

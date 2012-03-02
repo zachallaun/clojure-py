@@ -2237,18 +2237,18 @@
   `(fn [target# ~@args]
      (. target# (~name ~@args))))
 
-(import '(time time))
-(def pytime time)
+;(import '(time time))
+;(def pytime time)
 
-(defmacro time
-  "Evaluates expr and prints the time it took.  Returns the value of
- expr."
-  {:added "1.0"}
-  [expr]
-  `(let [start# (pytime)
-         ret# ~expr]
-     (py/print (str "Elapsed time: " (* (- (pytime) start#) 1000) " msecs"))
-     ret#))
+;(defmacro time
+;  "Evaluates expr and prints the time it took.  Returns the value of
+; expr."
+;  {:added "1.0"}
+;  [expr]
+;  `(let [start# (pytime)
+;         ret# ~expr]
+;     (py/print (str "Elapsed time: " (* (- (pytime) start#) 1000) " msecs"))
+;     ret#))
 
 (defn set
   "Returns a set of the distinct elements of coll."
@@ -2415,5 +2415,47 @@
         `(~new-params
           (let ~lets
             ~@body))))))
+
+;redefine fn with destructuring and pre/post conditions
+(defmacro fn
+  "params => positional-params* , or positional-params* & next-param
+  positional-param => binding-form
+  next-param => binding-form
+  name => symbol
+
+  Defines a function"
+  {:added "1.0", :special-form true,
+   :forms '[(fn name? [params* ] exprs*) (fn name? ([params* ] exprs*)+)]}
+  [& sigs]
+    (let [name (if (symbol? (first sigs)) (first sigs) nil)
+          sigs (if name (next sigs) sigs)
+          sigs (if (vector? (first sigs)) (list sigs) sigs)
+          psig (fn* [sig]
+                 (let [[params & body] sig
+                       conds (when (and (next body) (map? (first body))) 
+                                           (first body))
+                       body (if conds (next body) body)
+                       conds (or conds (meta params))
+                       pre (:pre conds)
+                       post (:post conds)                       
+                       body (if post
+                              `((let [~'% ~(if (< 1 (count body)) 
+                                            `(do ~@body) 
+                                            (first body))]
+                                 ~@(map (fn* [c] `(assert ~c)) post)
+                                 ~'%))
+                              body)
+                       body (if pre
+                              (concat (map (fn* [c] `(assert ~c)) pre) 
+                                      body)
+                              body)]
+                   (maybe-destructured params body)))
+          new-sigs (map psig sigs)]
+        (if name
+          (list* 'fn* name new-sigs)
+          (cons 'fn* new-sigs))))
+
+
+
 
 

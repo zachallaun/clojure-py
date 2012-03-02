@@ -60,7 +60,6 @@ def compileDef(comp, form):
     code = []
     v = internVar(comp.getNS(), sym)
     v.setDynamic(True)
-    v.setMeta(sym.meta())
     code.append((LOAD_CONST, v))
     code.append((LOAD_ATTR, "bindRoot"))
     code.extend(comp.compile(value))
@@ -69,6 +68,7 @@ def compileDef(comp, form):
     code.append((LOAD_CONST, False))
     code.append((CALL_FUNCTION, 1))
     code.append((POP_TOP, None))
+    v.setMeta(sym.meta())
 
     comp.popName()
     return code
@@ -969,7 +969,8 @@ class Compiler():
            or sym.ns is None:
             if not hasattr(self.getNS(), sym.name):
                 raise CompilerException("could not resolve " + str(sym) + " " \
-                                        + sym.name + " not found in " + self.getNS().__name__, sym)
+                                        + sym.name + " not found in " + self.getNS().__name__ +
+                                        " reference " + str(self.getNamesString(False)), None)
             var = getattr(self.getNS(), sym.name)
             if isinstance(var, Var):
                 if (var.isDynamic()):

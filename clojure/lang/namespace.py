@@ -122,6 +122,11 @@ def intern(ns, sym):
         raise InvalidArgumentException("Can't intern namespace-qualified symbol")
 
     ns = find(ns)
+    if hasattr(ns, str(sym)):
+        v = getattr(ns, str(sym))
+        if not isinstance(v, Var):
+            raise Exception("can't redefine " + str(v) + " as " + str(sym) + ": is not Var")
+        return v
     v = Var(ns, sym)
     setattr(ns, sym.name, v)
     return v

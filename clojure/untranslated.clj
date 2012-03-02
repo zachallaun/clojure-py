@@ -990,11 +990,9 @@
                               body)]
                    (maybe-destructured params body)))
           new-sigs (map psig sigs)]
-      (with-meta
         (if name
           (list* 'fn* name new-sigs)
-          (cons 'fn* new-sigs))
-        (meta &form))))
+          (cons 'fn* new-sigs))))
 
 (defmacro loop
   "Evaluates the exprs in a lexical context in which the symbols in

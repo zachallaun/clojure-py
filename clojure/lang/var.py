@@ -63,6 +63,9 @@ class Var(ARef, Settable, IFn, IRef):
 
     def isDynamic(self):
         return self.dynamic
+        
+    def isBound(self):
+        return not isinstance(self.root, Unbound)
 
     def set(self, val):
         self.validate(self.getValidator(), val)
