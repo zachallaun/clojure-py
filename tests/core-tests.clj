@@ -282,8 +282,8 @@
 (deftest ->-tests
     (assert-equal (-> " baz " (.rstrip) (.lstrip)) "baz"))
 
-(deftest ->>-tests ; haven't a clue how to test this
-    )
+;(deftest ->>-tests ; haven't a clue how to test this
+;    )
 
 
 ;;; var stuff
@@ -479,3 +479,18 @@
 
 (deftest ns-name-tests
     (assert-equal (ns-name 'clojure.core) 'clojure.core))
+
+(deftest let-tests
+    (let [[x & y] [1 2 3]]
+         (assert-equal x 1)
+         (assert-equal y [2 3])))
+
+(deftest let-tests
+    ((fn td [[x & y]]
+         (assert-equal x 1)
+         (assert-equal y [2 3])) [ 1 2 3]))
+
+(deftest loop-tests
+    (loop [[x & y] [1 2 3]]
+         (assert-equal x 1)
+         (assert-equal y [2 3])))

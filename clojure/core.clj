@@ -1312,13 +1312,17 @@
   range of indexes. 'contains?' operates constant or logarithmic time;
   it will not perform a linear search for a value.  See also 'some'."
   {:added "1.0"}
-  [coll key] (py/if (or (vector? coll)
+  [coll key] (cond (or (vector? coll)
                         (list? coll)
                         (tuple? coll)
                         (pylist? coll)
-                        (string? coll))
-                    (and (>= key 0) (< key (count coll)))
-                    (py.bytecode/COMPARE_OP "in" key coll)))    
+                        (string? coll)
+                        (and (not (py/hasattr coll "__contains__"))
+                             (py/hasattr coll "__len__")))
+                     (and (>= key 0) (< key (count coll)))
+                    (nil? coll) false
+                    :else
+                     (py.bytecode/COMPARE_OP "in" key coll)))    
 
 
 (defn get
@@ -2188,7 +2192,7 @@
   ([coll x default]
       (if (contains? coll x)
           (py.bytecode/BINARY_SUBSCR coll x)
-          default)))
+          (do (py/print "ff" coll x default) default))))
 
 (import '(clojure.lang.lispreader readString))
 
@@ -2455,7 +2459,30 @@
           (list* 'fn* name new-sigs)
           (cons 'fn* new-sigs))))
 
-
+(defmacro loop
+  "Evaluates the exprs in a lexical context in which the symbols in
+  the binding-forms are bound to their respective init-exprs or parts
+  therein. Acts as a recur target."
+  {:added "1.0", :special-form true, :forms '[(loop [bindings*] exprs*)]}
+  [bindings & body]
+    (assert-args
+      (vector? bindings) "a vector for its binding"
+      (even? (count bindings)) "an even number of forms in binding vector")
+    (let [db (destructure bindings)]
+      (if (= db bindings)
+        `(loop* ~bindings ~@body)
+        (let [vs (take-nth 2 (drop 1 bindings))
+              bs (take-nth 2 bindings)
+              gs (map (fn [b] (if (symbol? b) b (gensym))) bs)
+              bfs (reduce1 (fn [ret [b v g]]
+                            (if (symbol? b)
+                              (conj ret g v)
+                              (conj ret g v b g)))
+                          [] (map vector bs vs gs))]
+          `(let ~bfs
+             (loop* ~(vec (interleave gs gs))
+               (let ~(vec (interleave bs gs))
+                 ~@body)))))))
 
 
 
