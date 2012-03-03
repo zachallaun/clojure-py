@@ -70,13 +70,13 @@ def requireClj(filename, stopafter=None):
     comp.setFile(filename)
     currentCompiler.set(comp)
     
-    o = open(filename+".cljc", "w")
+    #o = open(filename+".cljc", "w")
 
     try:
         while True:
             
             s = read(r, True, None, True)
-            cPickle.dump(s, o)
+            #cPickle.dump(s, o)
             try:
                 res = comp.compile(s)
                 comp.executeCode(res)
@@ -99,7 +99,7 @@ def requireClj(filename, stopafter=None):
     except IOError as e:
         pass
     
-    o.close()
+    #o.close()
 
 #requireClj(os.path.dirname(__file__) + "/core.clj")
 import clojure.core

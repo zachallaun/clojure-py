@@ -80,7 +80,11 @@ def find(name):
     return sys.modules[name]
 
 def findItem(ns, sym):
-    from clojure.lang.symbol import Symbol
+    from clojure.lang.symbol import Symbol, symbol
+    if sym.ns is not None and  hasattr(ns, "__aliases__") and \
+        symbol(sym.ns) in ns.__aliases__:
+        sym = symbol(ns.__aliases__[symbol(sym.ns)].__name__, sym.name)
+       
     if isinstance(sym, Symbol):
         if sym.ns == ns.__name__:
             if not hasattr(ns, sym.name):
@@ -130,3 +134,5 @@ def intern(ns, sym):
     v = Var(ns, sym)
     setattr(ns, sym.name, v)
     return v
+    
+
