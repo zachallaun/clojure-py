@@ -2188,11 +2188,13 @@
 
 (defn nth
   ([coll x]
-      (py.bytecode/BINARY_SUBSCR coll x))
+      (if (py/hasattr coll "__getitem__")
+          (py.bytecode/BINARY_SUBSCR coll x)
+          (first (drop x coll))))
   ([coll x default]
       (if (contains? coll x)
-          (py.bytecode/BINARY_SUBSCR coll x)
-          (do (py/print "ff" coll x default) default))))
+          (nth coll x)
+          default)))
 
 (import '(clojure.lang.lispreader readString))
 
@@ -2483,6 +2485,253 @@
              (loop* ~(vec (interleave gs gs))
                (let ~(vec (interleave bs gs))
                  ~@body)))))))
+
+
+(defn ^{:private true
+   :static true}
+  filter-key [keyfn pred amap]
+    (loop [ret {} es (seq amap)]
+      (if es
+        (if (pred (keyfn (first es)))
+          (recur (assoc ret (key (first es)) (val (first es))) (next es))
+          (recur ret (next es)))
+        ret)))
+
+(defn ns-map
+  "Returns a map of all the mappings for the namespace."
+  {:added "1.0"
+   :static true}
+  [ns]
+  (clojure.lang.rt/map (.-__dict__ (the-ns ns))))
+
+(defn ns-publics
+  "Returns a map of the public intern mappings for the namespace."
+  {:added "1.0"
+   :static true}
+  [ns]
+  (let [ns (the-ns ns)]
+    (filter-key val (fn [v] (and (instance? clojure.lang.var/Var v)
+                                 (= ns (.-ns v))
+                                 (.isPublic v)))
+                (ns-map ns))))
+
+(defn ns-imports
+  "Returns a map of the import mappings for the namespace."
+  {:added "1.0"
+   :static true}
+  [ns]
+  (filter-key val (partial instance? py/type) (ns-map ns)))
+
+(defn ns-interns
+  "Returns a map of the intern mappings for the namespace."
+  {:added "1.0"
+   :static true}
+  [ns]
+  (let [ns (the-ns ns)]
+    (filter-key val (fn [v] (and (instance? clojure.lang.var/Var v)
+                                 (= ns (.-ns v))))
+                (ns-map ns))))
+
+(defn refer-var
+    "Adds the var to the given namespace with the given name"
+    [ns nm v]
+    (py/setattr ns (name nm) v))
+
+(defn refer
+  "refers to all public vars of ns, subject to filters.
+  filters can include at most one each of:
+
+  :exclude list-of-symbols
+  :only list-of-symbols
+  :rename map-of-fromsymbol-tosymbol
+
+  For each public interned var in the namespace named by the symbol,
+  adds a mapping from the name of the var to the var to the current
+  namespace.  Throws an exception if name is already mapped to
+  something else in the current namespace. Filters can be used to
+  select a subset, via inclusion or exclusion, or to provide a mapping
+  to a symbol different from the var's name, in order to prevent
+  clashes. Use :use in the ns macro in preference to calling this directly."
+  {:added "1.0"}
+  [ns-sym & filters]
+    (let [ns (or (find-ns ns-sym) (throw (py/Exception (str "No namespace: " ns-sym))))
+          fs (apply hash-map filters)
+          nspublics (ns-publics ns)
+          rename (or (:rename fs) {})
+          exclude (set (:exclude fs))
+          to-do (or (:only fs) (keys nspublics))]
+      (doseq [sym to-do]
+        (when-not (exclude sym)
+          (let [v (nspublics sym)]
+            (when-not v
+              (throw (py/Exception
+                          (if (get (ns-interns ns) sym)
+                            (str sym " is not public")
+                            (str sym " does not exist")))))
+            (refer-var (the-ns __name__) 
+                       (or (rename sym) sym) 
+                       (get nspublics sym)))))))
+    
+(defn ns-refers
+  "Returns a map of the refer mappings for the namespace."
+  {:added "1.0"
+   :static true}
+  [ns]
+  (let [ns (the-ns ns)]
+    (filter-key val (fn [v] (and (instance? clojure.lang.var/Var v)
+                                 (not= ns (.-ns v))))
+                (ns-map ns))))
+
+
+(defn ns-aliases
+  "Returns a map of the aliases for the namespace."
+  {:added "1.0"
+   :static true}
+  [ns]
+  (let [ns (the-ns ns)]
+       (if (py/hasattr ns "__aliases__")
+           (.-__aliases__ ns)
+           {})))
+
+(defn alias
+  "Add an alias in the given namespace to another
+  namespace. Arguments are thre symbols: the alias to be used,
+  the symbolic name of the target namespace, and the destination namespace. 
+  Use :as in the ns macro in preference to calling this directly."
+  {:added "1.0"
+   :static true}
+  [alias namespace-sym to-ns]
+  (let [from-ns (the-ns namespace-sym)
+        to-ns (the-ns to-ns)]
+        (py/setattr to-ns 
+                    "__aliases__" 
+                    (assoc (ns-aliases to-ns)
+                           alias
+                           from-ns))))
+
+(defn ns-unalias
+  "Removes the alias for the symbol from the namespace."
+  {:added "1.0"
+   :static true}
+  [ns sym]
+  (let [to-ns (the-ns ns)]
+       (py/setattr to-ns
+                   "__aliases__"
+                   (dissoc (ns-aliases to-ns)
+                           sym))))
+
+(defmacro when-first
+  "bindings => x xs
+
+  Same as (when (seq xs) (let [x (first xs)] body))"
+  {:added "1.0"}
+  [bindings & body]
+  (assert-args
+     (vector? bindings) "a vector for its binding"
+     (= 2 (count bindings)) "exactly 2 forms in binding vector")
+  (let [[x xs] bindings]
+    `(when (seq ~xs)
+       (let [~x (first ~xs)]
+         ~@body))))
+
+(defmacro lazy-cat
+  "Expands to code which yields a lazy sequence of the concatenation
+  of the supplied colls.  Each coll expr is not evaluated until it is
+  needed. 
+
+  (lazy-cat xs ys zs) === (concat (lazy-seq xs) (lazy-seq ys) (lazy-seq zs))"
+  {:added "1.0"}
+  [& colls]
+  `(concat ~@(map #(list `lazy-seq %) colls)))
+
+#_(defmacro for
+  "List comprehension. Takes a vector of one or more
+   binding-form/collection-expr pairs, each followed by zero or more
+   modifiers, and yields a lazy sequence of evaluations of expr.
+   Collections are iterated in a nested fashion, rightmost fastest,
+   and nested coll-exprs can refer to bindings created in prior
+   binding-forms.  Supported modifiers are: :let [binding-form expr ...],
+   :while test, :when test.
+
+  (take 100 (for [x (range 100000000) y (range 1000000) :while (< y x)] [x y]))"
+  {:added "1.0"}
+  [seq-exprs body-expr]
+  (assert-args
+     (vector? seq-exprs) "a vector for its binding"
+     (even? (count seq-exprs)) "an even number of forms in binding vector")
+  (let [to-groups (fn [seq-exprs]
+                    (reduce1 (fn [groups [k v]]
+                              (if (keyword? k)
+                                (conj (pop groups) (conj (peek groups) [k v]))
+                                (conj groups [k v])))
+                            [] (partition 2 seq-exprs)))
+        err (fn [& msg] (throw (IllegalArgumentException. ^String (apply str msg))))
+        emit-bind (fn emit-bind [[[bind expr & mod-pairs]
+                                  & [[_ next-expr] :as next-groups]]]
+                    (let [giter (gensym "iter__")
+                          gxs (gensym "s__")
+                          do-mod (fn do-mod [[[k v :as pair] & etc]]
+                                   (cond
+                                     (= k :let) `(let ~v ~(do-mod etc))
+                                     (= k :while) `(when ~v ~(do-mod etc))
+                                     (= k :when) `(if ~v
+                                                    ~(do-mod etc)
+                                                    (recur (rest ~gxs)))
+                                     (keyword? k) (err "Invalid 'for' keyword " k)
+                                     next-groups
+                                      `(let [iterys# ~(emit-bind next-groups)
+                                             fs# (seq (iterys# ~next-expr))]
+                                         (if fs#
+                                           (concat fs# (~giter (rest ~gxs)))
+                                           (recur (rest ~gxs))))
+                                     :else `(cons ~body-expr
+                                                  (~giter (rest ~gxs)))))]
+                      (if next-groups
+                        #_"not the inner-most loop"
+                        `(fn ~giter [~gxs]
+                           (lazy-seq
+                             (loop [~gxs ~gxs]
+                               (when-first [~bind ~gxs]
+                                 ~(do-mod mod-pairs)))))
+                        #_"inner-most loop"
+                        (let [gi (gensym "i__")
+                              gb (gensym "b__")
+                              do-cmod (fn do-cmod [[[k v :as pair] & etc]]
+                                        (cond
+                                          (= k :let) `(let ~v ~(do-cmod etc))
+                                          (= k :while) `(when ~v ~(do-cmod etc))
+                                          (= k :when) `(if ~v
+                                                         ~(do-cmod etc)
+                                                         (recur
+                                                           (unchecked-inc ~gi)))
+                                          (keyword? k)
+                                            (err "Invalid 'for' keyword " k)
+                                          :else
+                                            `(do (chunk-append ~gb ~body-expr)
+                                                 (recur (inc ~gi)))))]
+                          `(fn ~giter [~gxs]
+                             (lazy-seq
+                               (loop [~gxs ~gxs]
+                                 (when-let [~gxs (seq ~gxs)]
+                                   (if (chunked-seq? ~gxs)
+                                     (let [c# (chunk-first ~gxs)
+                                           size# (int (count c#))
+                                           ~gb (chunk-buffer size#)]
+                                       (if (loop [~gi (int 0)]
+                                             (if (< ~gi size#)
+                                               (let [~bind (.nth c# ~gi)]
+                                                 ~(do-cmod mod-pairs))
+                                               true))
+                                         (chunk-cons
+                                           (chunk ~gb)
+                                           (~giter (chunk-rest ~gxs)))
+                                         (chunk-cons (chunk ~gb) nil)))
+                                     (let [~bind (first ~gxs)]
+                                       ~(do-mod mod-pairs)))))))))))]
+    `(let [iter# ~(emit-bind (to-groups seq-exprs))]
+        (iter# ~(second seq-exprs)))))
+
+(py/print "clojure-py 0.1.0")
 
 
 

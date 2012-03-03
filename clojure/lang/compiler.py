@@ -979,6 +979,10 @@ class Compiler():
                 else:
                     return [(LOAD_CONST, var.deref())]
             return [(LOAD_GLOBAL, sym.name)]
+            
+        if hasattr(self.getNS(), "__aliases__") and \
+            symbol(sym.ns) in self.getNS().__aliases__:
+            sym = symbol(self.getNS().__aliases__[symbol(sym.ns)].__name__, sym.name)
                 
         splt = []
         if sym.ns is not None:

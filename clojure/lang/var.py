@@ -54,6 +54,7 @@ class Var(ARef, Settable, IFn, IRef):
         self._meta = EMPTY
         self.rev = 0
         self.dynamic = False
+        self.public = True
         if isinstance(self.root, Unbound):
             self.rev += 1
 
@@ -63,6 +64,12 @@ class Var(ARef, Settable, IFn, IRef):
 
     def isDynamic(self):
         return self.dynamic
+        
+    def setPublic(self, public = True):
+        self.public = public
+        
+    def isPublic(self):
+        return self.public
         
     def isBound(self):
         return not isinstance(self.root, Unbound)

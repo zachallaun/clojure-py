@@ -55,6 +55,7 @@ from clojure.lang.globals import currentCompiler
 import clojure.lang.rt as RT
 from clojure.lang.compiler import Compiler
 from clojure.lang.symbol import Symbol, symbol
+import cPickle
 
 VERSION = "0.0.0"
 
@@ -68,11 +69,14 @@ def requireClj(filename, stopafter=None):
     comp = Compiler()
     comp.setFile(filename)
     currentCompiler.set(comp)
+    
+    o = open(filename+".cljc", "w")
 
     try:
         while True:
             
             s = read(r, True, None, True)
+            cPickle.dump(s, o)
             try:
                 res = comp.compile(s)
                 comp.executeCode(res)
@@ -94,6 +98,8 @@ def requireClj(filename, stopafter=None):
                     break
     except IOError as e:
         pass
+    
+    o.close()
 
 #requireClj(os.path.dirname(__file__) + "/core.clj")
 import clojure.core
