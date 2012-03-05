@@ -85,11 +85,11 @@ def compileBytecode(comp, form):
         arg = form.first()
         if not isinstance(arg, (int, str, unicode)) \
            and bc is not LOAD_CONST:
-            raise CompilerException("first argument to "+ codename + " must be int, unicode, or str", form)
-        
+            raise CompilerException("first argument to " + codename + " must be int, unicode, or str", form)
+
         arg = evalForm(arg, comp.getNS().__name__)
         form = form.next()
-        
+
     se = byteplay.getse(bc, arg)
     if form != None and se[0] != 0:
         if (se[0] != len(form) or se[1] > 1):
@@ -135,9 +135,7 @@ def compileLoopStar(comp, form):
             args.append(local)
             code.extend(comp.compile(body))
 
-
         code.extend(comp.getAlias(local).compileSet(comp))
-
         idx += 1
 
     form = form.next()
@@ -192,8 +190,6 @@ def compileLetStar(comp, form):
     return code
 
 
-
-
 def compileDot(comp, form):
     from clojure.lang.persistentlist import PersistentList
     from clojure.lang.iseq import ISeq
@@ -202,7 +198,6 @@ def compileDot(comp, form):
         raise CompilerException(". form must have two arguments", form)
     clss = form.next().first()
     member = form.next().next().first()
-
 
     if isinstance(member, Symbol):
         attr = member.name
@@ -224,7 +219,7 @@ def compileDot(comp, form):
         code.append((LOAD_ATTR, attr))
     else:
         code = comp.compile(symbol(clss, attr))
-        
+
     for x in args:
         code.extend(x)
     code.append((CALL_FUNCTION, len(args)))
@@ -347,7 +342,7 @@ def compileFn(comp, name, form, orgform):
         c = new.function(c.to_code(), comp.ns.__dict__, name.name)
 
     return [(LOAD_CONST, c)], c
-    
+
 def cleanRest(name):
     label = Label("isclean")
     code = []
@@ -403,7 +398,7 @@ class MultiFn(object):
 
         recur = {"label": recurlabel,
         "args": map(lambda x: comp.getAlias(symbol(x)).compileSet(comp), self.args)}
-        
+
         bodycode = [(recurlabel, None)]
         comp.pushRecur(recur)
         bodycode.extend(compileImplcitDo(comp, body))
@@ -419,7 +414,7 @@ class MultiFn(object):
 def compileMultiFn(comp, name, form):
     s = form
     argdefs = []
-    
+
     while s is not None:
         argdefs.append(MultiFn(comp, s.first()))
         s = s.next()
@@ -449,7 +444,7 @@ def compileMultiFn(comp, name, form):
     if not clist:
         c = new.function(c.to_code(), comp.ns.__dict__, name.name)
 
-    
+
     return [(LOAD_CONST, c)], c
 
 def compileImplcitDo(comp, form):
@@ -470,11 +465,10 @@ def compileFNStar(comp, form):
     aliases = []
     if len(comp.aliases) > 0: # we might have closures to deal with
         for x in comp.aliases:
-            
+
             comp.pushAlias(x, Closure(x))
             aliases.append(x)
         haslocalcaptures = True
-        
 
     orgform = form
     if len(form) < 2:
@@ -482,7 +476,7 @@ def compileFNStar(comp, form):
     form = form.next()
     name = form.first()
     pushed = False
-    
+
     if not isinstance(name, Symbol):
         name = comp.getNamesString() + "_auto_"
     else:
@@ -491,16 +485,16 @@ def compileFNStar(comp, form):
         form = form.next()
 
     name = symbol(name)
-    
+
     # This is fun stuff here. The idea is that we want closures to be able
     # to call themselves. But we can't get a pointer to a closure until after
     # it's created, which is when we actually run this code. So, we're going to
     # create a tmp local that is None at first, then pass that in as a possible
     # closure cell. Then after we create the closure with MAKE_CLOSURE we'll 
     # populate this var with the correct value
-    
+
     selfalias = Closure(name)
-    
+
     comp.pushAlias(name, selfalias)
 
     if isinstance(form.first(), IPersistentVector):
@@ -538,8 +532,6 @@ def compileFNStar(comp, form):
         code.extend(selfalias.compileSet(comp))
 
     comp.popAlias(symbol(name)) #closure
-
-
     return code
 
 def compileVector(comp, form):
@@ -561,7 +553,7 @@ def compileRecur(comp, form):
 
         idx += 1
         s = s.next()
-        
+
     sets = comp.recurPoint.first()["args"][:]
     sets.reverse()
     for x in sets:
@@ -767,7 +759,7 @@ class LocalMacro(AAlias):
     def compile(self, comp):
         code = comp.compile(self.macroform)
         return code
-        
+
 class SelfReference(AAlias):
     def __init__(self, var, rest = None):
         AAlias.__init__(self, rest)
@@ -785,7 +777,7 @@ class Name(object):
         self.name = name
         self.isused = False
         self.rest = rest
-    
+
     def __str__(self):
         v = []
         r = self
@@ -803,43 +795,43 @@ def evalForm(form, ns):
     comp.setNS(ns)
     code = comp.compile(form)
     return comp.executeCode(code)
-    
-    
+
+
 def ismacro(macro):
     if not isinstance(macro, type) \
             and (hasattr(macro, "meta") and macro.meta() and macro.meta()[_MACRO_])\
             or (hasattr(macro, "macro?") and getattr(macro, "macro?")):
             return True
-            
+
     return False
-    
+
 def meta(form):
     if hasattr(form, "meta"):
         return form.meta()
     return None
-        
+
 def macroexpand(form, comp, one = False):
     if isinstance(form.first(), Symbol):
         if form.first().ns == 'py' or form.first().ns == "py.bytecode":
             return form, False
-       
+
         itm = findItem(comp.getNS(), form.first())
         dreffed = itm
         if isinstance(dreffed, Var):
             dreffed = itm.deref()
-            
+
         # Handle macros here
         # TODO: Break this out into a seperate function
         if ismacro(itm) or ismacro(dreffed):
             macro = dreffed
             args = RT.seqToTuple(form.next())
-            
+
             macroform = macro
             if hasattr(macro, "_macro-form"):
                 macroform = getattr(macro, "_macro-form")
 
             mresult = macro(macroform, None, *args)
-            
+
             if hasattr(mresult, "withMeta") \
                and hasattr(form, "meta"):
                 mresult = mresult.withMeta(form.meta())
@@ -847,7 +839,7 @@ def macroexpand(form, comp, one = False):
             return mresult, True
 
     return form, False
-    
+
 class Compiler():
     def __init__(self):
         self.recurPoint = RT.list()
@@ -968,8 +960,8 @@ class Compiler():
         if (sym.ns is not None and sym.ns == self.getNS().__name__) \
            or sym.ns is None:
             if not hasattr(self.getNS(), sym.name):
-                raise CompilerException("could not resolve " + str(sym) + " " \
-                                        + sym.name + " not found in " + self.getNS().__name__ +
+                raise CompilerException("could not resolve '" + str(sym) + "', '" \
+                                        + sym.name + "' not found in " + self.getNS().__name__ +
                                         " reference " + str(self.getNamesString(False)), None)
             var = getattr(self.getNS(), sym.name)
             if isinstance(var, Var):
@@ -979,11 +971,11 @@ class Compiler():
                 else:
                     return [(LOAD_CONST, var.deref())]
             return [(LOAD_GLOBAL, sym.name)]
-            
+
         if hasattr(self.getNS(), "__aliases__") and \
             symbol(sym.ns) in self.getNS().__aliases__:
             sym = symbol(self.getNS().__aliases__[symbol(sym.ns)].__name__, sym.name)
-                
+
         splt = []
         if sym.ns is not None:
             module = findNamespace(sym.ns) 
@@ -997,11 +989,11 @@ class Compiler():
                 splt.append((LOAD_CONST, module))
                 splt.append((LOAD_ATTR, sym.name))
             return splt
-            
+
         code = LOAD_ATTR if sym.ns else LOAD_GLOBAL
         if not sym.ns and sym.name.find(".") != -1 and sym.name != "..":
             raise CompilerException("unqualified dotted forms not supported: " + str(sym), sym)
-        
+
         if len(sym.name.replace(".", "")):
             splt.extend((code, attr) for attr in sym.name.split("."))
         else:
@@ -1044,7 +1036,7 @@ class Compiler():
                     lineset = True
                     self.lastlineno = line
                     c.append([SetLineno, line])
-    
+
             if isinstance(itm, Symbol):
                 c.extend(self.compileSymbol(itm))
             elif isinstance(itm, PersistentList) or isinstance(itm, Cons):
@@ -1067,7 +1059,7 @@ class Compiler():
                 c.append((LOAD_CONST, itm))
             else:
                 raise CompilerException("Don't know how to compile" + str(type(itm)), None)
-    
+
             if len(c) < 2 and lineset:
                 return []
             return c
@@ -1113,8 +1105,6 @@ class Compiler():
         for x in dellist:
             del self.aliasedProperties[x]
 
-
-
     def standardImports(self):
         return [(LOAD_CONST, -1),
             (LOAD_CONST, None),
@@ -1137,4 +1127,3 @@ class Compiler():
             fc.write(py_compile.MAGIC)
             py_compile.wr_long(fc, long(time.time()))
             marshal.dump(c, fc)
-

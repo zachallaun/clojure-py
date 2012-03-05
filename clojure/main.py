@@ -31,8 +31,7 @@ def import_hook(name, globals=None, locals=None, fromlist=None, level = -1):
         return _old_import_(name, globals, locals, fromlist, level)
     except ImportError:
         pass
-    
-   
+
     conv = name.replace(".", "/")
     for p in ["."] + sys.path:
         f = p + "/" + conv + ".clj"
@@ -42,12 +41,10 @@ def import_hook(name, globals=None, locals=None, fromlist=None, level = -1):
                 return _old_import_(name, globals, locals, fromlist, level)
             except ImportError:
                 raise ImportError("could not find module " + name + " after loading " + f)
-            
+
     raise ImportError("module " + name + " not found")
 
 __builtin__.__import__ = import_hook
-    
-
 
 from clojure.lang.lispreader import read
 from clojure.lang.fileseq import StringReader
@@ -69,12 +66,11 @@ def requireClj(filename, stopafter=None):
     comp = Compiler()
     comp.setFile(filename)
     currentCompiler.set(comp)
-    
+
     #o = open(filename+".cljc", "w")
 
     try:
         while True:
-            
             s = read(r, True, None, True)
             #cPickle.dump(s, o)
             try:
@@ -98,15 +94,13 @@ def requireClj(filename, stopafter=None):
                     break
     except IOError as e:
         pass
-    
+
     #o.close()
 
 #requireClj(os.path.dirname(__file__) + "/core.clj")
 import clojure.core
 
 def main():
-
-
     RT.init()
     comp = Compiler()
     currentCompiler.set(comp)
