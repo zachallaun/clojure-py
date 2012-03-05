@@ -484,7 +484,7 @@ def compileFNStar(comp, form):
     pushed = False
     
     if not isinstance(name, Symbol):
-        name = comp.getNamesString()
+        name = comp.getNamesString() + "_auto_"
     else:
         comp.pushName(name.name)
         pushed = True

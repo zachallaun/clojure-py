@@ -2644,7 +2644,7 @@
   [& colls]
   `(concat ~@(map #(list `lazy-seq %) colls)))
 
-#_(defmacro for
+(defmacro for
   "List comprehension. Takes a vector of one or more
    binding-form/collection-expr pairs, each followed by zero or more
    modifiers, and yields a lazy sequence of evaluations of expr.
@@ -2703,7 +2703,7 @@
                                           (= k :when) `(if ~v
                                                          ~(do-cmod etc)
                                                          (recur
-                                                           (unchecked-inc ~gi)))
+                                                           (inc ~gi)))
                                           (keyword? k)
                                             (err "Invalid 'for' keyword " k)
                                           :else

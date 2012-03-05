@@ -494,3 +494,14 @@
     (loop [[x & y] [1 2 3]]
          (assert-equal x 1)
          (assert-equal y [2 3])))
+
+(deftest when-first-tests
+    (assert-equal (when-first [a [1 2 3]] a) 1)
+    (assert-equal (when-first [a []] a) nil)
+    (assert-equal (when-first [a nil] a) nil))
+
+(deftest lazy-cat-tests
+    (assert-equal (lazy-cat [1 2 3] [4 5 6]) [1 2 3 4 5 6]))
+
+(deftest for-tests
+    (assert-equal (for [x [1 2 3]] x) [1 2 3]))
