@@ -1,4 +1,5 @@
 from itertools import chain, repeat
+import os
 import pprint
 from textwrap import dedent
 import unittest
@@ -14,7 +15,7 @@ from clojure.util.byteplay import Code, Label, SetLineno
 from clojure.lang.persistentlist import PersistentList
 from clojure.lang.persistentvector import PersistentVector
 
-requireClj('./clojure/core.clj')
+requireClj(os.path.join(os.path.dirname(__file__), '../clojure/core.clj'))
 
 
 class ClojureCoreTests(unittest.TestCase):
@@ -46,7 +47,7 @@ class ClojureCoreTests(unittest.TestCase):
         self.assertEqual(self.eval('(cons 1 nil)'), [1])
         self.assertEqual(self.eval('(cons 1 [2])'), [1, 2])
         self.assertEqual(self.eval('(cons 1 (cons 2 (cons 3 nil)))'),
-                         [1, 2, 3])
+                                   [1, 2, 3])
 
     def testSeq(self):
         self.assertEqual(self.eval('(seq [])'), None)
