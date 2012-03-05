@@ -263,7 +263,7 @@ def mapReader(rdr, leftbrace):
     return lst
 
 def unmatchedDelimiterReader(rdr, un):
-    raise ReaderException("Unmatched Delimiter " + un + "at " + str(rdr.lineCol()))
+    raise ReaderException("Unmatched Delimiter " + un + " at " + str(rdr.lineCol()))
 
 def readDelimitedList(delim, rdr, isRecursive):
     firstline = rdr.lineCol()[0]
