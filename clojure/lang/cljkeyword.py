@@ -11,7 +11,7 @@ interned = AtomicReference(EMPTY_MAP)
 class Keyword(IFn, Named):
     def getNamespace(self):
         return self.sym.getNameSpace()
-    
+
     def getName(self):
         return self.sym.getName()
 
@@ -25,7 +25,7 @@ class Keyword(IFn, Named):
     def __call__(self, obj, notFound = None):
         if obj is None:
             return None
-            
+
         if self not in obj:
             return notFound
         return obj[self]
