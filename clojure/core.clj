@@ -503,7 +503,7 @@
           (loop [keyvals (seq keyvals) coll coll]
               (py/if (nil? keyvals)
                   coll
-                  (do (py/if (.__eq__ (py/len keyvals) 1)
+                  (do (py/if (py.bytecode/COMPARE_OP "==" (py/len keyvals) 1)
                           (throw (py/Exception "Even number of args required to hash-map")))
                       (py/if (py.bytecode/COMPARE_OP "in" (first keyvals) coll)
                           (throw (py/Exception "Duplicate keys found in hash-map")))
@@ -2730,6 +2730,70 @@
                                        ~(do-mod mod-pairs)))))))))))]
     `(let [iter# ~(emit-bind (to-groups seq-exprs))]
         (iter# ~(second seq-exprs)))))
+
+(defn format
+  "Formats a string"
+  {:added "1.0"
+   :static true}
+  [fmt & args]
+  (py.bytecode/BINARY_MODULO fmt args))
+
+(defn throw-if
+  "Throws an exception with a message if pred is true"
+  [pred fmt & args]
+  (when pred
+    (let [message (apply format fmt args)
+          exception (py/Exception. message)]
+      (throw exception))))
+
+
+(defn load-all
+  "Loads a lib given its name and forces a load of any libs it directly or
+  indirectly loads. If need-ns, ensures that the associated namespace
+  exists after loading. If require, records the load so any duplicate loads
+  can be skipped."
+  [lib]
+  (py/__import__ (name lib)))
+
+(defn map-ns-vals [from to opts]
+    (let [from-ns (the-ns from)
+          to-ns (the-ns to)
+          only (if (:only opts) (set (map name (:only opts))))
+          exclude (if (:exclude opts) (map name (set (:exclude opts))))
+          filterfn (fn filterfn [s]
+                       (cond (.startswith (name s) "_")
+                             false
+                             exclude
+                             (not (contains? exclude s))
+                             only 
+                             (contains? only s)
+                             :else
+                             true))]
+          (doseq [x (filter filterfn (py/dir from-ns))]
+                 (py/setattr to-ns 
+                             (name x)
+                             (py/getattr from-ns (name x))))))
+                           
+          
+
+(defn load-lib
+  "Loads a lib with options"
+  [to-ns lib & options]
+  (let [opts (apply hash-map options)
+        {:keys [as reload reload-all require use verbose]} opts
+        loaded (contains? sys/modules lib)
+        need-ns (or as use)
+        filter-opts (select-keys opts '(:exclude :only :rename))]
+       (load-all lib)
+       (if as
+           (alias (:as opts) lib to-ns))
+           (map-ns-vals lib to-ns opts)))
+
+
+(defmacro require
+    [& options]
+    (py/print options)
+    `(apply load-lib ~'__name__ ~@options))
 
 (py/print "clojure-py 0.1.0")
 

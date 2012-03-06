@@ -25,6 +25,14 @@ class PersistentHashSet(APersistentSet, IObj):
         if key not in self:
             return self
         return PersistentHashSet(self._meta, self.impl.without(key))
+        
+    def __repr__(self):
+        x = self.seq()
+        j = []
+        while x is not None:
+            j.append(str(x.first()))
+            x = x.next()
+        return "#{" + " ".join(j) + "}" 
 
 def create(*args):
     if not len(args):
