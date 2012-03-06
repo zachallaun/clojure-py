@@ -6,7 +6,7 @@
 ;   the terms of this license.
 ;   You must not remove this notice, or any other, from this software.
 
-(ns ^{:doc "The core Clojure language."
+(ns* ^{:doc "The core Clojure language."
        :author "Rich Hickey"}
   clojure.core)
 
@@ -2759,7 +2759,7 @@
     (let [from-ns (the-ns from)
           to-ns (the-ns to)
           only (if (:only opts) (set (map name (:only opts))))
-          exclude (if (:exclude opts) (map name (set (:exclude opts))))
+          exclude (if (:exclude opts) (set (map name (:exclude opts))))
           filterfn (fn filterfn [s]
                        (cond (.startswith (name s) "_")
                              false
@@ -2792,8 +2792,58 @@
 
 (defmacro require
     [& options]
-    (py/print options)
-    `(apply load-lib ~'__name__ ~@options))
+    `(load-lib ~'__name__ ~@options))
+
+
+(defmacro ns
+  "Sets *ns* to the namespace named by name (unevaluated), creating it
+  if needed.  references can be zero or more of: (:refer-clojure ...)
+  (:require ...) (:use ...) (:import ...) (:load ...) (:gen-class)
+  with the syntax of refer-clojure/require/use/import/load/gen-class
+  respectively, except the arguments are unevaluated and need not be
+  quoted. (:gen-class ...), when supplied, defaults to :name
+  corresponding to the ns name, :main true, :impl-ns same as ns, and
+  :init-impl-ns true. All options of gen-class are
+  supported. The :gen-class directive is ignored when not
+  compiling. If :gen-class is not supplied, when compiled only an
+  nsname__init.class will be generated. If :refer-clojure is not used, a
+  default (refer 'clojure) is used.  Use of ns is preferred to
+  individual calls to in-ns/require/use/import:
+
+  (ns foo.bar
+    (:refer-clojure :exclude [ancestors printf])
+    (:require (clojure.contrib sql sql.tests))
+    (:use (my.lib this that))
+    (:import (java.util Date Timer Random)
+             (java.sql Connection Statement)))"
+  {:arglists '([name docstring? attr-map? references*])
+   :added "1.0"}
+  [name & references]
+  (let [
+       quote-args (fn [arg kname]
+                  `(~(symbol "clojure.core" (clojure.core/name kname))
+                    ~@(map #(list 'quote %) arg)))
+       
+       process-reference
+       (fn [[kname & args]]
+           (if (vector? (first args))
+               `(do ~@(map quote-args args (repeat kname)))
+               (quote-args args kname)))
+               
+        docstring  (when (string? (first references)) (first references))
+        references (if docstring (next references) references)
+        metadata   (when (map? (first references)) (first references))
+        references (if metadata (next references) references)
+        gen-class-clause (first (filter #(= :gen-class (first %)) references))
+        gen-class-call
+          (when gen-class-clause
+            (list* `gen-class :name (.replace (str name) "-" "_") :impl-ns name :main true (next gen-class-clause)))
+        references (remove #(= :gen-class (first %)) references)
+        ;ns-effect (clojure.core/in-ns name)
+        ]
+    `(do
+       (~'ns* ~name)
+       ~@(map process-reference references))))
 
 (py/print "clojure-py 0.1.0")
 

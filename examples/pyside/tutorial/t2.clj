@@ -1,12 +1,8 @@
-(ns examples.pyside.tutorial.t2)
+(ns examples.pyside.tutorial.t2
+    (:require [PySide.QtGui :as gui]
+              [PySide.QtCore :as core]))
 ; Taken from http://qt.gitorious.org/pyside/pyside-examples/blobs/master/examples/tutorial/t2.py
 ; Translated to clojure-py by Timothy Baldridge 2012
-
-
-(import '(PySide QtGui))
-(import '(PySide QtCore))
-(alias 'gui 'PySide.QtGui __name__)
-(alias 'core 'PySide.QtCore __name__)
 
 
 (let [app (gui/QApplication sys/argv)

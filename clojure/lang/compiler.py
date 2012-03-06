@@ -41,7 +41,7 @@ def compileNS(comp, form):
     if len(rest) != 1:
         raise CompilerException("ns only supports one item", rest)
     comp.setNS(rest.first())
-    return []
+    return [(LOAD_CONST, None)]
 
 def compileDef(comp, form):
     if len(form) not in [2, 3]:
@@ -657,7 +657,7 @@ def compileCompiler(comp, form):
     return [(LOAD_CONST, comp)]
 
 
-builtins = {symbol("ns"): compileNS,
+builtins = {symbol("ns*"): compileNS,
             symbol("def"): compileDef,
             symbol("."): compileDot,
             symbol("fn*"): compileFNStar,
