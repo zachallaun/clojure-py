@@ -46,7 +46,7 @@ WHITESPACE = [',', '\n', '\t', '\r', ' ']
 symbolPat = re.compile("[:]?([\\D^/].*/)?([\\D^/][^/]*)")
 intPat = re.compile("([-+]?)(?:(0)|([1-9][0-9]*)|0[xX]([0-9A-Fa-f]+)|0([0-7]+)|([1-9][0-9]?)[rR]([0-9A-Za-z]+)|0[0-9]+)(N)?")
 ratioPat = re.compile("([-+]?[0-9]+)/([0-9]+)")
-floatPat = re.compile("([-+]?[0-9]+(\\.[0-9]*)?([eE][-+]?[0-9]+)?)(M)?")
+floatPat = re.compile("[+-]?((\d+(\.\d*)?)|\.\d+)([eE][+-]?[0-9]+)?")
 
 def isWhitespace(c):
     return c in WHITESPACE
@@ -195,19 +195,14 @@ def readNumber(rdr, initch):
     return n
 
 def matchNumber(s):
-    return int(float(s))
-    m = intPat.match(s)
-    if m is not None:
-        #TODO add radix
-        #i = Integer()
-        #i.set(s)
-        return int(str(float(s)))
-    m = floatPat.match(s)
-    if m is not None:
-        f = Float()#FIXME: Float undefined. Is it supposed to be imported from GMP?
-        f.set(s)
-        return f
-    return None
+    try:
+        return int(s)
+    except ValueError:
+        pass
+    try:
+        return float(s)
+    except ValueError:
+        return None
 
 def getMacro(ch):
     return macros[ch] if ch in macros else None
