@@ -54,7 +54,7 @@ from clojure.lang.compiler import Compiler
 from clojure.lang.symbol import Symbol, symbol
 import cPickle
 
-VERSION = "0.0.0"
+VERSION = "0.1.0"
 
 
 
