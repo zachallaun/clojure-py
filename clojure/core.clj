@@ -2845,6 +2845,13 @@
        (~'ns* ~name)
        ~@(map process-reference references))))
 
+(defmacro kwapply
+    "Calls f with the given kws keyword arguments and args. Rather slow at the moment, 
+    so use only when no other solution will work. For performance sake, all keys
+    should be strings not :keywords"
+    [f kws & args]
+    `(py.bytecode/CALL_FUNCTION_KW ~(count args) (.toDict ~kws) ~@args))
+
 (py/print "clojure-py 0.1.0")
 
 

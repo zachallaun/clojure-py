@@ -103,6 +103,33 @@ def compileBytecode(comp, form):
     if se[1] == 0:
         code.append((LOAD_CONST, None))
     return code
+    
+def compileKWApply(comp, form):
+    if len(form) < 3:
+        raise CompilerException("at least two arguments required to kwapply", form)
+    
+    form = form.next()
+    fn = form.first()
+    form = form.next()
+    kws = form.first()
+    args = form.next()
+    code = []
+   
+    s = args
+    code.extend(comp.compile(fn))
+    while s is not None:
+        code.extend(comp.compile(s.first()))
+        s = s.next()
+    code.extend(comp.compile(kws))
+    code.append((LOAD_ATTR, "toDict"))
+    code.append((CALL_FUNCTION, 0))
+    
+    code.append((CALL_FUNCTION_KW, 0 if args is None else len(args)))
+    
+    return code
+    
+    
+    
 
 
 def compileLoopStar(comp, form):
@@ -672,7 +699,8 @@ builtins = {symbol("ns*"): compileNS,
             symbol("throw"): compileThrow,
             symbol("apply"): compileApply,
             symbol("let-macro"): compileLetMacro,
-            symbol("__compiler__"): compileCompiler}
+            symbol("__compiler__"): compileCompiler,
+            symbol("kwapply"): compileKWApply}
 
 
 """
