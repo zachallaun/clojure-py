@@ -2719,7 +2719,7 @@
                                            ~gb (chunk-buffer size#)]
                                        (if (loop [~gi (int 0)]
                                              (if (< ~gi size#)
-                                               (let [~bind (.nth c# ~gi)]
+                                               (let [~bind (py.bytecode/BINARY_SUBSCR c# ~gi)]
                                                  ~(do-cmod mod-pairs))
                                                true))
                                          (chunk-cons
