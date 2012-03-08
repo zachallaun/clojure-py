@@ -31,7 +31,7 @@ class ASeq(Obj, Sequential, ISeq, IHashEq, Iterable):
             if c == idx:
                 return s.first()
             c += 1
-            s = s + 1
+            s = s.next()
         return None
 
     def seq(self):
