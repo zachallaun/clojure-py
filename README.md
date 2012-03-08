@@ -29,9 +29,15 @@ Check out the Wiki for more information about the roadmap for this project. Then
    From time to time, we'll post status updates, ideas and plans to this blog http://clojure-py.blogspot.com/
 
 ## Installation
+Install 0.1.0 release:
 
-    ./setup.py develop  # or ./setup.py install for 'production'
+    easy_install clojure-py
+    clojurepy
 
+To run from GitHub checkout:
+
+    python ./clojure.py
+    
 ## Unit tests
 
     # (must 'easy_install nose' or 'pip install nose' first)
