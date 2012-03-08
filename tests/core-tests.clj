@@ -419,6 +419,9 @@
 (deftest nthnext-tests
     (assert-equal (nthnext (range 10) 3) '(3 4 5 6 7 8 9)))
 
+(deftest nth-tests
+    (assert-equal (nth (list 1 2 3) 1) 2)
+    (assert-equal (nth [1 2 3] 1) 2))
 
 (deftest partition-tests
     (assert-equal (partition 4 (range 20)) 
