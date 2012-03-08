@@ -13,6 +13,10 @@ else:
     import os
     import atexit
     histfile = os.path.join(os.path.expanduser("~"), ".clojurepyhist")
+    if not os.path.isfile(histfile):
+        with open(histfile, 'a'):
+            os.utime(histfile, None)
+        os.chmod(histfile, int('640',8))
     try:
         readline.read_history_file(histfile)
     except IOError:
