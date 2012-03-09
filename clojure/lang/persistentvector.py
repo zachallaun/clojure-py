@@ -208,6 +208,12 @@ def vec(seq):
         v = v.cons(s.first())
         s = s.next()
     return v
+    
+def create(*args):
+    x = EMPTY
+    for z in args:
+        x = x.cons(z)
+    return x
 
 
 NOEDIT = AtomicReference()

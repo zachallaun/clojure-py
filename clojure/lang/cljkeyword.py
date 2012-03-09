@@ -44,7 +44,7 @@ def keyword(*args):
             interned.mutate(lambda old: old if sym in old else old.assoc(sym,k))
 
             return interned.get()[sym]
-        elif isinstance(args[0], str):
+        elif isinstance(args[0], (str, unicode)):
             return keyword(symbol(args[0]))
         else:
             raise InvalidArgumentException()

@@ -508,3 +508,8 @@
 
 (deftest for-tests
     (assert-equal (for [x [1 2 3]] x) [1 2 3]))
+
+(deftest destructure-tests
+    (assert-equal (map (fn [[k v]] k) {:1 1 :2 2}) [:1 :2])
+    (assert-equal (map (fn [[k v]] v) {:1 1 :2 2}) [1 2]))
+    
