@@ -761,7 +761,7 @@
 	    (.seq self)
 	    (py/if (nil? s)
 	        (list)
-	        (.more self)))
+	        (.more s)))
 	(cons [self o]
 	    (cons o (.seq self)))
 	(empty [self]

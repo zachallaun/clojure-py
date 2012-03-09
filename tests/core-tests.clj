@@ -29,6 +29,8 @@
     `((~'fn ~name [] ~@body)))
 
 
+
+
 (deftest if-not-tests
     (assert-true (if-not false true))
     (assert-false (if-not true true false))
@@ -526,7 +528,9 @@
     (assert-true (empty? []))
     (assert-false (empty? [1])))
 
-(deftest do-tests
-    (assert-equal (do) nil)
-    (assert-equal (do 1) 1)
-    (assert-equal (do 1 2) 2))
+
+
+(deftest lazy-seq-tests
+    (.more (range 1))) ; would throw an error before fix to Issue #45
+
+(py/print "all tests passed")
