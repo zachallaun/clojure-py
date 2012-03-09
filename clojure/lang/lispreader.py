@@ -340,6 +340,28 @@ def matchSymbol(s):
         else:
             return symbol(ns, name)
     return None
+    
+tokenMappings = {"newline": "\n",
+    "space": " ",
+    "tab": "\t",    
+    "backspace": "\b",    
+    "formfeed": "\f",    
+"return": "\r"}    
+    
+def characterReader(r, backslash):
+    ch = read1(r)
+    if ch == "":
+        raise ReaderException("EOF while reading character")
+    token = readToken(r, ch)
+    if len(token) == 1:
+        return token
+    elif token in tokenMappings:
+        return tokenMappings[token]
+    elif token.startsWith("u"):
+        c = readUnicodeChar(token, 1, 4, 16)
+        return c
+    raise ReaderException("Unsupported character: \\"+token)        
+    
 
 def setReader(rdr, leftbrace):
     from persistenthashset import PersistentHashSet
@@ -519,7 +541,8 @@ macros = {'\"': stringReader,
           "^": metaReader,
           "%": argReader,
           "`": SyntaxQuoteReader(),
-          "~": unquoteReader}
+          "~": unquoteReader,
+          "\\": characterReader}  
 
 dispatchMacros = {"\"": regexReader,
                   "{": setReader,
