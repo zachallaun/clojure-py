@@ -512,4 +512,8 @@
 (deftest destructure-tests
     (assert-equal (map (fn [[k v]] k) {:1 1 :2 2}) [:1 :2])
     (assert-equal (map (fn [[k v]] v) {:1 1 :2 2}) [1 2]))
+
+(deftest map-entry-tests
+    (assert-equal (-> {:1 :2} first first) :1)
+    (assert-equal (-> {:1 :2} first second) :2))
     
