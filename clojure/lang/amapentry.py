@@ -1,5 +1,5 @@
 from clojure.lang.apersistentvector import APersistentVector
-from clojure.lang.persistentvector import create as createVector
+from clojure.lang.persistentvector import PersistentVector
 from clojure.lang.cljexceptions import IndexOutOfBoundsException
 
 
@@ -11,35 +11,24 @@ class AMapEntry(APersistentVector):
             return self.getValue()
         else:
             raise IndexOutOfRangeException()
-    
+
     def asVector(self):
-        return createVector(self.getKey(), self.getValue())
-        
+        return PersistentVector(self.getKey(), self.getValue())
+
     def assocN(self, i, val):
-        return self.asVector().assocN(i val)
-        
+        return self.asVector().assocN(i, val)
+
     def __len__(self):
         return 2
-        
-        
+
     def seq(self):
         return self.asVector().seq()
-        
-        
+
     def cons(self, o):
         return self.asVector().cons(o)
-        
+
     def empty(self):
         return None
-        
-    def pop():
-        return createVector(self.getKey())
-        
-        
-        
-        
 
-
-
-
-
+    def pop(self):
+        return PersistentVector(self.getKey())
