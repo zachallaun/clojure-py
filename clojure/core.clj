@@ -2846,6 +2846,9 @@
        ~@(map process-reference references))))
 
 
+(def reduce reduce1)
+
+
 (py/print "clojure-py 0.1.0")
 
 

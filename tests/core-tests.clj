@@ -517,3 +517,7 @@
     (assert-equal (-> {:1 :2} first first) :1)
     (assert-equal (-> {:1 :2} first second) :2))
     
+
+(deftest reduce-tests
+    (assert-equal (reduce + '(1 2 3 4)) 10)
+    (assert-equal (reduce + 5 '(1 2 3 4)) 15))
