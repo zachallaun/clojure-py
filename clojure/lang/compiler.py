@@ -331,8 +331,6 @@ def unpackArgs(form):
     return locals, args, lastisargs, argsname
 
 def compileDo(comp, form):
-    if len(form) < 2:
-        raise CompilerException("at least 1 arg to do required")
     return compileImplcitDo(comp, form.next())
 
 def compileFn(comp, name, form, orgform):
@@ -482,7 +480,7 @@ def compileImplcitDo(comp, form):
         s = s.next()
         if s is not None:
             code.append((POP_TOP, None))
-    if not code:
+    if not len(code):
         code.append((LOAD_CONST, None))
     return code
 

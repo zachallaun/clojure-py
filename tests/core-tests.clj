@@ -521,3 +521,12 @@
 (deftest reduce-tests
     (assert-equal (reduce + '(1 2 3 4)) 10)
     (assert-equal (reduce + 5 '(1 2 3 4)) 15))
+
+(deftest empty?-tests
+    (assert-true (empty? []))
+    (assert-false (empty? [1])))
+
+(deftest do-tests
+    (assert-equal (do) nil)
+    (assert-equal (do 1) 1)
+    (assert-equal (do 1 2) 2))
