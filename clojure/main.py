@@ -72,7 +72,6 @@ def requireClj(filename, stopafter=None):
     currentCompiler.set(comp)
 
     #o = open(filename+".cljc", "w")
-
     try:
         while True:
             s = read(r, True, None, True)

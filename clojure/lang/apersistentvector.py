@@ -23,6 +23,8 @@ class APersistentVector(IPersistentVector):
         
     def __eq__(self, other):
         s = self.seq()
+        if not RT.isSeqable(other):
+            return False
         o = RT.seq(other)
         return s == o
 

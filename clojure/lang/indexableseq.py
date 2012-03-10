@@ -23,4 +23,7 @@ class IndexableSeq(ASeq, Counted, object):
             c.append(str(self.array[x]))
         return "[" + " ".join(c) + "]"
         
-    
+def create(obj):
+    if len(obj) == 0:
+        return None
+    return IndexableSeq(obj, 0)

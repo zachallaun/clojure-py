@@ -12,9 +12,11 @@ class ASeq(Obj, Sequential, ISeq, IHashEq, Iterable, object):
     def __eq__(self, other):
         if self is other:
             return True
-
+        if not RT.isSeqable(other):
+            return False
         se = RT.seq(other)
         if isinstance(se, RT.NotSeq):
+            print other, type(other)
             return False
         ms = self.seq()
         while se is not None:

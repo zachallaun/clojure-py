@@ -38,30 +38,39 @@ class NotSeq(object):
     pass
 
 
-def seq(obj):
-    from clojure.lang.indexableseq import IndexableSeq
-    from clojure.lang.symbol import Symbol
-    from clojure.lang.aseq import ASeq
+#def seq(obj):
+#    from clojure.lang.indexableseq import IndexableSeq
+#    from clojure.lang.symbol import Symbol
+#    from clojure.lang.aseq import ASeq
 
-    if isinstance(obj, Symbol):
-        pass
-    if obj is None:
-        return None
-    if isinstance(obj, ASeq):
-        return obj
-    if isinstance(obj, (tuple, _list, str)):
-        if len(obj) == 0:
-            return None
-        return IndexableSeq(obj, 0)
+#    if isinstance(obj, Symbol):
+#        pass
+#    if obj is None:
+#        return None
+#    if isinstance(obj, ASeq):
+#        return obj
+#    if isinstance(obj, (tuple, _list, str)):
+#        if len(obj) == 0:
+#            return None
+#        return IndexableSeq(obj, 0)
 
-    if hasattr(obj, "seq"):
-        return obj.seq()
-    return NotSeq()
+#    if hasattr(obj, "seq"):
+#        return obj.seq()
+#    return NotSeq()
 
 
+    
 def first(obj):
-    return seq(obj).first()
-
+    return protocols.first(seq(obj))
+        
+def next(obj):
+    return protocols.next(seq(obj))
+    
+def isSeqable(obj):
+    return protocols.seq.isExtendedBy(type(obj))
+    
+    
+    
 
 def applyTo(fn, args):
     return apply(fn, tuple(map(lambda x: x.first(), args)))
@@ -168,9 +177,39 @@ def subvec(v, start, end):
     return SubVec(None, v, start, end)
 
 
+def _extendSeqableForManuals():
+    from clojure.lang.indexableseq import create as createIndexableSeq
+    from clojure.lang.persistentvector import PersistentVector
+    
+    protocols.seq.extendForTypes([tuple, type([]), str, unicode],  
+                         lambda obj: createIndexableSeq(obj))
+    protocols.seq.extend(type(None), lambda x: None)
+    
+    #protocols.seq.setDefault(lambda x: NotSeq())
+
+def _bootstrap_protocols():
+    global protocols, seq
+    from clojure.lang.protocol import protocolFromType, extendForAllSubclasses
+    from clojure.lang.iseq import ISeq as iseq
+    from clojure.lang.seqable import Seqable as seqable
+    
+    protocolFromType("clojure.protocols", seqable)
+    extendForAllSubclasses(seqable)
+    
+    
+    protocolFromType("clojure.protocols", iseq)
+    extendForAllSubclasses(iseq)
+    import sys 
+    protocols = sys.modules["clojure.protocols"]
+    seq = protocols.seq
+    _extendSeqableForManuals()
+    
+    
+
 def init():
     global DEFAULT_IMPORTS
     DEFAULT_IMPORTS = map(getDefaultImports())
+    _bootstrap_protocols()
 
 
 DEFAULT_IMPORTS = None

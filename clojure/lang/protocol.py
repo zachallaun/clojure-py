@@ -17,6 +17,7 @@ class ProtocolFn(object):
         self.dispatchTable = {}
         self.name = intern(fname)
         self.attrname = intern("__proto__" + self.name)
+        self.default = None
         
     def extend(self, tp, fn):
            
@@ -25,15 +26,32 @@ class ProtocolFn(object):
         except:
             self.dispatchTable[tp] = fn
             
+    def extendForTypes(self, tps, fn):
+        for tp in tps:
+            self.extend(tp, fn)
+            
+    def setDefault(self, fn):
+        self.default = fn
+            
+    def isExtendedBy(self, tp):
+        if hasattr(tp, self.attrname) or tp in self.dispatchTable:
+            return True
+        return False
+            
     def __call__(self, *args):
         x = type(args[0])
         if hasattr(x, self.attrname):
             return getattr(x, self.attrname)(*args)
         else:
-            return self.dispatchTable[x](*args)
+            try:
+                return self.dispatchTable[x](*args)
+            except:
+                if self.default:
+                    return self.default(*args)
+                raise
             
     def __repr__(self):
-        return "|" + self.name + "|"
+        return "ProtocolFn<" + self.name + ">"
         
     
     
@@ -63,8 +81,11 @@ def registerFns(ns, fns):
     protofns = {}
     for fn in fns:
         fname = ns.__name__ + fn
-        proto = ProtocolFn(fname)
-        setattr(ns, fn, proto)
+        if hasattr(ns, fn):
+            proto = getattr(ns, fn)
+        else:
+            proto = ProtocolFn(fname)
+            setattr(ns, fn, proto)
         proto.__name__ = fn
         protofns[fn] = proto
         
@@ -88,7 +109,8 @@ def protocolFromType(ns, tp):
         tp.__protocols__ = []
     tp.__protocols__.append(proto)
     
-    setattr(thens, tp.__name__, proto)
+    if not hasattr(thens, tp.__name__):
+        setattr(thens, tp.__name__, proto)
     
 def extendForAllSubclasses(tp):
     if not hasattr(tp, "__protocols__"):
@@ -108,7 +130,8 @@ def extendProtocolForClass(proto, tp):
     for fn in proto.protofns:
         
         pfn = proto.protofns[fn]
-        pfn.extend(tp, getattr(tp, fn))
+        if hasattr(tp, fn):
+            pfn.extend(tp, getattr(tp, fn))
         
     proto.markImplementor(tp)
     
