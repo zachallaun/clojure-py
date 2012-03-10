@@ -1,5 +1,5 @@
 from clojure.lang.cljexceptions import AbstractMethodCall
 
-class IReduce:
+class IReduce(object):
     def reduce(self, *args):
         raise AbstractMethodCall(self)

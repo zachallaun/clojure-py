@@ -175,7 +175,7 @@ class PersistentVector(APersistentVector):
 #        return True
 
 
-class Node:
+class Node(object):
     def __init__(self, edit, array=None):
         self.edit = edit
         self.array = array if array is not None else [None] * 32

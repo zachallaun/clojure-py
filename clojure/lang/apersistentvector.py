@@ -3,7 +3,7 @@ from clojure.lang.cljexceptions import AbstractMethodCall, ArityException
 from clojure.lang.indexableseq import IndexableSeq
 import clojure.lang.rt as RT
 
-class APersistentVector(object, IPersistentVector):
+class APersistentVector(IPersistentVector):
     def __iter__(self):
         for x in range(len(self)):
             yield self.nth(x)

@@ -728,7 +728,7 @@ top of eachother, let-macros can turn 'x into (.-x self), etc.
 
 """
 
-class AAlias():
+class AAlias(object):
     """Base class for all aliases"""
     def __init__(self, rest = None):
         self.rest = rest
@@ -866,7 +866,7 @@ def macroexpand(form, comp, one = False):
 
     return form, False
 
-class Compiler():
+class Compiler(object):
     def __init__(self):
         self.recurPoint = RT.list()
         self.names = None

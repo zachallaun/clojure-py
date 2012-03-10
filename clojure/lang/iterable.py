@@ -1,5 +1,5 @@
 from clojure.lang.cljexceptions import AbstractMethodCall
 
-class Iterable():
+class Iterable(object):
     def __iter__(self):
         raise AbstractMethodCall(self)

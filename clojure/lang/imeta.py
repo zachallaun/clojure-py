@@ -1,5 +1,5 @@
 from clojure.lang.cljexceptions import AbstractMethodCall
 
-class IMeta():
+class IMeta(object):
     def meta(self):
         raise AbstractMethodCall(self)

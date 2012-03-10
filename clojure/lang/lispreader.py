@@ -219,7 +219,7 @@ def discardReader(rdr, underscore):
     return rdr
 
 
-class wrappingReader():
+class wrappingReader(object):
     def __init__(self, sym):
         self.sym = sym
 
@@ -429,7 +429,7 @@ def isUnquote(form):
 def isUnquoteSplicing(form):
     return isinstance(form, ISeq) and form.first() == _UNQUOTE_SPLICING_
 
-class SyntaxQuoteReader():
+class SyntaxQuoteReader(object):
     def __call__(self, r, backquote):
         pushThreadBindings(RT.map(GENSYM_ENV, EMPTY_MAP))
         try:

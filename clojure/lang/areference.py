@@ -2,7 +2,7 @@ from clojure.lang.ireference import IReference
 from clojure.lang.cons import Cons
 import clojure.lang.rt as RT
 
-class AReference(object, IReference):
+class AReference(IReference, object):
     def __init__(self, meta = None):
         self._meta = meta
     def meta(self):

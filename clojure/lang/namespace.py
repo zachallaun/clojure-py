@@ -87,6 +87,7 @@ def findItem(ns, sym):
        
     if isinstance(sym, Symbol):
         if ns is None:
+            print "foo"
             ns = sys.modules["clojure.core"] # we need this to boostrap files
         if sym.ns == ns.__name__:
             if not hasattr(ns, sym.name):

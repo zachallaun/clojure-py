@@ -1,7 +1,7 @@
 from clojure.lang.aseq import ASeq
 from clojure.lang.counted import Counted
 
-class IndexableSeq(ASeq, Counted):
+class IndexableSeq(ASeq, Counted, object):
     def __init__(self, array, i):
         self.array = array
         self.i = i

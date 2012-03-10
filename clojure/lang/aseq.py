@@ -8,7 +8,7 @@ from clojure.lang.iterable import Iterable
 import clojure.lang.rt as RT
 
 
-class ASeq(Obj, Sequential, ISeq, IHashEq, Iterable):
+class ASeq(Obj, Sequential, ISeq, IHashEq, Iterable, object):
     def __eq__(self, other):
         if self is other:
             return True

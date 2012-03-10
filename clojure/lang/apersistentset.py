@@ -4,7 +4,7 @@ from clojure.lang.ipersistentset import IPersistentSet
 from clojure.lang.apersistentmap import createKeySeq
 import clojure.lang.rt as RT
 
-class APersistentSet(object, IPersistentSet, IFn):
+class APersistentSet(IPersistentSet, IFn):
     def __init__(self, impl):
         self.impl = impl
 

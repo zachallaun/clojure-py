@@ -34,7 +34,7 @@ def seqToTuple(s):
     return tuple(s)
 
 
-class NotSeq:
+class NotSeq(object):
     pass
 
 

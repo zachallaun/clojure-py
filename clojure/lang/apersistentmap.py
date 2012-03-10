@@ -6,7 +6,7 @@ from clojure.lang.cljexceptions import (ArityException,
 from clojure.lang.aseq import ASeq
 
 
-class APersistentMap(IPersistentMap):
+class APersistentMap(IPersistentMap, object):
     def cons(self, o):
         if isinstance(o, MapEntry):
             return self.assoc(o.getKey(), o.getValue())

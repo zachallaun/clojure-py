@@ -1,2 +1,2 @@
-class Sequential:
+class Sequential(object):
     pass

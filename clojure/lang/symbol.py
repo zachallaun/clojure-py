@@ -4,7 +4,7 @@ from clojure.lang.iobj import IObj
 from clojure.lang.cljexceptions import ArityException
 
 
-class Symbol(object, IObj):
+class Symbol(IObj, object):
     def __init__(self, *args):
         if len(args) == 2:
             self.ns = args[0].name if isinstance(args[0], Symbol) else args[0]
