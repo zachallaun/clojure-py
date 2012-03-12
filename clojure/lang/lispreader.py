@@ -1,3 +1,6 @@
+import re
+import fractions
+
 from clojure.lang.fileseq import FileSeq, MutatableFileSeq
 from clojure.lang.var import Var, pushThreadBindings, popThreadBindings, var
 from clojure.lang.ipersistentlist import IPersistentList
@@ -16,7 +19,7 @@ from clojure.lang.persistentvector import EMPTY as EMPTY_VECTOR
 from clojure.lang.globals import currentCompiler
 from clojure.lang.cljkeyword import Keyword, keyword
 from clojure.lang.fileseq import StringReader
-import re
+
 
 def read1(rdr):
     rdr.next()
@@ -44,9 +47,22 @@ GENSYM_ENV = var(None).setDynamic()
 WHITESPACE = [',', '\n', '\t', '\r', ' ']
 
 symbolPat = re.compile("[:]?([\\D^/].*/)?([\\D^/][^/]*)")
-intPat = re.compile("([-+]?)(?:(0)|([1-9][0-9]*)|0[xX]([0-9A-Fa-f]+)|0([0-7]+)|([1-9][0-9]?)[rR]([0-9A-Za-z]+)|0[0-9]+)(N)?")
+intPat = re.compile(r"""
+(?P<sign>[+-])?
+  (:?
+    # radix: 12rAA
+    (?P<radix>(?P<base>[1-9][0-9]?)[rR](?P<value>[0-9a-zA-Z]+)) |
+    # decima1: 0, 23, 234, 3453455
+    (?P<decInt>([0]|([1-9][0-9]*))[jJ]?)                        |
+    # octal: 0o777, 0777
+    0[oO]?(?P<octInt>[0-7]+)                                    |
+    # hex: 0xff
+    0[xX](?P<hexInt>[0-9a-fA-F]+))
+$                               # ensure the entire string matched
+""", re.X)
+floatPat = re.compile(r"[+-]?(\d+(\.\d*)?)([Ee][+-]?\d+)?[jJ]?$")
+#imagPat = re.compile(r"[+-]?((0|[1-9]+)|(\d+(\.\d*)?([Ee][+-]?\d+)?))[jJ]$")
 ratioPat = re.compile("([-+]?[0-9]+)/([0-9]+)")
-floatPat = re.compile("[+-]?((\d+(\.\d*)?)|\.\d+)([eE][+-]?[0-9]+)?")
 
 def isWhitespace(c):
     return c in WHITESPACE
@@ -195,13 +211,40 @@ def readNumber(rdr, initch):
     return n
 
 def matchNumber(s):
-    try:
-        return int(s)
-    except ValueError:
-        pass
-    try:
-        return float(s)
-    except ValueError:
+    """Find if the string s is a valid literal number.
+
+    Return the numeric value of s if so, else return None."""
+    mo = intPat.match(s)
+    if mo:
+        mogd = mo.groupdict()
+        sign = mogd["sign"] or "+"
+        # 12rAA
+        if mogd["radix"]:
+            return int(sign + mogd["value"], int(mogd["base"], 10))
+        # 232, 4j
+        elif mogd["decInt"]:
+            x = mogd["decInt"]
+            if x[-1] in "jJ":
+                return complex(sign + x)
+            else:
+                return int(sign + x)
+        # 0777, 0o777
+        elif mogd["octInt"]:
+            return int(sign + mogd["octInt"], 8)
+        # 0xdeadbeef
+        elif mogd["hexInt"]:
+            return int(sign + mogd["hexInt"], 16)
+    mo = floatPat.match(s)
+    if mo:
+        x = mo.group()
+        if x[-1] in "jJ":
+            return complex(x)
+        else:
+            return float(x)
+    mo = ratioPat.match(s)
+    if mo:
+        return fractions.Fraction(mo.group())
+    else:
         return None
 
 def getMacro(ch):
@@ -299,7 +342,7 @@ def regexReader(rdr, doubleQuote):
             if ch == "":
                 raise ReaderException("EOF while reading regex", rdr)
             s.append(ch)
-
+    
     return re.compile("".join(s))
 
 def metaReader(rdr, caret):
@@ -340,7 +383,7 @@ def matchSymbol(s):
         else:
             return symbol(ns, name)
     return None
-    
+
 tokenMappings = {"newline": "\n",
     "space": " ",
     "tab": "\t",    
@@ -364,8 +407,9 @@ def characterReader(r, backslash):
     
 
 def setReader(rdr, leftbrace):
-    from persistenthashset import PersistentHashSet
-    return PersistentHashSet.create(readDelimitedList("}", rdr,  True))
+    raise ReaderException("set reader not yet implemented")
+    # from persistenthashset import PersistentHashSet
+    # return PersistentHashSet.create(readDelimitedList("}", rdr,  True))
 
 def argReader(rdr, perc):
     if ARG_ENV.deref() is None:
