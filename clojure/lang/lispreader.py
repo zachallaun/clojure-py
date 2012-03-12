@@ -110,7 +110,10 @@ def read(rdr, eofIsError, eofValue, isRecursive):
             ch = read1(rdr)
 
         if ch == "":
-            raise ReaderException("EOF while reading", rdr)
+            if eofIsError:
+                raise ReaderException("EOF while reading", rdr)
+            else:
+                return eofValue
 
         if isDigit(ch):
             return readNumber(rdr, ch)
@@ -253,7 +256,7 @@ def getMacro(ch):
 def commentReader(rdr, semicolon):
     while True:
         chr = read1(rdr)
-        if chr == -1 or chr == '\n' or chr == '\r':
+        if chr == "" or chr == '\n' or chr == '\r':
             break
     return rdr
 
