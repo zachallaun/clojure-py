@@ -410,9 +410,8 @@ def characterReader(r, backslash):
     
 
 def setReader(rdr, leftbrace):
-    raise ReaderException("set reader not yet implemented")
-    # from persistenthashset import PersistentHashSet
-    # return PersistentHashSet.create(readDelimitedList("}", rdr,  True))
+    from persistenthashset import PersistentHashSet
+    return PersistentHashSet.create(readDelimitedList("}", rdr,  True))
 
 def argReader(rdr, perc):
     if ARG_ENV.deref() is None:
