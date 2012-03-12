@@ -74,7 +74,9 @@ def requireClj(filename, stopafter=None):
     #o = open(filename+".cljc", "w")
     try:
         while True:
-            s = read(r, True, None, True)
+            s = read(r, False, None, True)
+            if s is None:
+                break
             #cPickle.dump(s, o)
             try:
                 res = comp.compile(s)
@@ -82,8 +84,8 @@ def requireClj(filename, stopafter=None):
                 if stopafter is not None:
                     if hasattr(comp.getNS(), stopafter):
                         break
-            except IOError as exp:
-                print s
+            except Exception as exp:
+                print s, filename
                 raise exp
 
             while True:
@@ -130,8 +132,10 @@ def main():
                 break
 
             r = StringReader(line)
-            s = read(r, True, None, True)
-
+            s = read(r, False, None, True)
+            if s is None:
+                print s
+                continue
             try:
                 res = comp.compile(s)
                 print comp.executeCode(res)
