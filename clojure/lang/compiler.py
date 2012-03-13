@@ -22,6 +22,47 @@ import sys
 _MACRO_ = keyword(symbol("macro"))
 version = (sys.version_info[0] * 10) + sys.version_info[1]
 
+PTR_MODE_GLOBAL = "PTR_MODE_GLOBAL"
+PTR_MODE_DEREF = "PTR_MODE_DEREF"
+
+class MetaBytecode(object):
+    pass
+
+class GlobalPtr(MetaBytecode):
+    def __init__(self, ns, name):
+        self.ns = ns
+        self.name = name
+    
+    def emit(self, comp, mode):
+        module = self.ns
+        val = getattr(module, self.name)
+        
+        if isinstance(val, Var):
+            if not val.isDynamic():
+                val = val.deref()
+                return [(LOAD_CONST, val)]
+            else:
+                if mode is PTR_MODE_DEREF:
+                    return [(LOAD_CONST, val),
+                            (LOAD_ATTR, "deref"),
+                            (CALL_FUNCTION, 0)]
+                else:
+                    raise CompilerException("Invalid deref mode", mode)
+        
+        return [(LOAD_CONST, module),
+               (LOAD_ATTR, self.name)]
+                
+def expandMetas(bc, comp):
+    code = []
+    for x in bc:
+        if isinstance(x, MetaBytecode):
+            code.extend(x.emit(comp, PTR_MODE_DEREF))
+        else:
+            code.append(x)
+    return code
+        
+            
+
 def emitJump(label):
     if version == 26:
         return [(JUMP_IF_FALSE, label),
@@ -362,6 +403,7 @@ def compileFn(comp, name, form, orgform):
     comp.popAliases(locals)
 
     clist = map(lambda x: x.sym.name, comp.closureList())
+    code = expandMetas(code, comp)
     c = Code(code, clist, args, lastisargs, False, True, str(symbol(comp.getNS().__name__, name.name)), comp.filename, 0, None)
     if not clist:
         c = new.function(c.to_code(), comp.ns.__dict__, name.name)
@@ -464,6 +506,7 @@ def compileMultiFn(comp, name, form):
         code.append((RAISE_VARARGS, 1))
 
     clist = map(lambda x: x.sym.name, comp.closureList())
+    code = expandMetas(code, comp)
     c = Code(code, clist, argslist, hasvararg, False, True, str(symbol(comp.getNS().__name__, name.name)), comp.filename, 0, None)
 
     if not clist:
@@ -820,6 +863,7 @@ def evalForm(form, ns):
     comp = Compiler()
     comp.setNS(ns)
     code = comp.compile(form)
+    code = expandMetas(code, comp)
     return comp.executeCode(code)
 
 
@@ -990,13 +1034,7 @@ class Compiler(object):
                                         + sym.name + "' not found in " + self.getNS().__name__ +
                                         " reference " + str(self.getNamesString(False)), None)
             var = getattr(self.getNS(), sym.name)
-            if isinstance(var, Var):
-                if (var.isDynamic()):
-                    return [(LOAD_CONST, var.deref),
-                            (CALL_FUNCTION, 0)]
-                else:
-                    return [(LOAD_CONST, var.deref())]
-            return [(LOAD_GLOBAL, sym.name)]
+            return [GlobalPtr(self.getNS(), sym.name)]
 
         if hasattr(self.getNS(), "__aliases__") and \
             symbol(sym.ns) in self.getNS().__aliases__:
@@ -1007,18 +1045,12 @@ class Compiler(object):
             module = findNamespace(sym.ns) 
             if not hasattr(module, sym.name):
                 raise CompilerException(str(module) + " does not define " + sym.name, None)
-            attr = getattr(module, sym.name)
-            if isinstance(attr, Var):
-                splt.append((LOAD_CONST, attr.deref))
-                splt.append((CALL_FUNCTION, 0))
-            else:
-                splt.append((LOAD_CONST, module))
-                splt.append((LOAD_ATTR, sym.name))
-            return splt
+            
+            return [GlobalPtr(module, sym.name)]
 
         code = LOAD_ATTR if sym.ns else LOAD_GLOBAL
-        if not sym.ns and sym.name.find(".") != -1 and sym.name != "..":
-            raise CompilerException("unqualified dotted forms not supported: " + str(sym), sym)
+        #if not sym.ns and sym.name.find(".") != -1 and sym.name != "..":
+        raise CompilerException("unqualified dotted forms not supported: " + str(sym), sym)
 
         if len(sym.name.replace(".", "")):
             splt.extend((code, attr) for attr in sym.name.split("."))
@@ -1110,7 +1142,7 @@ class Compiler(object):
         import sys
         if code == []:
             return None
-        newcode = code[:]
+        newcode = expandMetas(code, self)
         newcode.append((RETURN_VALUE, None))
         c = Code(newcode, [], [], False, False, False, str(symbol(self.getNS().__name__, "<string>")), self.filename, 0, None)
         retval = eval(c.to_code(), self.getNS().__dict__)

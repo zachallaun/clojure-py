@@ -86,7 +86,7 @@ def requireClj(filename, stopafter=None):
                         break
             except Exception as exp:
                 print s, filename
-                raise exp
+                raise
 
             while True:
                 ch = r.read()

@@ -13,6 +13,7 @@ import persistentarraymap
 
 privateKey = keyword(symbol("private"))
 macrokey = keyword(symbol("macro"))
+STATIC_KEY = keyword(symbol("static"))
 dvals = ThreadLocal()
 privateMeta = persistentarraymap.create([privateKey, True])
 UKNOWN = symbol("UNKNOWN")
@@ -112,6 +113,8 @@ class Var(ARef, Settable, IFn, IRef):
 
     def setMeta(self, meta):
         self._meta = meta
+        if self._meta and self._meta[STATIC_KEY]:
+            self.setDynamic(False)
         return self
 
     def setMacro(self):

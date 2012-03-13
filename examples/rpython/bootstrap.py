@@ -5,8 +5,8 @@ fn = rpythontest.run.deref()
 
 
 def entry_point(argv):
-    fn(0)
-    return 0
+    print fn(0)
+    return 2
 
 def target(*args):
     return entry_point, None

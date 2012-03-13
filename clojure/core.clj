@@ -487,11 +487,12 @@
 (defn inc
   "Returns a number one greater than num. Does not auto-promote
   longs, will throw on overflow. See also: inc'"
-  {:added "1.2"}
-  [x] (.__add__ x 1))
+  {:added "1.2"
+   :static true}
+  [x] (py.bytecode/BINARY_ADD x 1))
 
 (defn +
-  [x y] (.__add__ x y))
+  [x y] (py.bytecode/BINARY_ADD x y))
 
 (defn hash-map
   "keyval => key val
@@ -713,7 +714,7 @@
 	           s (.seq self)]
 	          (py/if (nil? s)
 	              c
-	              (recur (.__add__ c 1) (next s)))))
+	              (recur (inc c) (next s)))))
 	(__eq__ [self other]
 	    (loop [s (seq self)
 	           o (seq other)]
@@ -989,7 +990,8 @@
 (defn <
   "Returns non-nil if nums are in monotonically increasing order,
   otherwise false."
-  {:added "1.0"}
+  {:added "1.0"
+   :static true}
   ([x] true)
   ([x y] (py.bytecode/COMPARE_OP "<" x y))
   ([x y & more]
