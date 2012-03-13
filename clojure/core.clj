@@ -1153,13 +1153,26 @@
   "quot[ient] of dividing numerator by denominator."
   {:added "1.0"}
   [num div]
-    (py.bytecode/BINARY_FLOOR_DIVIDE num div))
+    (let [q (py.bytecode/BINARY_FLOOR_DIVIDE num div)]
+      (if (>= q 0)
+        q
+        (if (= 0 (py.bytecode/BINARY_MODULO num div))
+          q
+          (inc q)))))        
 
-(defn rem
-  "remainder of dividing numerator by denominator."
+(defn mod
+  "modulus of dividing numerator by denominator. Truncates toward negative infinity."
   {:added "1.0"}
   [num div]
     (py.bytecode/BINARY_MODULO num div))
+
+(defn rem
+  "remainder of dividing numerator by denominator."
+  {:added "1.0"
+   :static true}
+  [num div] 
+  (let [m (quot num div)]   
+      (- num (* m div))))
 
 (defn bit-not
   "Bitwise complement"
