@@ -1118,7 +1118,8 @@ class Compiler(object):
             elif isinstance(itm, float):
                 c.append((LOAD_CONST, itm))
             else:
-                raise CompilerException(" don't know how to compile" + str(type(itm)), None)
+                raise CompilerException(" don't know how to compile "
+                                        + str(type(itm)), None)
 
             if len(c) < 2 and lineset:
                 return []
