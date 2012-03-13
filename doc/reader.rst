@@ -16,11 +16,11 @@ Space, Newline, Carriage Return, Tab, Backspace, Formfeed, and the Comma
 Whitespace (including the comma) is used to delimit objs in the input
 stream. It is then discarded. The exceptions include:
 
-1. Literal Strings. All whitespace is retained.
-2. Regular Expression Patterns. All whitespace is retained in the pattern
-   string but ignored by the regex compiler.
-3. Literal Characters. A single character following the backslash may be a
-   whitespace character. It will be the character returned by the reader.
+* Literal Strings. All whitespace is retained.
+* Regular Expression Patterns. All whitespace is retained in the pattern
+  string but ignored by the regex compiler.
+* Literal Characters. A single character following the backslash may be a
+  whitespace character. It will be the character returned by the reader.
 
 ******************
 Special Characters
@@ -34,66 +34,66 @@ Read a literal character.
 Return a Python string of length one. The character following the \\ can be
 specified in one of the following ways.
 
-4. A single character::
+* A single character::
 
    \x, \Q, \G, \\, \_, \}, \(, \λ, \,
 
-5. A symbol
+* A symbol
 
-   The following symbols will be evaluated to their respective characters.
+  The following symbols will be evaluated to their respective characters.
+  
+  * ``\space`` => ``" "``
+
+  * ``\newline`` => ``"\n"``
+
+  * ``\return`` => ``"\r"``
+
+  * ``\backspace`` => ``"\b"``
+
+  * ``\formfeed`` => ``"\f"``
+
+  * ``\tab`` => ``"\t"``
    
-   * ``\space`` => ``" "``
+* By unicode codepoint
 
-   6. ``\newline`` => ``"\n"``
+  * \\u followed by 4 hexidecimal digits
 
-   7. ``\return`` => ``"\r"``
+    ``\u03bb``
 
-   8. ``\backspace`` => ``"\b"``
+  * \\U followed by 8 hexidecimal digits
 
-   9. ``\formfeed`` => ``"\f"``
+    ``\U000003bb``
 
-   10. ``\tab`` => ``"\t"``
-   
-11. By unicode codepoint
+* By octal value
 
-   12. \\u followed by 4 hexidecimal digits
+  \\oOOO
 
-     ``\u03bb``
+  The \\o must be followed by exactly three octal digits. The value must be <=
+  0377 octal (255 decimal).
 
-   13. \\U followed by 8 hexidecimal digits
+  This deviates from Python's string \\ooo syntax because Python allows one
+  to three octal digits following the \\. Thus, Python will interpret \\0 as
+  an octal value (the NUL character), while clojure-py will evaluate \\0 to
+  the character 0 (Zero). Requiring three digits to be present is simply an
+  attempt to be consistent with \\uHHHH, \\UHHHHHHHH, and \\xHH syntax.
 
-     ``\U000003bb``
+  ::
 
-14. By octal value
-
-   \\oOOO
-
-   The \\o must be followed by exactly three octal digits. The value must be <=
-   0377 octal (255 decimal).
-
-   This deviates from Python's string \\ooo syntax because Python allows one
-   to three octal digits following the \\. Thus, Python will interpret \\0 as
-   an octal value (the NUL character), while clojure-py will evaluate \\0 to
-   the character 0 (Zero). Requiring three digits to be present is simply an
-   attempt to be consistent with \\uHHHH, \\UHHHHHHHH, and \\xHH syntax.
-
-   ::
-
-      user=> \o40
-      \space
-      user=>
-
-15. By hexidecimal value
-
-   \\xHH
-
-   The \\x must be followed by exactly two hexidecimal digits.
-
-   ::
-
-     user=> \x20
+     user=> \o40
      \space
      user=>
+
+* By hexidecimal value
+
+  \\xHH
+
+  The \\x must be followed by exactly two hexidecimal digits.
+
+  ::
+
+    user=> \x20
+    \space
+    user=>
 
 Python Named Unicode Character Syntax
 -------------------------------------
@@ -102,14 +102,14 @@ Python Named Unicode Character Syntax
 
 This syntax has been omitted because of at least two *problems*:
 
-   16. { } is map syntax
-   17. Spaces may occur in the name::
+* { } is map syntax
+* Spaces may occur in the name::
 
-         \N{LESS-THAN SIGN}.
+   \N{LESS-THAN SIGN}.
 
-      The character reader calls readToken() to slurp up the token following
-      \\. It stops reading if *whitespace*, the end of input, or a terminating
-      macro character is read.
+The character reader calls readToken() to slurp up the token following
+\\. It stops reading if *whitespace*, the end of input, or a terminating
+macro character is read.
       
 Of course these *problems* arise out of trying to conform to Python syntax. It
 could be implemented any number of ways. Or, for now, just punt.
@@ -119,8 +119,8 @@ could be implemented any number of ways. Or, for now, just punt.
 
 Read:
 
-18. an argument in an anonymous function (See: #())
-19. a symbol (See: Symbols)
+* an argument in an anonymous function (See: #())
+* a symbol (See: Symbols)
    
 \`
 ===
@@ -176,13 +176,13 @@ Special positional arguments are allowed within this syntax. %, %1, %2, %3,
 function. %2, %3, ... %N to the second, third, nth argument. %& will be a
 sequence of the remaining arguments, or nil, if none.::
 
-  user=> (def vfn #(vector %1 %2 %&))
-  #'user/vfn
-  user=> (vfn 1 2 3 4 5 6)
-  [1 2 (3 4 5 6)]
-  user=> (vfn 1 2)
-  [1 2 nil]
-  user=>
+   user=> (def vfn #(vector %1 %2 %&))
+   #'user/vfn
+   user=> (vfn 1 2 3 4 5 6)
+   [1 2 (3 4 5 6)]
+   user=> (vfn 1 2)
+   [1 2 nil]
+   user=>
    
 #{ }
 ====
@@ -203,7 +203,7 @@ Shorthand for the special form **var**.
 
 Return the list ::
 
-   (var next-obj)
+  (var next-obj)
 
 '
 ===
@@ -251,29 +251,29 @@ The obj following the ^ must be a *bound* symbol, keyword, string, or map. The
 reader then consumes one more obj and attaches the meta data to that obj. This
 last obj is returned.
 
-20. read ^
-21. read obj1
-22. read obj2, attach obj1 as meta data
-23. return obj2
+1. read ^
+2. read obj1
+3. read obj2, attach obj1 as meta data
+4. return obj2
 
 Examples attaching meta data to a vector, then passing the vector to the
 function **meta**, which returns that attached meta data. The examples also
 show that whitespace may occur between the three elements. ::
 
-  user=> (meta ^:keyword-as-meta-data [:vector :of :stuff])
-  {:tag :keyword-as-meta-data}
-  user=> (def symbol-as-meta-data 42)
-  user=> (meta ^symbol-as-meta-data[:vector :of :stuff])
-  {:tag 42}
-  user=> (meta ^ "string as meta data"[:vector :of :stuff])
-  {:tag "string as meta data"}
-  user=> (meta ^{:map 1
-                 :as 2
-		 :meta 3
-		 :data 4}
-		 [:vector :of :stuff])
-  {:map 1, :as 2, :meta 3, :data 4}
-  user=>
+   user=> (meta ^:keyword-as-meta-data [:vector :of :stuff])
+   {:tag :keyword-as-meta-data}
+   user=> (def symbol-as-meta-data 42)
+   user=> (meta ^symbol-as-meta-data[:vector :of :stuff])
+   {:tag 42}
+   user=> (meta ^ "string as meta data"[:vector :of :stuff])
+   {:tag "string as meta data"}
+   user=> (meta ^{:map 1
+                  :as 2
+ 		 :meta 3
+ 		 :data 4}
+ 		 [:vector :of :stuff])
+   {:map 1, :as 2, :meta 3, :data 4}
+   user=>
 
 #^
 ===
@@ -328,40 +328,40 @@ Integral
 Regardless of the format used, integral numbers are converted to base 10 and
 returned as a Python int or long, depending on the size of the number.
 
-   24. Base 10
+* Base 10
 
-     ``[+-]?(0|[1-9]+)``
+  ``[+-]?(0|[1-9]+)``
 
-     0, 1, -3, 4423423, +42, 1239485723094857203489572034897230834598843
+  0, 1, -3, 4423423, +42, 1239485723094857203489572034897230834598843
 
-   25. Base 8
+* Base 8
 
-     ``[+-]?0[0-7]+``
+  ``[+-]?0[0-7]+``
 
-     0777, -042, +03234
-   
-   * Base 16
+  0777, -042, +03234
 
-     ``[+-]?0[xX][0-9a-fA-F]+``
+* Base 16
 
-     0x12, -0xff, +0xDEADbeef
-   
-   * Base N
-     ::
+  ``[+-]?0[xX][0-9a-fA-F]+``
 
-        [+-]?
+  0x12, -0xff, +0xDEADbeef
+
+* Base N
+  ::
+
+     [+-]?
 	[1-9][0-9]?
 	[rR]
 	[0-9a-zA-Z]+
 
-     The radix can be specified by a one or two digit base 10 number before
-     the r. It must be in the range [2, 36] inclusive::
+  The radix can be specified by a one or two digit base 10 number before
+  the r. It must be in the range [2, 36] inclusive::
 
-        user=> 2r1010101
-        42
-        user=> 36rZZZZ
+     user=> 2r1010101
+     42
+     user=> 36rZZZZ
 	1679615
-	user=>
+     user=>
   
 Floating Point
 ==============
@@ -443,7 +443,7 @@ return Python None, True, and False, respectively.
 To check the validity of a symbol, the reader has three major check-points in
 the following order:
 
-26. The readToken(rdr, initch) function
+1. The readToken(rdr, initch) function
 
    This collects characters until the end of the input stream is reached, a
    whitespace character is read, or a terminating macro character is read. A
@@ -453,7 +453,7 @@ the following order:
 
    The result of this is passed to ...
 
-27. The interpretToken(s) function
+2. The interpretToken(s) function
 
    This simply checks for a few special cases such as the reserved symbols
    mentioned above. So true, false, and nil aren't really symbols. They are
@@ -461,19 +461,19 @@ the following order:
 
    If this function fails to find a match, s is passed to ...
 
-28. The matchSymbol(s) function
+3. The matchSymbol(s) function
 
    This matches the token string s against symbolPat::
 
       [:]?           optional :
       ([^\d/].*/)?   optional namespace
                        * can't start with a digit or a /
-		       29. must end with a /
-		       30. minimum two characters in length including the /
+		       * must end with a /
+		       * minimum two characters in length including the /
       ([^\d/][^/]*)  name
                        * can't start with a digit or a /
-		       31. must not contain a /
-		       32. minumum one character in length
+		       * must not contain a /
+		       * minumum one character in length
       
 
    which is only a *rough* estimate of what a symbol should look like. If that
