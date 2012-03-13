@@ -1,65 +1,37 @@
-(ns tests.core)
-
-
-(defn assert-true [val]
-    (if val true 
-            (throw (py/AssertionError (str val " is not true")))))
-
-(defn assert-false [val]
-    (if val (throw (py/AssertionError (str val " is not false")))
-            false))
-
-(defn assert-greater [x y]
-    (if (py.bytecode/COMPARE_OP ">" x y)
-        true
-        (throw (py/AssertionError (str x " is not greater than " y)))))
-
-(defn assert-lesser [x y]
-    (if (py.bytecode/COMPARE_OP "<" x y)
-        true
-        (throw (py/AssertionError (str x " is not greater than " y)))))
-
-(defn assert-equal [x y]
-    (if (py.bytecode/COMPARE_OP "==" x y)
-        true
-        (throw (py/AssertionError (str x " does not equal " y)))))
-
-
-(defmacro deftest [name & body]
-    `((~'fn ~name [] ~@body)))
-
-
+(ns tests.core
+    (:require [tests.assertions :as assertions])
+    (:require [tests.utils :only [deftest]]))
 
 
 (deftest if-not-tests
-    (assert-true (if-not false true))
-    (assert-false (if-not true true false))
-    (assert-true (if-not true false true)))
+    (assertions/assert-true (if-not false true))
+    (assertions/assert-false (if-not true true false))
+    (assertions/assert-true (if-not true false true)))
 
 (deftest and-tests
-    (assert-true (and true true true))
-    (assert-false (and true false true))
-    (assert-false (and nil true)))
+    (assertions/assert-true (and true true true))
+    (assertions/assert-false (and true false true))
+    (assertions/assert-false (and nil true)))
 
 (deftest identical?-tests
-    (assert-true (identical? 1 1))
-    (assert-false (identical? 1 2))
-    (assert-false (identical? '() '()))
+    (assertions/assert-true (identical? 1 1))
+    (assertions/assert-false (identical? 1 2))
+    (assertions/assert-false (identical? '() '()))
     (let [tmp '()]
-         (assert-true (identical? tmp tmp))))
+         (assertions/assert-true (identical? tmp tmp))))
 
 (deftest compare-tests
     (assert-lesser (compare 0 1) 0)
     (assert-lesser (compare -1 0) 0))
 
 (deftest or-tests
-    (assert-true (or true false false))
-    (assert-false (or false false false))
-    (assert-true (or false true false)))
+    (assertions/assert-true (or true false false))
+    (assertions/assert-false (or false false false))
+    (assertions/assert-true (or false true false)))
 
 (deftest zero?-tests
-    (assert-true (zero? 0))
-    (assert-false (zero? 1)))
+    (assertions/assert-true (zero? 0))
+    (assertions/assert-false (zero? 1)))
 
 (deftest count-tests
     (assert-equal (count '()) 0)
@@ -70,11 +42,11 @@
     (assert-equal (int "-1") -1))
 
 (deftest <-tests
-    (assert-true (< 1))
-    (assert-true (< 1 2))
-    (assert-true (< 1 2 3))
-    (assert-true (< 1 2 3 4))
-    (assert-false (< 1 3 2 4)))
+    (assertions/assert-true (< 1))
+    (assertions/assert-true (< 1 2))
+    (assertions/assert-true (< 1 2 3))
+    (assertions/assert-true (< 1 2 3 4))
+    (assertions/assert-false (< 1 3 2 4)))
 
 (deftest reduce1-tests
     (assert-equal (reduce1 (fn [x y] (py.bytecode/BINARY_ADD x y))
@@ -85,12 +57,12 @@
     (assert-equal (reverse [1 2 3 4 5]) [5 4 3 2 1]))
 
 (deftest >1?-tests
-    (assert-true (>1? 3))
-    (assert-false (>1? 0)))
+    (assertions/assert-true (>1? 3))
+    (assertions/assert-false (>1? 0)))
 
 (deftest >0?-tests
-    (assert-true (>0? 2))
-    (assert-false (>0? -1)))
+    (assertions/assert-true (>0? 2))
+    (assertions/assert-false (>0? -1)))
 
 
 (deftest +-tests
@@ -116,28 +88,28 @@
     (assert-equal (- 20 5 2) 13))
 
 (deftest <=-tests
-    (assert-true (<= 1))
-    (assert-true (<= 1 2))
-    (assert-true (<= 1 1 3 4))
-    (assert-false (<= 2 1 1 1)))
+    (assertions/assert-true (<= 1))
+    (assertions/assert-true (<= 1 2))
+    (assertions/assert-true (<= 1 1 3 4))
+    (assertions/assert-false (<= 2 1 1 1)))
 
 (deftest >-tests
-    (assert-true (> 4))
-    (assert-true (> 4 3))
-    (assert-true (> 4 3 2 1))
-    (assert-false (> 4 3 2 2)))
+    (assertions/assert-true (> 4))
+    (assertions/assert-true (> 4 3))
+    (assertions/assert-true (> 4 3 2 1))
+    (assertions/assert-false (> 4 3 2 2)))
 
 (deftest >=-tests
-    (assert-true (>= 4))
-    (assert-true (>= 4 3))
-    (assert-true (>= 4 3 3))
-    (assert-false (>= 3 4 2 1)))
+    (assertions/assert-true (>= 4))
+    (assertions/assert-true (>= 4 3))
+    (assertions/assert-true (>= 4 3 3))
+    (assertions/assert-false (>= 3 4 2 1)))
 
 (deftest ==-tests
-    (assert-true (== 1))
-    (assert-true (== 1 1))
-    (assert-true (== 1 1 1 1 1))
-    (assert-false (== 1 2 1 1 1)))
+    (assertions/assert-true (== 1))
+    (assertions/assert-true (== 1 1))
+    (assertions/assert-true (== 1 1 1 1 1))
+    (assertions/assert-false (== 1 2 1 1 1)))
 
 (deftest max-tests
     (assert-equal (max 1) 1)
@@ -150,14 +122,14 @@
     (assert-equal (min 3 2 1) 1))
 
 (deftest pos?-tests
-    (assert-true (pos? 1))
-    (assert-false (pos? -1))
-    (assert-false (pos? 0)))
+    (assertions/assert-true (pos? 1))
+    (assertions/assert-false (pos? -1))
+    (assertions/assert-false (pos? 0)))
 
 (deftest neg?-tests
-    (assert-true (neg? -1))
-    (assert-false (neg? 1))
-    (assert-false (neg? 0)))
+    (assertions/assert-true (neg? -1))
+    (assertions/assert-false (neg? 1))
+    (assertions/assert-false (neg? 0)))
 
 (deftest quot-tests
     (assert-equal (quot 23 7) 3)
@@ -296,26 +268,26 @@
     (assert-equal (bit-flip 2 1) 0))
 
 (deftest bit-flip-tests
-    (assert-true (bit-test 3 1))
-    (assert-false (bit-test 1 1)))
+    (assertions/assert-true (bit-test 3 1))
+    (assertions/assert-false (bit-test 1 1)))
 
 (deftest integer?-tests
-    (assert-true (integer? 1))
-    (assert-false (integer? "1")))
+    (assertions/assert-true (integer? 1))
+    (assertions/assert-false (integer? "1")))
 
 (deftest even?-tests
-    (assert-true (even? 2))
-    (assert-false (even? 1)))
+    (assertions/assert-true (even? 2))
+    (assertions/assert-false (even? 1)))
 
 (deftest odd?-tests
-    (assert-true (odd? 1))
-    (assert-false (odd? 2)))
+    (assertions/assert-true (odd? 1))
+    (assertions/assert-false (odd? 2)))
 
 (deftest complement-tests
-    (assert-true ((complement (fn [] false))))
-    (assert-true ((complement (fn [x] false)) 1))
-    (assert-true ((complement (fn [x y] false)) 1 2))
-    (assert-true ((complement (fn [x y z] false)) 1 2 3)))
+    (assertions/assert-true ((complement (fn [] false))))
+    (assertions/assert-true ((complement (fn [x] false)) 1))
+    (assertions/assert-true ((complement (fn [x y] false)) 1 2))
+    (assertions/assert-true ((complement (fn [x y z] false)) 1 2 3)))
 
 (deftest constantly-tests
     (assert-equal ((constantly 1) 1 2 3 4 5) 1))
@@ -335,10 +307,10 @@
 ;;map stuff
 
 (deftest contains?-tests
-    (assert-true (contains? [4 4 4 4] 3))
-    (assert-true (contains? {:a 1 :b 2} :a))
-    (assert-false (contains? [1 1 1] 4))
-    (assert-false (contains? {:a 4} :b)))
+    (assertions/assert-true (contains? [4 4 4 4] 3))
+    (assertions/assert-true (contains? {:a 1 :b 2} :a))
+    (assertions/assert-false (contains? [1 1 1] 4))
+    (assertions/assert-false (contains? {:a 4} :b)))
 
 (deftest get-tests
     (assert-equal (get {:a 1} :a) 1)
@@ -418,23 +390,23 @@
     (assert-equal (sequence [1 2 3]) '(1 2 3)))
 
 (deftest every?-tests
-    (assert-true (every? even? '(2 4 6)))
-    (assert-false (every? even? '(1 4 6))))
+    (assertions/assert-true (every? even? '(2 4 6)))
+    (assertions/assert-false (every? even? '(1 4 6))))
 
 (deftest every?-tests
-    (assert-false (not-every? even? '(2 4 6)))
-    (assert-true (not-every? even? '(1 4 6))))
+    (assertions/assert-false (not-every? even? '(2 4 6)))
+    (assertions/assert-true (not-every? even? '(1 4 6))))
 
 (deftest some-tests
-    (assert-true (some even? '(1 2 3 4)))
+    (assertions/assert-true (some even? '(1 2 3 4)))
     (assert-equal (some even? '(1 3 5 7)) nil))
 
 (deftest not-any?-tests
-    (assert-true (not-any? odd? '(2 4 6)))
-    (assert-false (not-any? odd? '(1 2 3))))
+    (assertions/assert-true (not-any? odd? '(2 4 6)))
+    (assertions/assert-false (not-any? odd? '(1 2 3))))
 
 ;(deftest dotimes-tests
-;    (dotimes [n 5] (assert-true (and (>= n 0) (< n 5)))))
+;    (dotimes [n 5] (assertions/assert-true (and (>= n 0) (< n 5)))))
 
 (deftest map-tests
     (assert-equal (map inc [1 2 3 4 5]) (seq [2 3 4 5 6])))
@@ -552,10 +524,10 @@
     (assert-equal (num "1") 1))
 
 (deftest num-tests
-    (assert-true (float? (num "inf"))))
+    (assertions/assert-true (float? (num "inf"))))
 
 (deftest number?-tests
-    (assert-true (number? 1)))
+    (assertions/assert-true (number? 1)))
 
 (deftest read-string-tests
     (assert-equal (read-string "12") 12))
@@ -574,11 +546,11 @@
     (set [1 2 3 4 5]))
 
 (deftest find-ns-tests
-    (assert-true (not (nil? (find-ns 'clojure.core)))))
+    (assertions/assert-true (not (nil? (find-ns 'clojure.core)))))
 
 (deftest create-ns-tests
-    (assert-true (identical? (find-ns 'clojure.core) (create-ns 'clojure.core)))
-    (assert-true (not (nil? (create-ns 'foo.bar)))))
+    (assertions/assert-true (identical? (find-ns 'clojure.core) (create-ns 'clojure.core)))
+    (assertions/assert-true (not (nil? (create-ns 'foo.bar)))))
 
 (deftest ns-name-tests
     (assert-equal (ns-name 'clojure.core) 'clojure.core))
@@ -623,8 +595,8 @@
     (assert-equal (reduce + 5 '(1 2 3 4)) 15))
 
 (deftest empty?-tests
-    (assert-true (empty? []))
-    (assert-false (empty? [1])))
+    (assertions/assert-true (empty? []))
+    (assertions/assert-false (empty? [1])))
 
 
 
@@ -637,4 +609,3 @@
     (.more (range 1))) ; would throw an error before fix to Issue #45
 
 (py/print "all tests passed")
-
