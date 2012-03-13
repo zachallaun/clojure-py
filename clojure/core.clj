@@ -471,6 +471,11 @@
   {:added "1.0"}
   [x] (instance? clojure.lang.symbol/Symbol x))
 
+(defn var?
+  "Return true if x is a Var"
+  {:static true}
+  [x] (instance? clojure.lang.var/Var x))
+
 (defn keyword?
   "Return true if x is a Keyword"
   {:added "1.0"}
@@ -589,12 +594,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn make-class
-    "Creates a new clas with the given name, that is inherited from
-    classes and has the given member functions."
-    [name classes members]
-    (py/type (.-name name) (apply py/tuple (conj classes py/object)) (.toDict members)))
-
 (defn make-init
     "Creates a __init__ method for use in deftype"
     [fields]
@@ -664,7 +663,7 @@
            inherits []
            fns (if (= (py/len fields) 0) {} {"__init__" (make-init fields)})]
           (cond (not specs)
-                    (list 'def name (list 'py/type (.-name name) 
+                   (list 'def name (list 'py/type (.-name name) 
                                                    (list 'py/tuple 
                                                          (conj inherits py/object))
                                                    (list '.toDict fns)))
@@ -2858,6 +2857,58 @@
   {:added "1.0"
    :static true}
   [coll] (not (seq coll)))
+
+;;
+;; Redefine deftype with protocol support
+;;
+;;
+;;
+
+(defmacro deftype
+    [name fields & specs]
+    (loop [specs (seq specs)
+           inherits []
+           fns (if (= (py/len fields) 0) {} {"__init__" (make-init fields)})]
+          (cond (not specs)
+                  `(~'do (def ~name (py/type ~(.-name name)
+                                              (py/tuple ~(conj inherits py/object))
+                                              (.toDict ~fns)))
+                        ~@(map (fn [x] `(clojure.lang.protocol/extendForAllSubclasses ~x))
+                               inherits))
+                (symbol? (first specs))
+                    (recur (next specs) 
+                           (conj inherits (first specs))
+                           fns)
+                (instance? clojure.lang.ipersistentlist/IPersistentList
+                           (first specs))
+                    (recur (next specs)
+                           inherits
+                           (assoc fns (py/str (ffirst specs))
+                           	   	      (prop-wrap name fields (first specs)))))))
+
+(defn resolve 
+    
+    {:static true}
+    [ns sym]
+    (let [r (clojure.lang.namespace/findItem (the-ns ns) sym)]
+         (if (var? r)
+             (.deref r)
+             r)))
+
+(defmacro defprotocol
+    [name & specs]
+    (let [doc (when (string? (first specs)) (first specs))
+          specs (if doc (next specs) specs)]
+         (loop [specs specs
+                fns []]
+               (if specs
+                   (recur (next specs) `((~(ffirst specs) [~'& ~'args])))
+                  `(do (deftype (~'quote ~name) []
+                          ~@fns)
+                       (clojure.lang.protocol/protocolFromType ~'__name__ 
+                                                               (resolve ~'__name__ (~'quote ~name))))))))
+                       
+                
 
 (py/print "clojure-py 0.1.0")
 

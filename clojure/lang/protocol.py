@@ -111,6 +111,7 @@ def protocolFromType(ns, tp):
     
     if not hasattr(thens, tp.__name__):
         setattr(thens, tp.__name__, proto)
+    return proto
     
 def extendForAllSubclasses(tp):
     if not hasattr(tp, "__protocols__"):
