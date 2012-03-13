@@ -160,10 +160,108 @@
     (assert-false (neg? 0)))
 
 (deftest quot-tests
-    (assert-equal (quot 23 7) 3))
+    (assert-equal (quot 23 7) 3)
+    (assert-equal (quot 4 2) 2)
+    (assert-equal (quot 3 2) 1)
+    (assert-equal (quot 6 4) 1)
+    (assert-equal (quot 0 5) 0)
+    
+    ;(assert-equal (quot 2 1/2) 4)
+    ;(assert-equal (quot 2/3 1/2) 1)
+    ;(assert-equal (quot 1 2/3) 1)
+    
+    (assert-equal (quot 4.0 2.0) 2.0)
+    (assert-equal (quot 4.5 2.0) 2.0)
+    ; |num| > |div|, num != k * div
+    (assert-equal (quot 42 5) 8)     ; (8 * 5) + 2 == 42
+    (assert-equal (quot 42 -5) -8)   ; (-8 * -5) + 2 == 42
+    (assert-equal (quot -42 5) -8)   ; (-8 * 5) + -2 == -42
+    (assert-equal (quot -42 -5) 8)   ; (8 * -5) + -2 == -42
+    ; |num| > |div|, num = k * div
+    (assert-equal (quot 9 3) 3)
+    (assert-equal (quot 9 -3) -3)
+    (assert-equal (quot -9 3) -3)
+    (assert-equal (quot -9 -3) 3)
+    ; |num| < |div|
+    (assert-equal (quot 2 5) 0)
+    (assert-equal (quot 2 -5) 0)
+    (assert-equal (quot -2 5) 0)
+    (assert-equal (quot -2 -5) 0)
+
+    ; num = 0, div != 0
+    (assert-equal (quot 0 3) 0)
+    (assert-equal (quot 0 -3) 0)
+    )
+    
 
 (deftest rem-tests
-    (assert-equal (rem 23 7) 2))
+    (assert-equal (rem 23 7) 2)
+    (assert-equal (rem 4 2) 0)
+    (assert-equal (rem 3 2) 1)
+    (assert-equal (rem 6 4) 2)
+    (assert-equal (rem 0 5) 0)
+
+    ;(assert-equal (rem 2 1/2) 0)
+    ;(assert-equal (rem 2/3 1/2) 1/6)
+    ;(assert-equal (rem 1 2/3) 1/3)
+
+    (assert-equal (rem 4.0 2.0) 0.0)
+    (assert-equal (rem 4.5 2.0) 0.5)
+
+    ; |num| > |div|, num != k * div
+    (assert-equal (rem 42 5) 2)      ; (8 * 5) + 2 == 42
+    (assert-equal (rem 42 -5) 2)     ; (-8 * -5) + 2 == 42
+    (assert-equal (rem -42 5) -2)    ; (-8 * 5) + -2 == -42
+    (assert-equal (rem -42 -5) -2)   ; (8 * -5) + -2 == -42
+
+    ; |num| > |div|, num = k * div
+    (assert-equal (rem 9 3) 0)
+    (assert-equal (rem 9 -3) 0)
+    (assert-equal (rem -9 3) 0)
+    (assert-equal (rem -9 -3) 0)
+
+    )
+
+(deftest mod-tests
+    (assert-equal (rem 23 7) 2)
+    (assert-equal (mod 4 2) 0)
+    (assert-equal (mod 3 2) 1)
+    (assert-equal (mod 6 4) 2)
+    (assert-equal (mod 0 5) 0)
+
+    ;(assert-equal (mod 2 1/2) 0)
+    ;(assert-equal (mod 2/3 1/2) 1/6)
+    ;(assert-equal (mod 1 2/3) 1/3)
+
+    (assert-equal (mod 4.0 2.0) 0.0)
+    (assert-equal (mod 4.5 2.0) 0.5)
+
+    ; |num| > |div|, num != k * div
+    (assert-equal (mod 42 5) 2)      ; (42 / 5) * 5 + (42 mod 5)        = 8 * 5 + 2        = 42
+    (assert-equal (mod 42 -5) -3)    ; (42 / -5) * (-5) + (42 mod -5)   = -9 * (-5) + (-3) = 42
+    (assert-equal (mod -42 5) 3)     ; (-42 / 5) * 5 + (-42 mod 5)      = -9 * 5 + 3       = -42
+    (assert-equal (mod -42 -5) -2)  ; (-42 / -5) * (-5) + (-42 mod -5) = 8 * (-5) + (-2)  = -42
+
+    ; |num| > |div|, num = k * div
+    (assert-equal (mod 9 3) 0)      ; (9 / 3) * 3 + (9 mod 3) = 3 * 3 + 0 = 9
+    (assert-equal (mod 9 -3) 0)
+    (assert-equal (mod -9 3) 0)
+    (assert-equal (mod -9 -3) 0)
+
+    ; |num| < |div|
+    (assert-equal (mod 2 5) 2)       ; (2 / 5) * 5 + (2 mod 5)        = 0 * 5 + 2          = 2
+    (assert-equal (mod 2 -5) -3)     ; (2 / -5) * (-5) + (2 mod -5)   = (-1) * (-5) + (-3) = 2
+    (assert-equal (mod -2 5) 3)      ; (-2 / 5) * 5 + (-2 mod 5)      = (-1) * 5 + 3       = -2
+    (assert-equal (mod -2 -5) -2)    ; (-2 / -5) * (-5) + (-2 mod -5) = 0 * (-5) + (-2)    = -2
+
+    ; num = 0, div != 0
+    (assert-equal (mod 0 3) 0)       ; (0 / 3) * 3 + (0 mod 3) = 0 * 3 + 0 = 0
+    (assert-equal (mod 0 -3) 0)
+
+    ; large args
+    (assert-equal (mod 3216478362187432 432143214) 120355456)
+)
+
 
 (deftest bit-not-tests
     (assert-equal (bit-not 5) -6))
