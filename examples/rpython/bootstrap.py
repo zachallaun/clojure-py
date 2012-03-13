@@ -1,7 +1,7 @@
 import clojure
 import rpythontest
 import sys
-fn = rpythontest.run.deref()
+fn = rpythontest.main.deref()
 
 
 def entry_point(argv):
