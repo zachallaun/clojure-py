@@ -110,6 +110,13 @@ def main():
     comp = Compiler()
     currentCompiler.set(comp)
     comp.setNS(symbol("user"))
+    last3 = [None, None, None]
+
+    def execute(string):
+        r = StringReader(string)
+        s = read(r, False, None, True)
+        res = comp.compile(s)
+        return comp.executeCode(res)
 
     if not sys.argv[1:]:
         while True:
@@ -131,16 +138,17 @@ def main():
             if unbalanced(line):
                 break
 
-            r = StringReader(line)
-            s = read(r, False, None, True)
-            if s is None:
-                print s
-                continue
+            for i, val in enumerate(last3, 1):
+                execute('(def *%s %s)' % (i, val if val is not None else "nil"))
+
             try:
-                res = comp.compile(s)
-                print comp.executeCode(res)
+                out = execute(line)
             except Exception:
                 traceback.print_exc()
+            else:
+                last3.pop()
+                last3.insert(0, out)
+                print out
     else:
         for x in sys.argv[1:]:
             requireClj(x)
