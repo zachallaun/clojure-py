@@ -1117,6 +1117,8 @@ class Compiler(object):
                 c.append((LOAD_CONST, itm))
             elif isinstance(itm, float):
                 c.append((LOAD_CONST, itm))
+            elif isinstance(itm, long):
+                c.append((LOAD_CONST, itm))
             else:
                 raise CompilerException(" don't know how to compile "
                                         + str(type(itm)), None)

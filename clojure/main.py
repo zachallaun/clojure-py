@@ -169,7 +169,8 @@ def main():
                 print out
     else:
         for x in sys.argv[1:]:
-            requireClj(x)
+            if x.endswith('.clj'):
+                requireClj(x)
 
 
 def unbalanced(s):
