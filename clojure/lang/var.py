@@ -122,7 +122,7 @@ class Var(ARef, Settable, IFn, IRef):
 
     def __repr__(self):
         if self.ns is not None:
-            return "#" + str(self.ns.__name__) + "/" + str(self.sym)
+            return "#'" + str(self.ns.__name__) + "/" + str(self.sym)
         return ("#<Var: " +
                 (str(self.sym)
                  if self.sym is not None else "--unnamed--") + ">")

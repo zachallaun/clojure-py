@@ -4,6 +4,10 @@ import sys
 import os.path
 import traceback
 
+from clojure.lang.symbol import symbol
+from clojure.lang.var import Var, intern as internVar
+from clojure.util.byteplay import *
+
 
 try:
     import readline
@@ -120,6 +124,23 @@ def main():
 
     if not sys.argv[1:]:
         while True:
+            for i, value in enumerate(last3, 1):
+                sym = symbol('*%s' % i)
+                comp.pushName(sym.name)
+                code = []
+                v = internVar(comp.getNS(), sym)
+                v.setDynamic(True)
+                code.append((LOAD_CONST, v))
+                code.append((LOAD_ATTR, "bindRoot"))
+                if isinstance(value, Var):
+                    code.append((LOAD_CONST, value.deref()))
+                else:
+                    code.extend(comp.compile(value))
+                code.append((CALL_FUNCTION, 1))
+                v.setMeta(sym.meta())
+                comp.popName()
+                comp.executeCode(code)
+
             try:
                 line = raw_input(comp.getNS().__name__ + "=> ")
             except EOFError:
@@ -137,9 +158,6 @@ def main():
             # Propogate break from above loop.
             if unbalanced(line):
                 break
-
-            for i, val in enumerate(last3, 1):
-                execute('(def *%s %s)' % (i, val if val is not None else "nil"))
 
             try:
                 out = execute(line)
