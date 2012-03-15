@@ -2922,6 +2922,11 @@
                                                                (resolve ~'__name__ (~'quote ~name))))))))
                        
                 
+(defmacro comment
+  "Ignores body, yields nil"
+  {:added "1.0"}
+  [& body])
+
 
 (py/print "clojure-py 0.1.0")
 

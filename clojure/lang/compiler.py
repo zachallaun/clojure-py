@@ -429,8 +429,8 @@ def cleanRest(name):
 class MultiFn(object):
     def __init__(self, comp, form):
         form = RT.seq(form)
-        if len(form) < 2:
-            raise CompilerException("FN defs must have at least two vars", form)
+        if len(form) < 1:
+            raise CompilerException("FN defs must have at least one arg", form)
         argv = form.first()
         if not isinstance(argv, PersistentVector):
             raise CompilerException("FN arg list must be a vector", form)

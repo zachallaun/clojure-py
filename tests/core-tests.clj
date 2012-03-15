@@ -608,4 +608,7 @@
 (deftest lazy-seq-tests
     (.more (range 1))) ; would throw an error before fix to Issue #45
 
+(deftest comment-tests
+    (comment (assert-true false)))
+
 (py/print "all tests passed")
