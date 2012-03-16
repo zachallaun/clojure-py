@@ -28,10 +28,11 @@ class APersistentSet(IPersistentSet, IFn):
     def __eq__(self, other):
         if self is other:
             return True
-        if not RT.fulfillsHashSet(other):
+            
+        if not isinstance(other, IPersistentSet):
             return False
 
-        for s in self:
+        for s in self.impl:
             if s not in other or other[s] != self[s]:
                 return False
         return True

@@ -70,13 +70,18 @@ def remove(name):
             
     
 
-def find(name):
+def find(name, fromns = None):
     from clojure.lang.symbol import Symbol
     import new
     if isinstance(name, new.module):
         return name
     if isinstance(name, Symbol):
-        name = name.name    
+        name = name.name
+    
+    if not fromns is None:
+        if hasattr(fromns, "__aliases__"):
+            if fromns in fromns.__aliases__: 
+                return fromns.__aliases__[name]
     return sys.modules[name]
 
 def findItem(ns, sym):
@@ -93,7 +98,7 @@ def findItem(ns, sym):
                 return None
             return getattr(ns, sym.name)
         if sym.ns is not None:
-            mod = find(sym.ns)
+            mod = find(sym.ns, ns)
             if hasattr(mod, sym.name):
                 return getattr(mod, sym.name)
             return None
