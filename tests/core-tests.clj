@@ -320,6 +320,9 @@
     (assert-equal (dissoc {:a 1 :b 2} :b) {:a 1})
     (assert-equal (dissoc {:a 1 :b 2} :a :b) {}))
 
+(deftest disj-tests
+    (assert-equal (disj #{:a :b :c} :a) #{:b :c}))
+
 (deftest find-tests
     (assert-equal (.getKey (find {:a 1} :a)) :a)
     (assert-equal (.getValue (find {:a 1} :a)) 1))

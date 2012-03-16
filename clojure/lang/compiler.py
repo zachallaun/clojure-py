@@ -4,6 +4,7 @@ from clojure.lang.cljexceptions import CompilerException, AbstractMethodCall
 from clojure.lang.persistentvector import PersistentVector
 from clojure.lang.ipersistentvector import IPersistentVector
 from clojure.lang.ipersistentmap import IPersistentMap
+from clojure.lang.ipersistentset import IPersistentSet
 from clojure.lang.ipersistentlist import IPersistentList
 from clojure.lang.var import Var, define, intern as internVar, var as createVar
 from clojure.util.byteplay import *
@@ -909,6 +910,7 @@ def macroexpand(form, comp, one = False):
             return mresult, True
 
     return form, False
+    
 
 class Compiler(object):
     def __init__(self):
@@ -1118,6 +1120,8 @@ class Compiler(object):
             elif isinstance(itm, float):
                 c.append((LOAD_CONST, itm))
             elif isinstance(itm, long):
+                c.append((LOAD_CONST, itm))
+            elif isinstance(itm, IPersistentSet):
                 c.append((LOAD_CONST, itm))
             else:
                 raise CompilerException(" don't know how to compile "
