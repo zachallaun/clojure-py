@@ -133,7 +133,7 @@ def main():
                     v.setMeta(value.meta())
                 else:
                     v.bindRoot(value)
-                    
+
             try:
                 line = raw_input(comp.getNS().__name__ + "=> ")
             except EOFError:
@@ -144,7 +144,7 @@ def main():
 
             while unbalanced(line):
                 try:
-                    line += raw_input('.' * len(comp.getNS().__name__) + '.. ')
+                    line += '\n' + raw_input('.' * len(comp.getNS().__name__) + '.. ')
                 except EOFError:
                     break
 
