@@ -149,32 +149,93 @@ def unquoteReader(rdr, tilde):
         o = read(rdr, True, None, True)
         return RT.list(_UNQUOTE_, o)
 
+def isHexCharacter(ch):
+    return ch in "0123456789abcdefABCDEF"
+
+def isOctalCharacter(ch):
+    return ch in "01234567"
+
+def readUnicodeChar(rdr, initch, base, length, exact):
+    """Read a string specifying a Unicode codepoint.
+
+    rdr -- read/unread-able object
+    initch -- the first character of the codepoint string
+    base -- expected radix of the codepoint
+    length -- maximum number of characters in the codepoint
+    exact -- if True, codepoint string must contain length characters
+             if False, it must contain [1, length], inclusive
+
+    Return a unicode string of length 1."""
+    digits = []
+    try:
+        int(initch, base)
+        digits += initch
+    except ValueError:
+        raise ReaderException("Expected base %d digit, got: %s"
+                              % (base, initch), rdr)
+    for i in range(1, length):
+        ch = read1(rdr)
+        if ch == "" or isWhitespace(ch) or isMacro(ch):
+            rdr.back()
+            break
+        try:
+            int(ch, base)
+            digits += ch
+        except ValueError:
+            if exact:
+                raise ReaderException("Expected base %d digit, got: %s"
+                                      % (base, ch), rdr)
+            else:
+                rdr.back()
+                break
+    if i != length-1 and exact:
+        raise ReaderException("Invalid character length: %d, should be: %d"
+                              % (i, length), rdr)
+    return unichr(int("".join(digits), base))
 
 def stringReader(rdr, doublequote):
-    sb = []
+    """Read a double-quoted \"\" literal string.
+
+    Return a str or unicode object."""
+    buf = []
     ch = read1(rdr)
-    while ch != '\"':
+    while True:
         if ch == "":
             raise ReaderException("EOF while reading string")
-        if ch == "\\":
+        if ch == '\\':
             ch = read1(rdr)
-            if ch in chrLiterals:
+            if ch == "":
+                raise ReaderException("EOF while reading string")
+            elif ch in chrLiterals:
                 ch = chrLiterals[ch]
-            elif ch == 'u':
+            elif ch == "u":
                 ch = read1(rdr)
-                if digit(ch, 16) == -1:
-                    raise ReaderException("Invalid unicode escape: \\u" + ch)
-                ch = readUnicodeChar(rdr, ch, 16, 4, True)#FIXME: readUnicodeVar undefined
+                if not isHexCharacter(ch):
+                    raise ReaderException("Hexidecimal digit expected after"
+                                          " \\u in literal string, got: %s"
+                                          % ch, rdr)
+                ch = readUnicodeChar(rdr, ch, 16, 4, True)
+            elif ch == "U":
+                ch = read1(rdr)
+                if not isHexCharacter(ch):
+                    raise ReaderException("Hexidecimal digit expected after"
+                                          " \\u in literal string, got: %s"
+                                          % ch, rdr)
+                ch = readUnicodeChar(rdr, ch, 16, 8, True)
+            elif isOctalCharacter(ch):
+                ch = readUnicodeChar(rdr, ch, 8, 3, False)
+                if ord(ch) > 255:
+                    raise ReaderException("Octal escape sequence in literal"
+                                          " string must be in range [0, 377]"
+                                          ", got: %o" % ord(ch))
             else:
-                if digit(ch, 8) == -1:
-                    raise ReaderException("Unsupported escape character: \\" + ch)
-                ch = readUnicodeChar(rdr, ch, 8, 4, True)#FIXME: readUnicodeVar undefined
-                if ch > 0377:
-                    raise ReaderException("Octal escape sequence must be in range [0, 377].")
-        sb.append(ch)
+                raise ReaderException("Unsupported escape character in"
+                                      " literal string: \\%s" % ch, rdr)
+        elif ch == '"':
+            return "".join(buf)
+        buf += ch
         ch = read1(rdr)
-    return "".join(sb)
-
+    
 def readToken(rdr, initch):
     sb = [initch]
     while True:
@@ -386,6 +447,7 @@ def matchSymbol(s):
         else:
             return symbol(ns, name)
     return None
+
 
 tokenMappings = {"newline": "\n",
     "space": " ",
