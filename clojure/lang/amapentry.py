@@ -1,10 +1,9 @@
 from clojure.lang.apersistentvector import APersistentVector
 from clojure.lang.persistentvector import create as createVector
 from clojure.lang.cljexceptions import IndexOutOfBoundsException
-from clojure.lang.iprintable import IPrintable
 
 
-class AMapEntry(APersistentVector, IPrintable):
+class AMapEntry(APersistentVector):
     def __getitem__(self, i):
         if i == 0:
             return self.getKey()
@@ -38,9 +37,3 @@ class AMapEntry(APersistentVector, IPrintable):
 
     def pop(self):
         return PersistentVector(self.getKey())
-
-    def writeAsString(self, writer):
-        writer.write(repr(self))
-
-    def writeAsReplString(self, writer):
-        writer.write(repr(self))

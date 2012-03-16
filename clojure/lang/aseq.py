@@ -6,9 +6,10 @@ from clojure.lang.counted import Counted
 from clojure.lang.ihasheq import IHashEq
 from clojure.lang.iterable import Iterable
 import clojure.lang.rt as RT
+from clojure.lang.iprintable import IPrintable
 
 
-class ASeq(Obj, Sequential, ISeq, IHashEq, Iterable, object):
+class ASeq(Obj, Sequential, ISeq, IHashEq, Iterable, IPrintable):
     def __eq__(self, other):
         if self is other:
             return True
@@ -68,3 +69,9 @@ class ASeq(Obj, Sequential, ISeq, IHashEq, Iterable, object):
         for s in self:
             hash = 31 * hash + Util.hasheq(s.first())#FIXME: Util is... where?
         return hash
+
+    def writeAsString(self, writer):
+        writer.write(repr(self))
+
+    def writeAsReplString(self, writer):
+        writer.write(repr(self))

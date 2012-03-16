@@ -2,8 +2,9 @@ from clojure.lang.ipersistentvector import IPersistentVector
 from clojure.lang.cljexceptions import AbstractMethodCall, ArityException
 from clojure.lang.indexableseq import IndexableSeq
 import clojure.lang.rt as RT
+from clojure.lang.iprintable import IPrintable
 
-class APersistentVector(IPersistentVector):
+class APersistentVector(IPersistentVector, IPrintable):
     def __iter__(self):
         for x in range(len(self)):
             yield self.nth(x)
@@ -27,6 +28,12 @@ class APersistentVector(IPersistentVector):
             return False
         o = RT.seq(other)
         return s == o
+
+    def writeAsString(self, writer):
+        writer.write(repr(self))
+
+    def writeAsReplString(self, writer):
+        writer.write(repr(self))
 
 
 class SubVec(APersistentVector):

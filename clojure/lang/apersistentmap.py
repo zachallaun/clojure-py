@@ -115,12 +115,6 @@ class KeySeq(ASeq):
             yield s.first()
             s = s.next()
 
-    def writeAsString(self, writer):
-        writer.write(repr(self))
-
-    def writeAsReplString(self, writer):
-        writer.write(repr(self))
-
 
 def createKeySeq(s):
     if s is None:
@@ -152,12 +146,6 @@ class ValueSeq(ASeq):
         while s is not None:
             yield s.first()
             s = s.next()
-
-    def writeAsString(self, writer):
-        writer.write(repr(self))
-
-    def writeAsReplString(self, writer):
-        writer.write(repr(self))
 
 
 def createValueSeq(s):
