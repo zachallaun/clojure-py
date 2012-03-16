@@ -7,6 +7,7 @@ import clojure.lang.rt as RT
 class APersistentSet(IPersistentSet, IFn):
     def __init__(self, impl):
         self.impl = impl
+        self._hash = -1
 
     def __getitem__(self, item):
         return self.impl[item]
@@ -33,8 +34,8 @@ class APersistentSet(IPersistentSet, IFn):
             return False
 
         for s in self.impl:
-            if s not in other or other[s] != self[s]:
-                return False
+            if s not in other or not other[s] == self[s]:
+                return False            
         return True
 
     def __hash__(self):
