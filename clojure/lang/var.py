@@ -98,6 +98,10 @@ class Var(ARef, Settable, IFn, IRef):
         self.rev += 1
         return self
 
+    def __call__(self, *args, **kw):
+        """Exists for Python interop, don't use in clojure code"""
+        return self.deref()(*args, **kw)
+
     def deref(self):
         b = self.getThreadBinding()
         if b is not None:
