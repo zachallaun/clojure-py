@@ -176,6 +176,12 @@ def subvec(v, start, end):
         return EMPTY_VECTOR
     return SubVec(None, v, start, end)
 
+def _extendIPrintableForManuals():
+    protocols.writeAsString.extend(type(None), lambda obj, writer: writer.write("nil"))
+    protocols.writeAsReplString.extend(type(None), lambda obj, writer: writer.write("nil"))
+    
+    protocols.writeAsString.extend(int, lambda obj, writer: writer.write(str(obj)))
+    protocols.writeAsReplString.extend(int, lambda obj, writer: writer.write(str(obj)))
 
 def _extendSeqableForManuals():
     from clojure.lang.indexableseq import create as createIndexableSeq
@@ -192,7 +198,11 @@ def _bootstrap_protocols():
     from clojure.lang.protocol import protocolFromType, extendForAllSubclasses
     from clojure.lang.iseq import ISeq as iseq
     from clojure.lang.seqable import Seqable as seqable
-    
+    from clojure.lang.iprintable import IPrintable
+
+    protocolFromType("clojure.protocols", IPrintable)
+    extendForAllSubclasses(IPrintable)
+
     protocolFromType("clojure.protocols", seqable)
     extendForAllSubclasses(seqable)
     
@@ -203,6 +213,7 @@ def _bootstrap_protocols():
     protocols = sys.modules["clojure.protocols"]
     seq = protocols.seq
     _extendSeqableForManuals()
+    _extendIPrintableForManuals()
     
     
 
