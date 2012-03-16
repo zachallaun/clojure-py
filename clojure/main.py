@@ -126,20 +126,13 @@ def main():
         while True:
             for i, value in enumerate(last3, 1):
                 sym = symbol('*%s' % i)
-                comp.pushName(sym.name)
-                code = []
                 v = internVar(comp.getNS(), sym)
                 v.setDynamic(True)
-                code.append((LOAD_CONST, v))
-                code.append((LOAD_ATTR, "bindRoot"))
                 if isinstance(value, Var):
-                    code.append((LOAD_CONST, value.deref()))
+                    v.bindRoot(value.deref())
+                    v.setMeta(value.meta())
                 else:
-                    code.extend(comp.compile(value))
-                code.append((CALL_FUNCTION, 1))
-                v.setMeta(sym.meta())
-                comp.popName()
-                comp.executeCode(code)
+                    v.bindRoot(value)
 
             try:
                 line = raw_input(comp.getNS().__name__ + "=> ")
@@ -151,9 +144,12 @@ def main():
 
             while unbalanced(line):
                 try:
-                    line += raw_input('.' * len(comp.getNS().__name__) + '.. ')
+                    new_line = '\n' + raw_input('.' * len(comp.getNS().__name__) + '.. ')
                 except EOFError:
                     break
+
+                if not new_line.strip().startswith(';'):
+                    line += new_line
 
             # Propogate break from above loop.
             if unbalanced(line):

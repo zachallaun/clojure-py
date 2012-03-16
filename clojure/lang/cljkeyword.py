@@ -2,18 +2,25 @@ from clojure.lang.symbol import Symbol, symbol
 from clojure.lang.persistenthashmap import EMPTY as EMPTY_MAP
 from clojure.lang.atomicreference import AtomicReference
 from clojure.lang.cljexceptions import InvalidArgumentException, ArityException
+from clojure.lang.iprintable import IPrintable
 import weakref
 from clojure.lang.ifn import IFn
 from clojure.lang.named import Named
 
 interned = AtomicReference(EMPTY_MAP)
 
-class Keyword(IFn, Named):
+class Keyword(IFn, Named, IPrintable):
     def getNamespace(self):
         return self.sym.getNameSpace()
 
     def getName(self):
         return self.sym.getName()
+        
+    def writeAsString(self, writer):
+        writer.write(repr(self))
+
+    def writeAsReplString(self, writer):
+        writer.write(repr(self))
 
     def __init__(self, sym):
         self.sym = sym
