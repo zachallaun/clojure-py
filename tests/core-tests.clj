@@ -323,6 +323,24 @@
 (deftest disj-tests
     (assert-equal (disj #{:a :b :c} :a) #{:b :c}))
 
+(deftest set-tests
+    (assert-true (= #{} (set [])))
+    (assert-true (= #{"foo"} (set ["foo"])))
+    (assert-true (= #{1 2 3} #{1 3 2}))
+    ; FIXME vector/map find (assert-true (= #{#{1 2 3} [4 5 6] {7 8} 9 10} #{10 9 [4 5 6] {7 8} #{1 2 3}}))
+    (assert-true (= #{#{1 2 3} 9 10} #{10 9 #{1 2 3}}))
+    (assert-true (not (= #{nil [] {} 0 #{}} #{})))
+    (assert-true (= (count #{nil [] {} 0 #{}}) 5))
+    (assert-true (= (conj #{1} 1) #{1}))
+    (assert-true (= (conj #{1} 2) #{2 1}))
+    ;FIXME (assert-true (= #{} (-empty #{1 2 3 4})))
+    (assert-true (= (reduce + #{1 2 3 4 5}) 15))
+    (assert-true (= 4 (get #{1 2 3 4} 4)))
+    (assert-true (contains? #{1 2 3 4} 4))
+    (assert-true (contains? #{[] nil 0 {} #{}} {}))
+    ;FIXME vectorfind (assert-true (contains? #{[1 2 3]} [1 2 3]))
+)
+
 (deftest find-tests
     (assert-equal (.getKey (find {:a 1} :a)) :a)
     (assert-equal (.getValue (find {:a 1} :a)) 1))

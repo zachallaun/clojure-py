@@ -147,6 +147,28 @@ def map(*args):
         m = m.assoc(key, value)
     return m
 
+def set(*args):
+    from clojure.lang.persistenthashset import EMPTY
+    if len(args) == 0:
+        return EMPTY
+    if len(args) == 1:
+        if isinstance(args[0], dict):
+            m = EMPTY
+            for x in args[0]:
+                if x in m:
+                    raise InvalidArgumentException("Duplicate key")
+                m.impl = m.impl.assoc(x, args[0][x])
+            return m
+        if fulfillsIndexable(args[0]):
+            args = args[0]
+    m = EMPTY
+    for x in range(0, len(args), 2):
+        key = args[x]
+        value = args[x + 1]
+        m.impl = m.impl.assoc(key, value)
+    return m
+
+
 
 def getDefaultImports():
     from clojure.lang.persistentlist import PersistentList
