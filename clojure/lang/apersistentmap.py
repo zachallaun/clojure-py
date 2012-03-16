@@ -35,6 +35,9 @@ class APersistentMap(IPersistentMap, IPrintable):
     def __eq__(self, other):
         return mapEquals(self, other)
 
+    def __ne__(self, other):
+        return not self == other
+
     def __getitem__(self, item):
         return self.valAt(item)
 

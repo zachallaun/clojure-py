@@ -39,6 +39,9 @@ class APersistentSet(IPersistentSet, IFn, IPrintable):
                 return False
         return True
 
+    def __ne__(self, other):
+        return not self == other
+
     def __hash__(self):
         if self._hash == -1:
             hsh = 0

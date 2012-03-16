@@ -26,7 +26,10 @@ class ASeq(Obj, Sequential, ISeq, IHashEq, Iterable, IPrintable):
             ms = ms.next()
             se = se.next()
         return ms is None
-        
+
+    def __ne__(self, other):
+        return not self == other
+
     def __getitem__(self, idx):
         s = self.seq()
         c = 0

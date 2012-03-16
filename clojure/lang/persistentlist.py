@@ -97,6 +97,9 @@ class EmptyList(Obj, IPersistentList, ISeq, Counted):
     def __eq__(self, other):
         return isinstance(other, (Sequential, list, tuple)) # and RT.seq(other) is None
 
+    def __ne__(self, other):
+        return not self == other
+
     def __iter__(self):
         return
 

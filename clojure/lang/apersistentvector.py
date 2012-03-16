@@ -29,6 +29,9 @@ class APersistentVector(IPersistentVector, IPrintable):
         o = RT.seq(other)
         return s == o
 
+    def __ne__(self, other):
+        return not self == other
+
     def writeAsString(self, writer):
         writer.write(repr(self))
 
