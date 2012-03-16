@@ -144,9 +144,12 @@ def main():
 
             while unbalanced(line):
                 try:
-                    line += '\n' + raw_input('.' * len(comp.getNS().__name__) + '.. ')
+                    new_line = '\n' + raw_input('.' * len(comp.getNS().__name__) + '.. ')
                 except EOFError:
                     break
+
+                if not new_line.strip().startswith(';'):
+                    line += new_line
 
             # Propogate break from above loop.
             if unbalanced(line):
