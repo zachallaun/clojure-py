@@ -3,8 +3,9 @@ from clojure.lang.cljexceptions import AbstractMethodCall, ArityException
 from clojure.lang.ipersistentset import IPersistentSet
 from clojure.lang.apersistentmap import createKeySeq
 import clojure.lang.rt as RT
+from clojure.lang.iprintable import IPrintable
 
-class APersistentSet(IPersistentSet, IFn):
+class APersistentSet(IPersistentSet, IFn, IPrintable):
     def __init__(self, impl):
         self.impl = impl
         self._hash = -1
@@ -48,3 +49,9 @@ class APersistentSet(IPersistentSet, IFn):
                 s = s.next()
             self._hash = hsh
         return self._hash
+
+    def writeAsString(self, writer):
+        writer.write(repr(self))
+
+    def writeAsReplString(self, writer):
+        writer.write(repr(self))

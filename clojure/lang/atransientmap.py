@@ -2,8 +2,9 @@ from clojure.lang.ifn import IFn
 from clojure.lang.cljexceptions import AbstractMethodCall
 from clojure.lang.itransientmap import ITransientMap
 import clojure.lang.rt as RT
+from clojure.lang.iprintable import IPrintable
 
-class ATransientMap(IFn, ITransientMap):
+class ATransientMap(IFn, ITransientMap, IPrintable):
     def ensureEditable(self):
         raise AbstractMethodCall(self)
 
@@ -48,3 +49,9 @@ class ATransientMap(IFn, ITransientMap):
     def persistent(self):
         self.ensureEditable()
         return self.persistent()
+
+    def writeAsString(self, writer):
+        writer.write(repr(self))
+
+    def writeAsReplString(self, writer):
+        writer.write(repr(self))
