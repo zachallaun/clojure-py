@@ -3,7 +3,7 @@ from clojure.lang.persistentvector import create as createVector
 from clojure.lang.cljexceptions import IndexOutOfBoundsException
 
 
-class AMapEntry(APersistentVector, object):
+class AMapEntry(APersistentVector):
     def __getitem__(self, i):
         if i == 0:
             return self.getKey()

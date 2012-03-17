@@ -1369,6 +1369,22 @@
        (recur ret (first ks) (next ks))
        ret))))
 
+(defn disj
+  "disj[oin]. Returns a new set of the same (hashed/sorted) type, that
+  does not contain key(s)."
+  {:added "1.0"
+   :static true}
+  ([set] set)
+  ([set key]
+   (when set
+     (. set (disjoin key))))
+  ([set key & ks]
+   (when set
+     (let [ret (disj set key)]
+       (if ks
+         (recur ret (first ks) (next ks))
+         ret)))))
+
 (defn find
   "Returns the map entry for key, or nil if key not present."
   {:added "1.0"}
@@ -2899,14 +2915,36 @@
                            (assoc fns (py/str (ffirst specs))
                            	   	      (prop-wrap name fields (first specs)))))))
 
-(defn resolve 
-    
-    {:static true}
-    [ns sym]
-    (let [r (clojure.lang.namespace/findItem (the-ns ns) sym)]
-         (if (var? r)
-             (.deref r)
-             r)))
+(defn deref
+  "Also reader macro: @ref/@agent/@var/@atom/@delay/@future/@promise. Within a transaction,
+  returns the in-transaction-value of ref, else returns the
+  most-recently-committed value of ref. When applied to a var, agent
+  or atom, returns its current state. When applied to a delay, forces
+  it if not already forced. When applied to a future, will block if
+  computation not complete. When applied to a promise, will block
+  until a value is delivered.  The variant taking a timeout can be
+  used for blocking references (futures and promises), and will return
+  timeout-val if the timeout (in milliseconds) is reached before a
+  value is available. See also - realized?."
+  {:added "1.0"
+   :static true}
+  ([ref] (.deref ref))
+  ([ref timeout-ms timeout-val] (.deref ref timeout-ms timeout-val)))
+
+(defn ns-resolve
+  "Returns the var or Class to which a symbol will be resolved in the
+  namespace (unless found in the environement), else nil.  Note that
+  if the symbol is fully qualified, the var/Class to which it resolves
+  need not be present in the namespace."
+  {:added "1.0"
+   :static true}
+  ([ns sym]
+    (clojure.lang.namespace/findItem (the-ns ns) sym)))
+
+(defmacro resolve
+  "same as (ns-resolve *ns* symbol) or (ns-resolve *ns* &env symbol)"
+  {:added "1.0"}
+  ([sym] `(ns-resolve ~'__name__ ~sym)))
 
 (defmacro defprotocol
     [name & specs]
@@ -2926,6 +2964,9 @@
   "Ignores body, yields nil"
   {:added "1.0"}
   [& body])
+
+
+
 
 
 (py/print "clojure-py 0.1.0")

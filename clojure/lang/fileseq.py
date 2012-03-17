@@ -78,6 +78,9 @@ class FileSeq(ASeq):
             return True
         return False
 
+    def __ne__(self, other):
+        return not self == other
+
 
 class MutatableFileSeq(ASeq):
     def __init__(self, fs):

@@ -4,9 +4,10 @@ from clojure.lang.mapentry import MapEntry
 from clojure.lang.cljexceptions import (ArityException,
                                            InvalidArgumentException)
 from clojure.lang.aseq import ASeq
+from clojure.lang.iprintable import IPrintable
 
 
-class APersistentMap(IPersistentMap, object):
+class APersistentMap(IPersistentMap, IPrintable):
     def cons(self, o):
         if isinstance(o, MapEntry):
             return self.assoc(o.getKey(), o.getValue())
@@ -34,6 +35,9 @@ class APersistentMap(IPersistentMap, object):
     def __eq__(self, other):
         return mapEquals(self, other)
 
+    def __ne__(self, other):
+        return not self == other
+
     def __getitem__(self, item):
         return self.valAt(item)
 
@@ -53,6 +57,12 @@ class APersistentMap(IPersistentMap, object):
 
     def __contains__(self, item):
         return self.containsKey(item)
+
+    def writeAsString(self, writer):
+        writer.write(repr(self))
+
+    def writeAsReplString(self, writer):
+        writer.write(repr(self))
 
 
 def mapEquals(m1, m2):
