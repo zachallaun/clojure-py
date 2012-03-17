@@ -58,17 +58,21 @@ class TestReader(unittest.TestCase):
         for k,v in literalCharacterMap_PASS.items():
             r = StringReader(k)
             self.assertEqual(read(r, False, None, False), v)
+    def testCharacterReader_FAIL(self):
+        for s in literalCharacter_FAIL:
+            r = StringReader(s)
+            self.assertRaises(ReaderException, read, r, False, None, False)
     def testStringReader_PASS(self):
         for k,v in literalStringMap_PASS.items():
             r = StringReader('"' + k + '"')
             self.assertEqual(read(r, False, None, False), v)
-    # def testStringReader_FAIL(self):
-    #     # special case, missing trailing "
-    #     r = StringReader('"foo')
-    #     self.assertRaises(ReaderException, read, r, False, None, False)
-    #     for s in stringList_FAIL:
-    #         r = StringReader('"' + s + '"')
-    #         self.assertRaises(ReaderException, read, r, False, None, False)
+    def testStringReader_FAIL(self):
+        # special case, missing trailing "
+        r = StringReader('"foo')
+        self.assertRaises(ReaderException, read, r, False, None, False)
+        for s in literalString_FAIL:
+            r = StringReader('"' + s + '"')
+            self.assertRaises(ReaderException, read, r, False, None, False)
 
 # ======================================================================
 # Literal Integer Cases
@@ -239,6 +243,23 @@ literalCharacterMap_PASS = {
     # "\\λ" : Character(u"\u03bb"),
     }
 
+literalCharacter_FAIL = [
+    # According to a random web page:
+    # The only reason the range D800:DFFF is invalid is because of UTF-16's
+    # inability to encode it.
+    "\\ud800", "\\udfff",
+    # missing char at eof
+    "\\",
+    # not enough digits after \u (\u is the character u)
+    "\\u1", "\\u22", "\\u333",
+    # too many digits after \u
+    "\\u03bbb",
+    # too many digits after \o
+    "\\o0333",
+    # octal value > 0377
+    "\\o400"
+    ]
+
 # ======================================================================
 # Literal String Cases
 # ======================================================================
@@ -270,7 +291,17 @@ literalStringMap_PASS = {
     "@\\176": "@~",
     }
 
-stringList_FAIL = [
-    # basic
-    '"\\"foo"',
+literalString_FAIL = [
+    # invalid escape characters
+    "\\x", "\\a", "\\v", "@\\x", "@\\a", "@\\v", "\\x@", "\\a@", "\\v@",
+    # not enough digits after \u
+    "\\u", "\\u3", "\\u33", "\\u333",
+    "@\\u", "@\\u3", "@\\u33", "@\\u333",
+    "\\u@", "\\u3@", "\\u33@", "\\u333@",
+    # missing octal digits
+    "\\o", "@\\o", "\\o@",
+    # octal value > 0377
+    "\\o400", "@\\o400", "\\o400@",
+    # octal digits > 7
+    "\\o8", "@\\o8", "\\o8@",
     ]

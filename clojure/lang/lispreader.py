@@ -126,6 +126,21 @@ def readString(s):
     return read(r, False, None, False)
 
 def read(rdr, eofIsError, eofValue, isRecursive):
+    """Read and return one object from rdr.
+
+    rdr -- a read/unread-able object
+    eofIsError -- if True, raise an exception when rdr is out of characters
+                  if False, return eofValue instead
+    eofValue --   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    isRecursive -- not currently used
+
+    The basic sequence is as follows:
+    1. consume white space
+    2. check for eof
+    3. check for a number (sans [+-])       <- Does this
+    4. dispatch on macro characters         <- order matter?
+    5. check for a number (with [+-])
+    6. check for a symbol"""
     while True:
         ch = read1(rdr)
 
@@ -160,6 +175,9 @@ def read(rdr, eofIsError, eofValue, isRecursive):
         return interpretToken(token)
 
 def unquoteReader(rdr, tilde):
+    """Return one of:
+    * (unquote-splicing next-object-read)
+    * (unquote next-object-read)"""
     s = read1(rdr)
     if s == "":
         raise ReaderException("EOF reading unquote", rdr)
@@ -205,22 +223,23 @@ def readUnicodeChar(rdr, initch, base, length, exact):
     exact -- if True, codepoint string must contain length characters
              if False, it must contain [1, length], inclusive
 
-    Return a unicode string of length one."""
+    May raise ReaderException. Return a unicode string of length one."""
     digits = []
     try:
         int(initch, base)
-        digits += initch
+        digits.append(initch)
     except ValueError:
         raise ReaderException("Expected base %d digit, got: %s"
                               % (base, initch), rdr)
-    for i in range(1, length):
+    for i in range(2, length+1):
         ch = read1(rdr)
         if ch == "" or isWhitespace(ch) or isMacro(ch):
             rdr.back()
+            i -= 1
             break
         try:
             int(ch, base)
-            digits += ch
+            digits.append(ch)
         except ValueError:
             if exact:
                 raise ReaderException("Expected base %d digit, got: %s"
@@ -228,7 +247,7 @@ def readUnicodeChar(rdr, initch, base, length, exact):
             else:
                 rdr.back()
                 break
-    if i != length-1 and exact:
+    if i != length and exact:
         raise ReaderException("Invalid character length: %d, should be: %d"
                               % (i, length), rdr)
     return unichr(int("".join(digits), base))
@@ -241,12 +260,15 @@ tokenMappings = {"newline": "\n",
                  "return": "\r"}
 
 def characterReader(rdr, backslash):
-    """Read a single clojure-py formatted character from r.
+    """Read a single clojure-py formatted character from rdr.
 
-    Return a Character instance."""
+    rdr -- read/unread-able object
+    backslash -- ignored
+
+    May raise ReaderException. Return a Character instance."""
     ch = rdr.read()
     if ch == "":
-        raise Exception("EOF while reading character")
+        raise ReaderException("EOF while reading character", rdr)
     token = readToken(rdr, ch)
     if len(token) == 1:
         return Character(token)
@@ -259,30 +281,34 @@ def characterReader(rdr, backslash):
             raise ReaderException(e.args[0], rdr)
         codepoint = ord(ch)
         if u"\ud800" <= ch <= u"\udfff":
-            raise Exception("Invalid character constant in literal string:"
-                            " \\%s" % token)
+            raise ReaderException("Invalid character constant in literal"
+                                  " string: \\%s" % token, rdr)
         return ch
     elif token.startswith("o"):
         if len(token) > 4:
-            raise Exception("Invalid octal escape sequence length in literal"
-                            " string. Three digits max: \\%s" % token)
+            raise ReaderException("Invalid octal escape sequence length in"
+                                  " literal string. Three digits max: \\%s"
+                                  % token, rdr)
         try:
             ch = stringCodepointToUnicodeChar(token, 1, len(token) - 1, 8)
         except UnicodeError as e:
             raise ReaderException(e.args[0], rdr)
         codepoint = ord(ch)
         if codepoint > 255:
-            raise Exception("Octal escape sequence in literal string"
-                            " must be in range [0, 377], got: \\o%o"
-                            % codepoint)
+            raise ReaderException("Octal escape sequence in literal string"
+                                  " must be in range [0, 377], got: \\o%o"
+                                  % codepoint, rdr)
         return ch
-    raise Exception("Unsupported character: \\" + token)
+    raise ReaderException("Unsupported character: \\" + token, rdr)
 
 
 def stringReader(rdr, doublequote):
-    """Read a double-quoted \"\" literal string.
+    """Read a double-quoted \"\" literal string from rdr.
 
-    Return a str or unicode object."""
+    rdr -- a read/unread-able object
+    doublequote -- ignored
+    
+    May raise ReaderException. Return a str or unicode object."""
     buf = []
     ch = read1(rdr)
     while True:
@@ -301,19 +327,13 @@ def stringReader(rdr, doublequote):
                                           " \\u in literal string, got: %s"
                                           % ch, rdr)
                 ch = readUnicodeChar(rdr, ch, 16, 4, True)
-            elif ch == "U":
-                ch = read1(rdr)
-                if not isHexCharacter(ch):
-                    raise ReaderException("Hexidecimal digit expected after"
-                                          " \\u in literal string, got: %s"
-                                          % ch, rdr)
-                ch = readUnicodeChar(rdr, ch, 16, 8, True)
             elif isOctalCharacter(ch):
                 ch = readUnicodeChar(rdr, ch, 8, 3, False)
                 if ord(ch) > 255:
                     raise ReaderException("Octal escape sequence in literal"
                                           " string must be in range [0, 377]"
-                                          ", got: %o" % ord(ch))
+                                          ", got: %o" % ord(ch),
+                                          rdr)
             else:
                 raise ReaderException("Unsupported escape character in"
                                       " literal string: \\%s" % ch, rdr)
@@ -323,6 +343,13 @@ def stringReader(rdr, doublequote):
         ch = read1(rdr)
     
 def readToken(rdr, initch):
+    """Read and return the next valid token from rdr.
+
+    rdr -- read/unread-able object
+    initch -- first character of returned token
+    
+    Collect characters until the eof is reached, white space is read, or a
+    terminating macro character is read."""
     sb = [initch]
     while True:
         ch = read1(rdr)
@@ -336,7 +363,11 @@ def readToken(rdr, initch):
 INTERPRET_TOKENS = {"nil": None,
                     "true": True,
                     "false": False}
+
 def interpretToken(s):
+    """Return None, True, False or a Symbol depending on the string s.
+
+    Raise ReaderException if s is not a valid token."""
     if s in INTERPRET_TOKENS:
         return INTERPRET_TOKENS[s]
     ret = matchSymbol(s)
@@ -345,6 +376,12 @@ def interpretToken(s):
     return ret
 
 def readNumber(rdr, initch):
+    """Return the next number read from rdr.
+
+    rdr -- a read/unread-able object
+    initch -- the first character of the number
+
+    May raise ReaderException."""
     sb = [initch]
     while True:
         ch = read1(rdr)
@@ -390,13 +427,20 @@ def matchNumber(s):
     mo = ratioPat.match(s)
     if mo:
         return fractions.Fraction(mo.group())
-    else:
-        return None
+    # no match
+    return None
 
 def getMacro(ch):
-    return macros[ch] if ch in macros else None
+    """Return the function associated with the macro character ch"""
+    return macros.get(ch)       # None if key not present
 
 def commentReader(rdr, semicolon):
+    """Read and discard characters until a newline or eof is reached.
+
+    rdr -- read/unread-able object
+    semicolon -- ignored
+    
+    Return rdr"""
     while True:
         chr = read1(rdr)
         if chr == "" or chr == '\n' or chr == '\r':
@@ -404,11 +448,19 @@ def commentReader(rdr, semicolon):
     return rdr
 
 def discardReader(rdr, underscore):
+    """Read and discard the next object from rdr.
+
+    rdr -- read/unread-able object
+    underscore -- ignored
+
+    Return rdr."""
     read(rdr, True, None, True)
     return rdr
 
-
 class wrappingReader(object):
+    """Defines a callable object that reads the next object and returns:
+    (sym next-object-read)
+    Where sym is passed to __init__."""
     def __init__(self, sym):
         self.sym = sym
 
@@ -418,38 +470,80 @@ class wrappingReader(object):
 
 
 def varReader():
+    """Return (var next-object-read)"""
     return wrappingReader(THE_VAR)#FIXME: THE_VAR undefined
 
 def dispatchReader(rdr, hash):
+    """Read and return the next object defined by the next dispatch character.
+
+    rdr -- read/unread-able object
+    hash -- ignored
+
+    Read a character from rdr. Call its associated function in
+    dispatchMacros. Return that value. May raise ReaderException."""
     ch = read1(rdr)
     if ch == "":
-        raise ReaderException("EOF while reading character")
+        raise ReaderException("EOF while reading character", rdr)
     if ch not in dispatchMacros:
-        raise ReaderException("No dispatch macro for: ("+ ch + ")")
+        raise ReaderException("No dispatch macro for: ("+ ch + ")", rdr)
     return dispatchMacros[ch](rdr, ch)
 
 def listReader(rdr, leftparen):
+    """Read and return a possibly empty list () from rdr.
+
+    rdr -- a read/unread-able object
+    leftparen -- ignored"""
     startline = rdr.lineCol()[0]
     lst = readDelimitedList(')', rdr, True)
     lst = apply(RT.list, lst)
     return lst.withMeta(RT.map(LINE_KEY, startline))
 
 def vectorReader(rdr, leftbracket):
+    """Read and return a possibly empty vector [] from rdr.
+
+    rdr -- a read/unread-able object
+    leftbracket -- ignored"""
     startline = rdr.lineCol()[0]
     lst = readDelimitedList(']', rdr, True)
     lst = apply(RT.vector, lst)
     return lst
 
 def mapReader(rdr, leftbrace):
+    """Read and return a possibly empty map {} from rdr.
+
+    rdr -- a read/unread-able object
+    leftbrace -- ignored"""
     startline = rdr.lineCol()[0]
     lst = readDelimitedList('}', rdr, True)
     lst = apply(RT.map, lst)
     return lst
 
-def unmatchedDelimiterReader(rdr, un):
-    raise ReaderException("Unmatched Delimiter " + un + " at " + str(rdr.lineCol()))
+def setReader(rdr, leftbrace):
+    """Read and return a possibly empty set #{} from rdr.
+
+    rdr -- a read/unread-able object
+    leftbrace -- ignored"""
+    from persistenthashset import create
+    return create(readDelimitedList("}", rdr,  True))
+
+def unmatchedClosingDelimiterReader(rdr, un):
+    """Raise ReaderException.
+    
+    rdr -- read/unread-able object (used for exception message)
+    un -- the stray delimiter
+
+    This will be called if un has no matching opening delimiter in rdr."""
+    raise ReaderException("Unmatched Delimiter " + un + " at "
+                          + str(rdr.lineCol()))
 
 def readDelimitedList(delim, rdr, isRecursive):
+    """Read and collect objects until an unmatched delim is reached.
+
+    delim -- the terminating delimiter
+    rdr -- read/unread-able object
+    isRecursive -- ignored
+
+    May raise ReaderException. Return a Python list of those objects."""
     firstline = rdr.lineCol()[0]
     a = []
 
@@ -458,7 +552,8 @@ def readDelimitedList(delim, rdr, isRecursive):
         while isWhitespace(ch):
             ch = read1(rdr)
         if ch == "":
-            raise ReaderException("EOF while reading starting at line " + str(firstline))
+            raise ReaderException("EOF while reading starting at line "
+                                  + str(firstline))
 
         if ch == delim:
             break
@@ -476,39 +571,57 @@ def readDelimitedList(delim, rdr, isRecursive):
     return a
 
 def regexReader(rdr, doubleQuote):
+    """Read a possibly multi-line Python re pattern.
+
+    rdr -- read/unread-able object
+    doubleQuote -- ignored
+
+    May raise ReaderException. Return a compiled Python re match object."""
     s = []
     ch = -1
-    while ch != '\"':
+    while ch != '"':
         ch = read1(rdr)
         if ch == "":
-            raise ReaderException("EOF while reading string", rdr)
+            raise ReaderException("EOF while reading regex pattern", rdr)
         s.append(ch)
         if ch == "\\":
             ch = read1(rdr)
             if ch == "":
-                raise ReaderException("EOF while reading regex", rdr)
+                raise ReaderException("EOF while reading regex pattern", rdr)
             s.append(ch)
-    
     return re.compile("".join(s))
 
 def metaReader(rdr, caret):
+    """Read two objects from rdr. Return second with first as meta data.
+
+    rdr -- read/unread-able object
+    caret -- ignored
+
+    May raise ReaderException."""
     from clojure.lang.symbol import Symbol
     from clojure.lang.cljkeyword import Keyword, TAG_KEY, T
     from clojure.lang.ipersistentmap import IPersistentMap
     line = rdr.lineCol()[0]
     meta = read(rdr, True, None, True)
-    if isinstance(meta, Symbol) or isinstance(meta, str):
+    if isinstance(meta, (str, Symbol)):
         meta = RT.map(TAG_KEY, meta)
     elif isinstance(meta, Keyword):
         meta = RT.map(meta, T)
     elif not isinstance(meta, IPersistentMap):
-        raise ReaderException("Metadata must be Symbol,Keyword,String or Map")
+        raise ReaderException("Metadata must be Symbol,Keyword,String or Map",
+                              rdr)
     o = read(rdr, True, None, True)
     if not hasattr(o, "withMeta"):
-        raise ReaderException("Cannot attach meta to a object without .withMeta")
+        # can't attach rdr here as it would point
+        # to the *end* of the object just read'
+        raise ReaderException("Cannot attach meta to a object without "
+                              " .withMeta")
     return o.withMeta(meta)
 
 def matchSymbol(s):
+    """Return a symbol or keyword.
+    
+    Return None if the string s does not define a legal symbol or keyword."""
     from clojure.lang.symbol import Symbol
     from clojure.lang.cljkeyword import Keyword
     m = symbolPat.match(s)
@@ -529,14 +642,15 @@ def matchSymbol(s):
         else:
             return symbol(ns, name)
     return None
-
-
     
-def setReader(rdr, leftbrace):
-    from persistenthashset import create
-    return create(readDelimitedList("}", rdr,  True))
-
 def argReader(rdr, perc):
+    """Read and intern an anonymous function argument (%, %1, %&, etc.).
+
+    rdr -- read/unread-able object
+    prec -- ignored
+
+    May raise IllegalStateException, or ReaderException.
+    """
     if ARG_ENV.deref() is None:
         return interpretToken(readToken(rdr, '%'))
     ch = read1(rdr)
@@ -547,15 +661,20 @@ def argReader(rdr, perc):
     if isinstance(n, Symbol) and n == _AMP_:
         return registerArg(-1)
     if not isinstance(n, int):
-        raise IllegalStateException("arg literal must be %, %& or %integer")
+        raise ReaderException("arg literal must be %, %& or %integer", rdr)
     return registerArg(n)
 
 def varQuoteReader(rdr, singlequote):
+    """Return the list (var next-object-read)
+
+    rdr -- read/unread-able object
+    singlequote -- ignored"""
     line = rdr.lineCol()[0]
     form = read(rdr, True, None, True)
     return RT.list(_VAR_, form).withMeta(RT.map(LINE_KEY, line))
 
 def registerArg(arg):
+    """"""
     argsyms = ARG_ENV.deref()
     if argsyms is None:
         raise IllegalStateException("arg literal not in #()")
@@ -593,9 +712,11 @@ def fnReader(rdr, lparen):
     return RT.list(_FN_, vargs, form)
 
 def isUnquote(form):
+    """Return True if form is (unquote ...)"""
     return isinstance(form, ISeq) and form.first() == _UNQUOTE_
 
 def isUnquoteSplicing(form):
+    """Return True if form is (unquote-splicing ...)"""
     return isinstance(form, ISeq) and form.first() == _UNQUOTE_SPLICING_
 
 class SyntaxQuoteReader(object):
@@ -695,23 +816,25 @@ class SyntaxQuoteReader(object):
 
 def garg(n):
     from symbol import Symbol
-    return symbol(None,  "rest" if n == -1 else  ("p" + str(n)) + "__" + str(RT.nextID()) + "#")
+    return symbol(None,  "rest" if n == -1 else  ("p" + str(n)) + "__" +
+                  str(RT.nextID()) + "#")
+
 
 macros = {'\"': stringReader,
           "\'": wrappingReader(_QUOTE_),
           "(": listReader,
-          ")": unmatchedDelimiterReader,
+          ")": unmatchedClosingDelimiterReader,
           "[": vectorReader,
-          "]": unmatchedDelimiterReader,
+          "]": unmatchedClosingDelimiterReader,
           "{": mapReader,
-          "}": unmatchedDelimiterReader,
+          "}": unmatchedClosingDelimiterReader,
           ";": commentReader,
           "#": dispatchReader,
           "^": metaReader,
           "%": argReader,
           "`": SyntaxQuoteReader(),
           "~": unquoteReader,
-          "\\": characterReader}  
+          "\\": characterReader}
 
 dispatchMacros = {"\"": regexReader,
                   "{": setReader,
