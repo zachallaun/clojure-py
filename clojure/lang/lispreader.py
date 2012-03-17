@@ -577,19 +577,19 @@ def regexReader(rdr, doubleQuote):
     doubleQuote -- ignored
 
     May raise ReaderException. Return a compiled Python re match object."""
-    s = []
-    ch = -1
+    pat = []
+    ch = read1(rdr)
     while ch != '"':
-        ch = read1(rdr)
         if ch == "":
             raise ReaderException("EOF while reading regex pattern", rdr)
-        s.append(ch)
+        pat.append(ch)
         if ch == "\\":
             ch = read1(rdr)
             if ch == "":
                 raise ReaderException("EOF while reading regex pattern", rdr)
-            s.append(ch)
-    return re.compile("".join(s))
+            pat.append(ch)
+        ch = read1(rdr)
+    return re.compile("".join(pat))
 
 def metaReader(rdr, caret):
     """Read two objects from rdr. Return second with first as meta data.

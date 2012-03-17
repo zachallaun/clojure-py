@@ -7,7 +7,7 @@
 Friday, March 16 2012
 """
 
-import unittest, string
+import unittest, string, re
 from random import choice
 from fractions import Fraction
 
@@ -73,6 +73,10 @@ class TestReader(unittest.TestCase):
         for s in literalString_FAIL:
             r = StringReader('"' + s + '"')
             self.assertRaises(ReaderException, read, r, False, None, False)
+    def testRegexPattern_PASS(self):
+        for k,v in regexPatternMap_PASS.items():
+            r = StringReader(k)
+            self.assertEqual(read(r, False, None, False).pattern, v.pattern)
 
 # ======================================================================
 # Literal Integer Cases
@@ -305,3 +309,15 @@ literalString_FAIL = [
     # octal digits > 7
     "\\o8", "@\\o8", "\\o8@",
     ]
+
+# ======================================================================
+# Regular Expression Pattern
+# ======================================================================
+
+regexPatternMap_PASS = {
+    # This should prove to be interesting
+    '#""' : re.compile(""),
+    '#"[0-9]"' : re.compile("[0-9]"),
+    '#"\s(\W)\\1"' : re.compile(r"\s(\W)\1"),
+    '#"\A\\b\B\d\D\s\S\w\W\Z"' : re.compile(r"\A\b\B\d\D\s\S\w\W\Z")
+    }
