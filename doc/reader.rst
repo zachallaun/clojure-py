@@ -5,6 +5,13 @@ The Lisp Reader (lispreader.py)
 The purpose of the reader is to parse a stream of text, one character at a
 time, and return the next clojure-py obj found.
 
+At the time of this writing the clojure-py reader will attempt to conform
+exactly to the Clojure reader. Each definition below has a subsection *Clojure
+Conformance* that details any differences.
+
+Also, this document is not the final word. It's written to document the reader
+as it progresses.
+
 **********
 Whitespace
 **********
@@ -19,12 +26,25 @@ stream. It is then discarded. The exceptions include:
 * Literal Strings. All whitespace is retained.
 * Regular Expression Patterns. All whitespace is retained in the pattern
   string but ignored by the regex compiler.
+  (Note: might leave this up to any re flags present in the string)
 * Literal Characters. A single character following the backslash may be a
   whitespace character. It will be the character returned by the reader.
+
+Clojure Conformance
+===================
+
+The same whitespace characters are used. See: Literal Strings, Regular
+Expression Patterns, and Literal Characters for any further deviations
+pertaining to whitespace.
 
 ******************
 Special Characters
 ******************
+
+These are defined in the two dicts:
+
+   * lispreader.macros
+   * lispreader.dispatchMacros
 
 \\
 ===
@@ -54,65 +74,25 @@ specified in one of the following ways.
 
   * ``\tab`` => ``"\t"``
    
-* By unicode codepoint
+* By hexidecimal unicode codepoint
 
-  * \\u followed by 4 hexidecimal digits
+  \\u followed by exactly 4 hexidecimal digits::
 
-    ``\u03bb``
+     \u03bb
 
-  * \\U followed by 8 hexidecimal digits
+* By octal unicode codepoint
 
-    ``\U000003bb``
-
-* By octal value
-
-  \\oOOO
-
-  The \\o must be followed by exactly three octal digits. The value must be <=
-  0377 octal (255 decimal).
-
-  This deviates from Python's string \\ooo syntax because Python allows one
-  to three octal digits following the \\. Thus, Python will interpret \\0 as
-  an octal value (the NUL character), while clojure-py will evaluate \\0 to
-  the character 0 (Zero). Requiring three digits to be present is simply an
-  attempt to be consistent with \\uHHHH, \\UHHHHHHHH, and \\xHH syntax.
-
-  ::
+  \\o followed by one to three octal digits.  The value must be <=
+  0377 octal (255 decimal).::
 
      user=> \o40
      \space
      user=>
 
-* By hexidecimal value
+Clojure Conformance
+-------------------
 
-  \\xHH
-
-  The \\x must be followed by exactly two hexidecimal digits.
-
-  ::
-
-    user=> \x20
-    \space
-    user=>
-
-Python Named Unicode Character Syntax
--------------------------------------
-
-\\N{name}
-
-This syntax has been omitted because of at least two *problems*:
-
-* { } is map syntax
-* Spaces may occur in the name::
-
-   \N{LESS-THAN SIGN}.
-
-The character reader calls readToken() to slurp up the token following
-\\. It stops reading if *whitespace*, the end of input, or a terminating
-macro character is read.
-      
-Of course these *problems* arise out of trying to conform to Python syntax. It
-could be implemented any number of ways. Or, for now, just punt.
+Same syntax.
 
 %
 ===
@@ -121,11 +101,22 @@ Read:
 
 * an argument in an anonymous function (See: #())
 * a symbol (See: Symbols)
+
+Clojure Conformance
+-------------------
+
+Same syntax.
    
-\`
-===
+\` (backquote)
+==============
 
 Syntax-quote the next obj.
+
+Clojure Conformance
+-------------------
+
+Same syntax.
+
 
 [ ]
 ===
@@ -133,6 +124,11 @@ Syntax-quote the next obj.
 Read a vector.
 
 Zero or more objs may appear between the brackets.
+
+Clojure Conformance
+-------------------
+
+Same syntax.
    
 ( )
 ===
@@ -140,6 +136,11 @@ Zero or more objs may appear between the brackets.
 Read a list.
 
 Zero or more objs may appear between the parentheses.
+
+Clojure Conformance
+-------------------
+
+Same syntax.
    
 { }
 ===
@@ -148,23 +149,111 @@ Read a map.
 
 Zero or an even number of objs may appear between the braces. The objs
 alternate, key, val, key, val ...
+
+Clojure Conformance
+-------------------
+
+Same syntax.
    
 " "
 ===
 
 Read a literal string.
 
-Python string syntax is used. The string may be broken over multiple lines as
-Python triple-quote strings. Newlines will be retained in the string.
+" followed by zero or more characters or escape sequences followed by "
+
+The string may span several lines. The newlines will be retained in the
+string::
+
+   user=> "
+   foo
+   "
+   "\nfoo\n"
+   user=>
+
+Escape Sequences
+----------------
+   A single \\ followed by
+   
+   * n => newline (0x0a)
+
+   * t => horizontal tab (0x09)
+
+   * b => backspace (0x08)
+
+   * f => form feed (0x0c)
+   
+   * \\ => \\
+
+   * r => carriage return (0x0d)
+
+   * u
+
+     Exactly 4 hexidecimal digits must follow. A unicode character will be
+     returned.
+
+   * o
+
+     One to three octal digits must follow. The value must be <= 0377 octal
+     (255) decimal. A unicode character will be returned.
+
+Clojure Conformance
+-------------------
+
+Same syntax.
+
    
 #" "
 ====
 
 Read a regular expression pattern.
 
-Python re syntax is used. The string may be broken over multiple lines and
-contain Python # comments. The string will be compiled with the re.X flag. The
-pattern obj will be returned.
+Python re syntax is used. If the pattern string is broken over multiple lines the resulting pattern object will behave in one of two ways:
+   
+   1. (?x) is present in the string
+   
+      Whitespace and Python comments will be ignored when matching with the
+      pattern object::
+
+         user=> #"(?x)
+         # comment
+         [a-z]
+         # comment
+         [0-9a-z]
+         "
+         #"
+         [a-z]
+         [0-9a-z]
+         "
+	 user=>
+         
+      
+   2. (?x) is not present
+
+      Whitespace and comments will not be ignored::
+
+         user=> #"
+         # comment
+         [a-z]
+         # comment
+         [0-9a-z]
+         "
+	 #"\n# comment[a-z]\n# comment[0-9a-z]\n"
+
+How the repl prints the resulting pattern object reflects whether it was
+compiled with the (?x) flag or not. 
+   
+A pattern object will be returned.
+
+It would be great if we could subclass this to better define just what a
+pattern object is. In Java there is: java.util.regex.Pattern. In Python a
+match object is some obscure internal data structure that, AFAIK, you can't
+inherit from.
+
+Clojure Conformance
+-------------------
+
+None. The differences in Python and Java re syntax are far too many.
 
 #( )
 ====
@@ -184,6 +273,11 @@ sequence of the remaining arguments, or nil, if none.::
    [1 2 nil]
    user=>
    
+Clojure Conformance
+-------------------
+
+Same syntax.
+
 #{ }
 ====
 
@@ -191,10 +285,20 @@ Read a set.
 
 Zero or more objs may appear between the braces.
    
+Clojure Conformance
+-------------------
+
+Same syntax.
+
 #<
 ===
 
 Throw an unconditional exception (unreadable obj follows).
+
+Clojure Conformance
+-------------------
+
+Same syntax.
 
 #'
 ===
@@ -205,6 +309,11 @@ Return the list ::
 
   (var next-obj)
 
+Clojure Conformance
+-------------------
+
+Same syntax.
+
 '
 ===
 
@@ -214,6 +323,11 @@ return the list::
 
    (quote next-obj)
    
+Clojure Conformance
+-------------------
+
+Same syntax.
+
 ~
 ===
 
@@ -224,6 +338,11 @@ return the list::
 
    (unquote next-obj)
    
+Clojure Conformance
+-------------------
+
+Same syntax.
+
 ~@
 ===
 
@@ -233,6 +352,11 @@ return the list::
 
    (unquote-splicing next-obj)
    
+Clojure Conformance
+-------------------
+
+Same syntax.
+
 @
 ===
 
@@ -242,6 +366,11 @@ return the list::
 
    (deref next-obj)
    
+Clojure Conformance
+-------------------
+
+Same syntax.
+
 ^
 ===
 
@@ -275,10 +404,21 @@ show that whitespace may occur between the three elements. ::
    {:map 1, :as 2, :meta 3, :data 4}
    user=>
 
+Clojure Conformance
+-------------------
+
+Same syntax.
+
 #^
 ===
 
-Exactly the same behavior as ^ but deprecated.
+Exactly the same behavior as ^ but deprecated. (I may have this backwards, or
+completely wrong)
+
+Clojure Conformance
+-------------------
+
+Same syntax.
 
 ;
 ===
@@ -288,6 +428,11 @@ Read a single line comment.
 Read and discard characters until a line terminator or the end of the stream
 is reached.
 
+Clojure Conformance
+-------------------
+
+Same syntax.
+
 #=
 ===
 
@@ -295,6 +440,11 @@ Evaluate the next obj, before macro expansion.
 
 Used internally by the core. The object following **#=** must be a symbol or a
 list.
+
+Clojure Conformance
+-------------------
+
+Same syntax.
 
 #_
 ===
@@ -313,6 +463,11 @@ The whitespace between **#_** and the object is not required::
    [1 2 4 5]
    user=>
 
+Clojure Conformance
+-------------------
+
+Same syntax.
+
 *******
 Numbers
 *******
@@ -320,7 +475,7 @@ Numbers
 A number must begin with [-+0-9]. No whitespace can occur anywhere in the
 number. That includes between the optional sign and the first digit.
 
-The default reader will accept the following number formats.
+The reader will accept the following number formats.
 
 Integral
 ========
@@ -330,7 +485,7 @@ returned as a Python int or long, depending on the size of the number.
 
 * Base 10
 
-  ``[+-]?(0|[1-9]+)``
+  ``[+-]?(0|[1-9][0-9]*)``
 
   0, 1, -3, 4423423, +42, 1239485723094857203489572034897230834598843
 
@@ -349,10 +504,10 @@ returned as a Python int or long, depending on the size of the number.
 * Base N
   ::
 
-     [+-]?
-	[1-9][0-9]?
-	[rR]
-	[0-9a-zA-Z]+
+   [+-]?
+   [1-9][0-9]?
+   [rR]
+   [0-9a-zA-Z]+
 
   The radix can be specified by a one or two digit base 10 number before
   the r. It must be in the range [2, 36] inclusive::
@@ -360,7 +515,7 @@ returned as a Python int or long, depending on the size of the number.
      user=> 2r1010101
      42
      user=> 36rZZZZ
-	1679615
+     1679615
      user=>
   
 Floating Point
@@ -368,10 +523,10 @@ Floating Point
 ::
 
    [+-]?
-   (\d+[Ee][+-]?\d+
+   \d+
+   (\.\d*([eE][+-]?\d+)?
     |
-    \d+\.\d*
-    ([Ee][+-]?\d+)?)
+    [eE][+-]?\d+)
 
 Python floating point syntax is used with one exception. A number must precede
 the decimal.
@@ -395,33 +550,56 @@ Rational
    (0|[1-9]+)
 
 Specified by a numerator and denominator seperated by a /. Both numerator and
-denominator must be base 10 integers as described above. A Python
-fractions.Fraction will be returned. N/0 will match successfully but raise an
-exception upon Fraction creation.
+denominator must be base 10 integers as described above.
 
 Examples:
 
    1/2, -3/4, +2234/23342
 
-Imaginary
-=========
-::
+For now, a Python fractions.Fraction will be returned. N/0 will match
+successfully but raise an exception upon Fraction creation.
 
-   [+-]
-   ((0|[1-9]+)
-    |
-    (\d+[Ee][+-]?\d+
-     |
-     \d+\.\d*
-     ([Ee][+-]?\d+)?))
-   [jJ]
+Clojure Conformance
+-------------------
 
-Python syntax is used. A Base 10 integer or Floating Point number, as decribed
-above, followed by a j or J. A Python complex instance is returned.
+Clojure allows what *looks* like an octal number as either the numerator, or
+the denominator::
 
-Examples:
+   user=> 0777/1
+   777
+   user=>
 
-   3j, -42.3J, 0J, 3e-4j
+clojure-py disallows this. Only base 10 integers are permissible.
+
+Python Complex Numbers
+======================
+
+Not readable at the time of this writing. Reader syntax will have to be
+discussed if these are allowed. Some examples:
+
+  * Common Lisp
+  
+    * #c(r, i)
+    * #C(r, i)
+    
+  * Scheme
+
+    A single token is used with quite a bit of syntax within it:
+    
+    * +i, -i
+    * 2+i, 2-i
+    * 2+3i, 2-3i
+    * +3i, -3i
+
+    This would actually fit in because as stated at the beginning of this
+    section: A number must begin with: [-+0-9].
+
+Clojure Conformance
+===================
+
+* The optional posfix M is not allowed
+
+* Numerator and denominator must be base 10 integers (See: Rational)
 
 *******
 Symbols
@@ -496,3 +674,8 @@ the following order:
 
    If the function has not returned by now, it's not a valid symbol. Return
    None.
+
+Clojure Conformance
+===================
+ 
+Same syntax (AFAIK).

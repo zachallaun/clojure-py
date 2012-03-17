@@ -19,6 +19,7 @@ from clojure.lang.persistentvector import EMPTY as EMPTY_VECTOR
 from clojure.lang.globals import currentCompiler
 from clojure.lang.cljkeyword import Keyword, keyword
 from clojure.lang.fileseq import StringReader
+from clojure.lang.character import Character
 
 
 def read1(rdr):
@@ -53,16 +54,38 @@ intPat = re.compile(r"""
     # radix: 12rAA
     (?P<radix>(?P<base>[1-9][0-9]?)[rR](?P<value>[0-9a-zA-Z]+)) |
     # decima1: 0, 23, 234, 3453455
-    (?P<decInt>([0]|([1-9][0-9]*))[jJ]?)                        |
-    # octal: 0o777, 0777
-    0[oO]?(?P<octInt>[0-7]+)                                    |
+    (?P<decInt>0|[1-9][0-9]*)                                   |
+    # octal: 0777
+    0(?P<octInt>[0-7]+)                                         |
     # hex: 0xff
     0[xX](?P<hexInt>[0-9a-fA-F]+))
 $                               # ensure the entire string matched
 """, re.X)
-floatPat = re.compile(r"[+-]?(\d+(\.\d*)?)([Ee][+-]?\d+)?[jJ]?$")
-#imagPat = re.compile(r"[+-]?((0|[1-9]+)|(\d+(\.\d*)?([Ee][+-]?\d+)?))[jJ]$")
-ratioPat = re.compile("([-+]?[0-9]+)/([0-9]+)")
+
+# This floating point re has to be a bit more accurate than the original
+# Clojure version because Clojure uses Double.parseDouble() to convert the
+# string to a floating point value for return. If it can't convert it (for
+# what ever reason), it throws.  Python float() is a lot more liberal. It's
+# not a parser:
+# 
+# >>> float("08") => 8.0
+# 
+# I could just check for a decimal in matchNumber(), but is that the *only*
+# case I need to check? I think it best to fully define a valid float in the
+# re.
+floatPat = re.compile(r"""
+[+-]?
+\d+
+(\.\d*([eE][+-]?\d+)? |
+ [eE][+-]?\d+)
+$                               # ensure the entire string matched
+""", re.X)
+
+# Clojure allows what *should* be octal numbers as the numerator and
+# denominator. But they are parsed as base 10 integers that allow leading
+# zeros. In my opinion this isn't consistent behavior at all.
+# The following re only allows base 10 integers.
+ratioPat = re.compile("[-+]?(0|[1-9]+)/(0|[1-9]+)$")
 
 def isWhitespace(c):
     return c in WHITESPACE
@@ -136,7 +159,6 @@ def read(rdr, eofIsError, eofValue, isRecursive):
         token = readToken(rdr, ch)
         return interpretToken(token)
 
-
 def unquoteReader(rdr, tilde):
     s = read1(rdr)
     if s == "":
@@ -155,8 +177,26 @@ def isHexCharacter(ch):
 def isOctalCharacter(ch):
     return ch in "01234567"
 
+# replaces the overloaded readUnicodeChar()
+# Not really cemented to the reader
+def stringCodepointToUnicodeChar(token, offset, length, base):
+    """Return a unicode character given a string that specifies a codepoint.
+
+    token -- string to parse
+    offset -- index into token where codepoint starts
+    length -- maximum number of digits to read from offset
+    base -- expected radix of the codepoint
+
+    Return a unicode string of length one."""
+    if len(token) != offset + length:
+        raise UnicodeError("Invalid unicode character: \\%s" % token)
+    try:
+        return unichr(int(token[offset:], base))
+    except:
+        raise UnicodeError("Invalid unicode character: \\%s" % token)
+
 def readUnicodeChar(rdr, initch, base, length, exact):
-    """Read a string specifying a Unicode codepoint.
+    """Read a string that specifies a Unicode codepoint.
 
     rdr -- read/unread-able object
     initch -- the first character of the codepoint string
@@ -165,7 +205,7 @@ def readUnicodeChar(rdr, initch, base, length, exact):
     exact -- if True, codepoint string must contain length characters
              if False, it must contain [1, length], inclusive
 
-    Return a unicode string of length 1."""
+    Return a unicode string of length one."""
     digits = []
     try:
         int(initch, base)
@@ -192,6 +232,52 @@ def readUnicodeChar(rdr, initch, base, length, exact):
         raise ReaderException("Invalid character length: %d, should be: %d"
                               % (i, length), rdr)
     return unichr(int("".join(digits), base))
+
+tokenMappings = {"newline": "\n",
+                 "space": " ",
+                 "tab": "\t",    
+                 "backspace": "\b",    
+                 "formfeed": "\f",    
+                 "return": "\r"}
+
+def characterReader(rdr, backslash):
+    """Read a single clojure-py formatted character from r.
+
+    Return a Character instance."""
+    ch = rdr.read()
+    if ch == "":
+        raise Exception("EOF while reading character")
+    token = readToken(rdr, ch)
+    if len(token) == 1:
+        return Character(token)
+    elif token in tokenMappings:
+        return Character(tokenMappings[token])
+    elif token.startswith("u"):
+        try:
+            ch = stringCodepointToUnicodeChar(token, 1, 4, 16)
+        except UnicodeError as e:
+            raise ReaderException(e.args[0], rdr)
+        codepoint = ord(ch)
+        if u"\ud800" <= ch <= u"\udfff":
+            raise Exception("Invalid character constant in literal string:"
+                            " \\%s" % token)
+        return ch
+    elif token.startswith("o"):
+        if len(token) > 4:
+            raise Exception("Invalid octal escape sequence length in literal"
+                            " string. Three digits max: \\%s" % token)
+        try:
+            ch = stringCodepointToUnicodeChar(token, 1, len(token) - 1, 8)
+        except UnicodeError as e:
+            raise ReaderException(e.args[0], rdr)
+        codepoint = ord(ch)
+        if codepoint > 255:
+            raise Exception("Octal escape sequence in literal string"
+                            " must be in range [0, 377], got: \\o%o"
+                            % codepoint)
+        return ch
+    raise Exception("Unsupported character: \\" + token)
+
 
 def stringReader(rdr, doublequote):
     """Read a double-quoted \"\" literal string.
@@ -258,7 +344,6 @@ def interpretToken(s):
         raise ReaderException("Unknown symbol " + str(s))
     return ret
 
-
 def readNumber(rdr, initch):
     sb = [initch]
     while True:
@@ -269,9 +354,12 @@ def readNumber(rdr, initch):
         sb.append(ch)
 
     s = "".join(sb)
-    n = matchNumber(s)
+    try:
+        n = matchNumber(s)
+    except Exception as e:
+        raise ReaderException(e.args[0], rdr)
     if n is None:
-        raise ReaderException("Invalid number: " + s)
+        raise ReaderException("Invalid number: " + s, rdr)
     return n
 
 def matchNumber(s):
@@ -285,26 +373,20 @@ def matchNumber(s):
         # 12rAA
         if mogd["radix"]:
             return int(sign + mogd["value"], int(mogd["base"], 10))
-        # 232, 4j
+        # 232
         elif mogd["decInt"]:
-            x = mogd["decInt"]
-            if x[-1] in "jJ":
-                return complex(sign + x)
-            else:
-                return int(sign + x)
-        # 0777, 0o777
+            return int(sign + mogd["decInt"])
+        # 0777
         elif mogd["octInt"]:
             return int(sign + mogd["octInt"], 8)
         # 0xdeadbeef
         elif mogd["hexInt"]:
             return int(sign + mogd["hexInt"], 16)
+    # 1e3, 0.3,
     mo = floatPat.match(s)
     if mo:
-        x = mo.group()
-        if x[-1] in "jJ":
-            return complex(x)
-        else:
-            return float(x)
+        return float(mo.group())
+    # 1/2
     mo = ratioPat.match(s)
     if mo:
         return fractions.Fraction(mo.group())
@@ -449,28 +531,7 @@ def matchSymbol(s):
     return None
 
 
-tokenMappings = {"newline": "\n",
-    "space": " ",
-    "tab": "\t",    
-    "backspace": "\b",    
-    "formfeed": "\f",    
-"return": "\r"}    
     
-def characterReader(r, backslash):
-    ch = read1(r)
-    if ch == "":
-        raise ReaderException("EOF while reading character")
-    token = readToken(r, ch)
-    if len(token) == 1:
-        return token
-    elif token in tokenMappings:
-        return tokenMappings[token]
-    elif token.startsWith("u"):
-        c = readUnicodeChar(token, 1, 4, 16)
-        return c
-    raise ReaderException("Unsupported character: \\"+token)        
-    
-
 def setReader(rdr, leftbrace):
     from persistenthashset import PersistentHashSet
     return PersistentHashSet.create(readDelimitedList("}", rdr,  True))
