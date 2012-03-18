@@ -8,27 +8,6 @@ from clojure.lang.symbol import symbol
 from clojure.lang.var import Var, intern as internVar
 from clojure.util.byteplay import *
 
-
-try:
-    import readline
-except ImportError:
-    pass
-else:
-    import os
-    import atexit
-    histfile = os.path.join(os.path.expanduser("~"), ".clojurepyhist")
-    if not os.path.isfile(histfile):
-        with open(histfile, 'a'):
-            os.utime(histfile, None)
-        os.chmod(histfile, int('640',8))
-    try:
-        readline.read_history_file(histfile)
-    except IOError:
-        # Pass here as there isn't any history file, so one will be
-        # written by atexit
-        pass
-    atexit.register(readline.write_history_file, histfile)
-
 # Create a PEP 302 import hook
 class MetaImporter(object):
     def find_module(self, fullname, path=None):
