@@ -283,7 +283,7 @@ def characterReader(rdr, backslash):
         if u"\ud800" <= ch <= u"\udfff":
             raise ReaderException("Invalid character constant in literal"
                                   " string: \\%s" % token, rdr)
-        return ch
+        return Character(ch)
     elif token.startswith("o"):
         if len(token) > 4:
             raise ReaderException("Invalid octal escape sequence length in"
@@ -298,7 +298,7 @@ def characterReader(rdr, backslash):
             raise ReaderException("Octal escape sequence in literal string"
                                   " must be in range [0, 377], got: \\o%o"
                                   % codepoint, rdr)
-        return ch
+        return Character(ch)
     raise ReaderException("Unsupported character: \\" + token, rdr)
 
 
@@ -570,26 +570,57 @@ def readDelimitedList(delim, rdr, isRecursive):
 
     return a
 
-def regexReader(rdr, doubleQuote):
+def regexReader(rdr, doubleQuote, raw=False):
     """Read a possibly multi-line Python re pattern.
 
     rdr -- read/unread-able object
     doubleQuote -- ignored
+    raw -- if True, the string is to be treated as a Python r"string".
 
-    May raise ReaderException. Return a compiled Python re match object."""
-    pat = []
+    May raise ReaderException. Return a compiled Python re pattern object."""
+    # Read each character as is into the list pat. pat will have as the first
+    # four characters u""" and as the last 3 character """. This will create a
+    # Python Unicode triple quoted string. Join pat and evaluate it, trapping
+    # any exceptions. This should make clojure-py use the exact same syntax as
+    # Python for regular expression patterns.
+    # 
+    # The only character that needs to be handled specially is ". If it's
+    # precede by a \ in the stream, append '\"' to pat. This will result in
+    # """\"""" for evaluation. If it's not preceded by \ it's the end of the
+    # string.
+    pat = ["u", 'r' if raw else '', '"', '"', '"']
     ch = read1(rdr)
+    # If raw is true, the reader is looking at the opening " instead of the
+    # first character after the opening ".
+    if raw:
+        if ch == "":
+            raise ReaderException("EOF reached expecting raw regex pattern"
+                                  " string", rdr)
+        elif ch != '"':
+            raise ReaderException("String expected after #r, got %s", ch,
+                                  rdr)
+        # prime with the first character after the opening "
+        ch = read1(rdr)
+    lastch = ch
     while ch != '"':
         if ch == "":
             raise ReaderException("EOF while reading regex pattern", rdr)
         pat.append(ch)
-        if ch == "\\":
-            ch = read1(rdr)
-            if ch == "":
-                raise ReaderException("EOF while reading regex pattern", rdr)
-            pat.append(ch)
         ch = read1(rdr)
-    return re.compile("".join(pat))
+        if ch == '"' and lastch == '\\':
+            pat.append('\"')
+        lastch = ch
+    pat.extend(['"', '"', '"'])
+    try:
+        # cheater cheater pumpkin eater!
+        pystr = eval("".join(pat))
+        return re.compile(pystr)
+    except SyntaxError as e:    # bad string
+        raise ReaderException(e.args[0], rdr)
+    except re.error as e:       # bad regex
+        raise ReaderException("invalid regex pattern: %s" % e.args[0], rdr)
+    except Exception as e:      # who knows what else might happen
+        raise ReaderException(e.args[0], rdr)
 
 def metaReader(rdr, caret):
     """Read two objects from rdr. Return second with first as meta data.
@@ -842,4 +873,7 @@ dispatchMacros = {"\"": regexReader,
                   "_": discardReader,
                   "(": fnReader,
                   "'": varQuoteReader,
-                  "^": metaReader}
+                  "^": metaReader,
+                  # Use Python raw string syntax as #r"foo"
+                  "r": lambda x, _ : regexReader(x, _, True),
+                  }

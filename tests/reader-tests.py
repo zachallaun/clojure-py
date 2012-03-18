@@ -38,22 +38,22 @@ class TestReader(unittest.TestCase):
         for t in integer_FAIL:
             r = StringReader(t)
             self.assertRaises(ReaderException, read, r, False, None, False)
-    def testFloatingPointReader_FAIL(self):
-        for t in floatingPoint_FAIL:
-            r = StringReader(t)
-            self.assertRaises(ReaderException, read, r, False, None, False)
-    def testRationalReader_FAIL(self):
-        for t in rational_FAIL:
-            r = StringReader(t)
-            self.assertRaises(ReaderException, read, r, False, None, False)
     def testFloatingPointReader_PASS(self):
         for k,v in floatingPointMap_PASS.items():
             r = StringReader(k)
             self.assertEqual(read(r, False, None, False), v)
+    def testFloatingPointReader_FAIL(self):
+        for t in floatingPoint_FAIL:
+            r = StringReader(t)
+            self.assertRaises(ReaderException, read, r, False, None, False)
     def testRationalReader_PASS(self):
         for k,v in rationalMap_PASS.items():
             r = StringReader(k)
             self.assertEqual(read(r, False, None, False), v)
+    def testRationalReader_FAIL(self):
+        for t in rational_FAIL:
+            r = StringReader(t)
+            self.assertRaises(ReaderException, read, r, False, None, False)
     def testCharacterReader_PASS(self):
         for k,v in literalCharacterMap_PASS.items():
             r = StringReader(k)
@@ -242,7 +242,7 @@ literalCharacterMap_PASS = {
     # hex
     "\\u03bb" : Character(u"\u03bb"),
     # BZZZZT!
-    # Becuase this file is encoded as UTF-8, and the reader is expecting ASCII,
+    # Because this file is encoded as UTF-8, and the reader is expecting ASCII,
     # it will crap out every time. 
     # "\\λ" : Character(u"\u03bb"),
     }
@@ -315,9 +315,7 @@ literalString_FAIL = [
 # ======================================================================
 
 regexPatternMap_PASS = {
-    # This should prove to be interesting
-    '#""' : re.compile(""),
-    '#"[0-9]"' : re.compile("[0-9]"),
-    '#"\s(\W)\\1"' : re.compile(r"\s(\W)\1"),
-    '#"\A\\b\B\d\D\s\S\w\W\Z"' : re.compile(r"\A\b\B\d\D\s\S\w\W\Z")
+
+    # O_o
+
     }

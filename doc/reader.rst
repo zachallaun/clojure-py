@@ -6,8 +6,8 @@ The purpose of the reader is to parse a stream of text, one character at a
 time, and return the next clojure-py obj found.
 
 At the time of this writing the clojure-py reader will attempt to conform
-exactly to the Clojure reader. Each definition below has a subsection *Clojure
-Conformance* that details any differences.
+exactly to the Clojure reader. Each definition below has a subsection
+*Clojure Conformance* that details any differences.
 
 Also, this document is not the final word. It's written to document the reader
 as it progresses.
@@ -203,12 +203,17 @@ Clojure Conformance
 Same syntax.
 
    
-#" "
-====
+#" " and #r" "
+==============
 
 Read a regular expression pattern.
 
-Python re syntax is used. If the pattern string is broken over multiple lines the resulting pattern object will behave in one of two ways:
+#r" " is used for raw pattern strings. (See: Python re module documentation)
+
+Python re pattern syntax is used. Also, the string is treated as if it were
+encosed in Python triple quotes """ """. This will allow the pattern to be
+broken over multiple lines. If this is the case the resulting pattern object
+will behave in one of two ways:
    
    1. (?x) is present in the string
    
@@ -226,7 +231,6 @@ Python re syntax is used. If the pattern string is broken over multiple lines th
          [0-9a-z]
          "
 	 user=>
-         
       
    2. (?x) is not present
 

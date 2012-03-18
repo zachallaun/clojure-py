@@ -6,9 +6,20 @@
 Tuesday, March 13 2012
 """
 
+from iprintable import IPrintable
+
+charToSymbol = {
+    " " : "space",
+    "\n" : "newline",
+    "\t" : "tab",
+    "\f" : "formfeed",
+    "\b" : "backspace",
+    "\r" : "return",
+    }
+
 # XXX: unicode parent is so the compiler will handle it, for now.
 # I don't know how the compiler code works O_o
-class Character(unicode):
+class Character(unicode, IPrintable):
     """A single character.
 
     Python has no character type. It's simply a string of length 1. The
@@ -23,5 +34,7 @@ class Character(unicode):
     # Java Character.charValue() ... sort of
     def charValue(self):
         return self.c
-    def __str__(self):
-        return self.c
+    def writeAsString(self, writer):
+        writer.write("fuck" + self.c)
+    def writeAsReplString(self, writer):
+        writer.write("\\" + charToSymbol.get(self.c, self.c))
