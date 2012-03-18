@@ -52,9 +52,9 @@ intPat = re.compile(r"""
 (?P<sign>[+-])?
   (:?
     # radix: 12rAA
-    (?P<radix>(?P<base>[1-9][0-9]?)[rR](?P<value>[0-9a-zA-Z]+)) |
+    (?P<radix>(?P<base>[1-9]\d?)[rR](?P<value>[0-9a-zA-Z]+))    |
     # decima1: 0, 23, 234, 3453455
-    (?P<decInt>0|[1-9][0-9]*)                                   |
+    (?P<decInt>0|[1-9]\d*)                                      |
     # octal: 0777
     0(?P<octInt>[0-7]+)                                         |
     # hex: 0xff
@@ -85,7 +85,7 @@ $                               # ensure the entire string matched
 # denominator. But they are parsed as base 10 integers that allow leading
 # zeros. In my opinion this isn't consistent behavior at all.
 # The following re only allows base 10 integers.
-ratioPat = re.compile("[-+]?(0|[1-9]+)/(0|[1-9]+)$")
+ratioPat = re.compile("[-+]?(0|[1-9]\d*)/(0|[1-9]\d*)$")
 
 def isWhitespace(c):
     return c in WHITESPACE

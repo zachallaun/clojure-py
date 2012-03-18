@@ -212,6 +212,10 @@ rationalMap_PASS = {
     "0/1" : Fraction(0, 1),
     "-0/1" : Fraction(0, 1),
     "+0/1" : Fraction(0, 1),
+    # regex was fubar, didn't allow zeros after the first digit
+    "100/203" : Fraction(100, 203),
+    "-100/203" : Fraction(-100, 203),
+    "+100/203" : Fraction(100, 203),
     }
 
 rational_FAIL = [
