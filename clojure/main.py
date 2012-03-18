@@ -85,67 +85,14 @@ def main():
     RT.init()
     comp = Compiler()
     currentCompiler.set(comp)
-    comp.setNS(symbol("user"))
-    last3 = [None, None, None]
-
-    def execute(string):
-        r = StringReader(string)
-        s = read(r, False, None, True)
-        res = comp.compile(s)
-        return comp.executeCode(res)
 
     if not sys.argv[1:]:
-        while True:
-            for i, value in enumerate(last3, 1):
-                sym = symbol('*%s' % i)
-                v = internVar(comp.getNS(), sym)
-                v.setDynamic(True)
-                if isinstance(value, Var):
-                    v.bindRoot(value.deref())
-                    v.setMeta(value.meta())
-                else:
-                    v.bindRoot(value)
-
-            try:
-                line = raw_input(comp.getNS().__name__ + "=> ")
-            except EOFError:
-                break
-
-            if not line:
-                continue
-
-            while unbalanced(line):
-                try:
-                    new_line = '\n' + raw_input('.' * len(comp.getNS().__name__) + '.. ')
-                except EOFError:
-                    break
-
-                if not new_line.strip().startswith(';'):
-                    line += new_line
-
-            # Propogate break from above loop.
-            if unbalanced(line):
-                break
-
-            try:
-                out = execute(line)
-            except Exception:
-                traceback.print_exc()
-            else:
-                last3.pop()
-                last3.insert(0, out)
-                print out
+        import clojure.repl
+        clojure.repl.run_repl(comp)
     else:
         for x in sys.argv[1:]:
             if x.endswith('.clj'):
                 requireClj(x)
-
-
-def unbalanced(s):
-    return (s.count('(') != s.count(')')
-            or s.count('[') != s.count(']')
-            or s.count('{') != s.count('}'))
-
 
 if __name__ == "__main__":
     main()
