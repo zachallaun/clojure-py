@@ -464,7 +464,7 @@ Provide syntax for *omitting* a single object::
 The whitespace between **#_** and the object is not required::
 
    user=> [1 2 #_{:three 3 :four 4} 5]
-   [1 2 4 5]
+   [1 2 5]
    user=>
 
 Clojure Conformance

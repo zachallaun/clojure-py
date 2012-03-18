@@ -122,6 +122,7 @@ chrLiterals = {'t': '\t',
                "f": '\f'}
 
 def readString(s):
+    "Return the first object found in s"
     r = StringReader(s)
     return read(r, False, None, False)
 
@@ -579,10 +580,10 @@ def regexReader(rdr, doubleQuote, raw=False):
 
     May raise ReaderException. Return a compiled Python re pattern object."""
     # Read each character as is into the list pat. pat will have as the first
-    # four characters u""" and as the last 3 character """. This will create a
-    # Python Unicode triple quoted string. Join pat and evaluate it, trapping
-    # any exceptions. This should make clojure-py use the exact same syntax as
-    # Python for regular expression patterns.
+    # characters u""" (or ur""" if raw is True) and as the last 3 character
+    # """. This will create a Python Unicode triple quoted string. Join pat
+    # and evaluate it, trapping any exceptions. This should make clojure-py
+    # use the exact same syntax as Python for regular expression patterns.
     # 
     # The only character that needs to be handled specially is ". If it's
     # precede by a \ in the stream, append '\"' to pat. This will result in
@@ -597,7 +598,7 @@ def regexReader(rdr, doubleQuote, raw=False):
             raise ReaderException("EOF reached expecting raw regex pattern"
                                   " string", rdr)
         elif ch != '"':
-            raise ReaderException("String expected after #r, got %s", ch,
+            raise ReaderException("String expected after #r, got %s" % ch,
                                   rdr)
         # prime with the first character after the opening "
         ch = read1(rdr)
@@ -643,9 +644,9 @@ def metaReader(rdr, caret):
                               rdr)
     o = read(rdr, True, None, True)
     if not hasattr(o, "withMeta"):
-        # can't attach rdr here as it would point
+        # can't attach rdr to the exception here as it would point
         # to the *end* of the object just read'
-        raise ReaderException("Cannot attach meta to a object without "
+        raise ReaderException("Cannot attach meta to a object without"
                               " .withMeta")
     return o.withMeta(meta)
 

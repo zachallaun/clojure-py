@@ -77,6 +77,10 @@ class TestReader(unittest.TestCase):
         for k,v in regexPatternMap_PASS.items():
             r = StringReader(k)
             self.assertEqual(read(r, False, None, False).pattern, v.pattern)
+    def testRegexPattern_FAIL(self):
+        for s in regexPattern_FAIL:
+            r = StringReader(s)
+            self.assertRaises(ReaderException, read, r, False, None, False)
 
 # ======================================================================
 # Literal Integer Cases
@@ -315,7 +319,72 @@ literalString_FAIL = [
 # ======================================================================
 
 regexPatternMap_PASS = {
-
-    # O_o
-
+    # all using #"", not raw #r""
+    '#""' : re.compile(""),
+    '#"."' : re.compile("."),
+    '#"^."' : re.compile("^."),
+    '#".$"' : re.compile(".$"),
+    '#".*"' : re.compile(".*"),
+    '#".+"' : re.compile(".+"),
+    '#".?"' : re.compile(".?"),
+    '#".*?"' : re.compile(".*?"),
+    '#".+?"' : re.compile(".+?"),
+    '#".??"' : re.compile(".??"),
+    '#".{3}"' : re.compile(".{3}"),
+    '#".{3,}"' : re.compile(".{3,}"),
+    '#".{,3}"' : re.compile(".{,3}"),
+    '#".{3,3}"' : re.compile(".{3,3}"),
+    '#".{3,3}"' : re.compile(".{3,3}"),
+    '#".{3,3}?"' : re.compile(".{3,3}?"),
+    '#"\.\^\$\*\+\?\{\}\[\]"' : re.compile("\.\^\$\*\+\?\{\}\[\]"),
+    '#"[a-z]"' : re.compile("[a-z]"),
+    '#"[]]"' : re.compile("[]]"),
+    '#"[-]"' : re.compile("[-]"),
+    '#"[\-\]\[]"' : re.compile(r"[\-\]\[]"),
+    '#"[\w\S]"' : re.compile("[\w\S]"),
+    '#"[^5]"' : re.compile("[^5]"),
+    '#"A|B[|]\|"' : re.compile("A|B[|]\|"),
+    '#"([()]\(\))"' : re.compile("([()]\(\))"),
+    '#"(?iLmsux)"' : re.compile("(?iLmsux)"),
+    '#"(?iLmsux)"' : re.compile("(?iLmsux)"),
+    '#"(:?)"' : re.compile("(:?)"),
+    '#"(?P<foo>)"' : re.compile("(?P<foo>)"),
+    '#"(?P<foo>)(?P=foo)"' : re.compile("(?P<foo>)(?P=foo)"),
+    '#"(?# comment )"' : re.compile("(?# comment )"),
+    '#"(?=foo)"' : re.compile("(?=foo)"),
+    '#"(?!foo)"' : re.compile("(?!foo)"),
+    '#"(?<=foo)bar"' : re.compile("(?<=foo)bar"),
+    '#"(?<!foo)bar"' : re.compile("(?<!foo)bar"),
+    '#"(?P<foo>)(?(foo)yes|no)"' : re.compile("(?P<foo>)(?(foo)yes|no)"),
+    '#"(.+) \1"' : re.compile("(.+) \1"),
+    '#"\377\021"' : re.compile(u"\377\021"),
+    '#"[\1\2\3\4\5\6\7\10]"' : re.compile("[\1\2\3\4\5\6\7\10]"),
+    '#"\A\\\\b\B\d\D\s\S\w\W\Z"' : re.compile(r"\A\b\B\d\D\s\S\w\W\Z"),
+    '#"\\\\a\\\\b\\\\f\\\\n\\\\r\\\\t\\\\v"' : re.compile(r"\a\b\f\n\r\t\v"),
+    '#"\a\b\f\n\r\t\v"' : re.compile("\a\b\f\n\r\t\v"),
+    '#"\N{DIGIT ZERO}"' : re.compile(u"\N{DIGIT ZERO}"),
+    '#"\u03bb{1,3}"' : re.compile(u"\u03bb{1,3}"),
+    '#"\U000003bb{1,3}"' : re.compile(u"\U000003bb{1,3}"),
+'''#"(?x)
+     # foo
+     [a-z]
+     # bar
+     [0-9a-zA-Z_]+
+     "''' : re.compile("""(?x)
+     # foo
+     [a-z]
+     # bar
+     [0-9a-zA-Z_]+
+     """),
     }
+
+regexPattern_FAIL = [
+    # unmatched paren, bracket, (can't make it catch a missing } O_o)
+    '#"([()]\(\)"', '#"["',
+    # foo not defined
+    '#"(?(foo)yes|no)"',
+    # bogus escape 
+    '#"[\8]"',
+    # NUL
+    '#"\0"',
+    ]
