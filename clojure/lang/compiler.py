@@ -1031,6 +1031,8 @@ class Compiler(object):
     def getAccessCode(self, sym):
         if (sym.ns is not None and sym.ns == self.getNS().__name__) \
            or sym.ns is None:
+            if self.getNS() is None:
+                raise CompilerException("no namespace has been defined", None)
             if not hasattr(self.getNS(), sym.name):
                 raise CompilerException("could not resolve '" + str(sym) + "', '" \
                                         + sym.name + "' not found in " + self.getNS().__name__ +
