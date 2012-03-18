@@ -23,7 +23,7 @@ One note: clojure-py implements the new "property vs calling method" design used
 
 ## How can I help?
 
-Check out the Wiki for more information about the roadmap for this project. Then check out the issues list for any items marked "isolated change". These are changes that should be somewhat easy for a newcommer to pick up and will not involve messing around with the internals of the implementation much. Also feel free to join our [mailing list](http://groups.google.com/group/clojure-py-dev)
+Check out the Wiki for more information about the roadmap for this project. Then check out the issues list for any items marked "isolated change". These are changes that should be somewhat easy for a newcomer to pick up and will not involve messing around with the internals of the implementation much. Also feel free to join our [mailing list](http://groups.google.com/group/clojure-py-dev)
 
 ## Blog
    From time to time, we'll post status updates, ideas and plans to this blog http://clojure-py.blogspot.com/
