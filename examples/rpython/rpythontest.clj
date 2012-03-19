@@ -33,9 +33,8 @@
 ;; clojure pypy : 48 sec
 ;; clojure on rpython: 6sec
 
-(defn main [x]
+(defn main {:static true} [x]
      (py.bytecode/PRINT_ITEM (test 19999999)))
-;(time (test 19999999))
 
 
 

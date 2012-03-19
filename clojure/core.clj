@@ -2817,10 +2817,14 @@
         need-ns (or as use)
         filter-opts (select-keys opts '(:exclude :only :rename))]
        (load-all lib)
-       (if as
-           (alias (:as opts) lib to-ns))
-           (map-ns-vals lib to-ns opts)))
-
+       (cond (not options)
+              (py/setattr (the-ns (name to-ns)) 
+                          (name lib) 
+                          (load-all lib))
+             as
+              (alias (:as opts) lib to-ns)
+             :else 
+              (map-ns-vals lib to-ns opts))))
 
 (defmacro require
     [& options]
