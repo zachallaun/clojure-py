@@ -19,7 +19,7 @@ from clojure.lang.persistentvector import EMPTY as EMPTY_VECTOR
 from clojure.lang.globals import currentCompiler
 from clojure.lang.cljkeyword import Keyword, keyword
 from clojure.lang.fileseq import StringReader
-from clojure.lang.character import Character
+from clojure.lang.character import character
 
 
 def read1(rdr):
@@ -272,9 +272,9 @@ def characterReader(rdr, backslash):
         raise ReaderException("EOF while reading character", rdr)
     token = readToken(rdr, ch)
     if len(token) == 1:
-        return Character(token)
+        return character(token)
     elif token in tokenMappings:
-        return Character(tokenMappings[token])
+        return character(tokenMappings[token])
     elif token.startswith("u"):
         try:
             ch = stringCodepointToUnicodeChar(token, 1, 4, 16)
@@ -284,7 +284,7 @@ def characterReader(rdr, backslash):
         if u"\ud800" <= ch <= u"\udfff":
             raise ReaderException("Invalid character constant in literal"
                                   " string: \\%s" % token, rdr)
-        return Character(ch)
+        return character(ch)
     elif token.startswith("o"):
         if len(token) > 4:
             raise ReaderException("Invalid octal escape sequence length in"
@@ -299,12 +299,12 @@ def characterReader(rdr, backslash):
             raise ReaderException("Octal escape sequence in literal string"
                                   " must be in range [0, 377], got: \\o%o"
                                   % codepoint, rdr)
-        return Character(ch)
+        return character(ch)
     raise ReaderException("Unsupported character: \\" + token, rdr)
 
 
 def stringReader(rdr, doublequote):
-    """Read a double-quoted \"\" literal string from rdr.
+    """Read a double-quoted "foo" literal string from rdr.
 
     rdr -- a read/unread-able object
     doublequote -- ignored
@@ -366,7 +366,11 @@ INTERPRET_TOKENS = {"nil": None,
                     "false": False}
 
 def interpretToken(s):
-    """Return None, True, False or a Symbol depending on the string s.
+    """Return the value defined by the string s.
+
+    This function exists as a pre-filter to matchSymbol(). If is is found in
+    lispreader.INTERPRET_TOKENS, return that, else see if s is a valid Symbol
+    and return that.
 
     Raise ReaderException if s is not a valid token."""
     if s in INTERPRET_TOKENS:
@@ -461,18 +465,13 @@ def discardReader(rdr, underscore):
 class wrappingReader(object):
     """Defines a callable object that reads the next object and returns:
     (sym next-object-read)
-    Where sym is passed to __init__."""
+    Where sym is Symbol instance passed to __init__."""
     def __init__(self, sym):
         self.sym = sym
 
     def __call__(self, rdr, quote):
         o = read(rdr, True, None, True)
         return RT.list(self.sym, o)
-
-
-def varReader():
-    """Return (var next-object-read)"""
-    return wrappingReader(THE_VAR)#FIXME: THE_VAR undefined
 
 def dispatchReader(rdr, hash):
     """Read and return the next object defined by the next dispatch character.

@@ -12,7 +12,7 @@ from random import choice
 from fractions import Fraction
 
 from clojure.lang.lispreader import read
-from clojure.lang.character import Character
+from clojure.lang.character import character
 from clojure.lang.fileseq import StringReader
 from clojure.lang.cljexceptions import ReaderException
 
@@ -230,29 +230,29 @@ rational_FAIL = [
 
 literalCharacterMap_PASS = {
     # basic
-    "\\x" : Character("x"),
-    "\\ " : Character(" "),
-    "\\X" : Character("X"),
+    "\\x" : character("x"),
+    "\\ " : character(" "),
+    "\\X" : character("X"),
     # newline after the \
     """\\
-""" : Character("\n"),
+""" : character("\n"),
     # named characters
-    "\\space" : Character(" "),
-    "\\newline" : Character("\n"),
-    "\\return" : Character("\r"),
-    "\\backspace" : Character("\b"),
-    "\\formfeed" : Character("\f"),
-    "\\tab" : Character("\t"),
+    "\\space" : character(" "),
+    "\\newline" : character("\n"),
+    "\\return" : character("\r"),
+    "\\backspace" : character("\b"),
+    "\\formfeed" : character("\f"),
+    "\\tab" : character("\t"),
     # octal
-    "\\o0" : Character("\x00"),
-    "\\o41" : Character("!"),
-    "\\o377" : Character(u"\u00ff"),
+    "\\o0" : character("\x00"),
+    "\\o41" : character("!"),
+    "\\o377" : character(u"\u00ff"),
     # hex
-    "\\u03bb" : Character(u"\u03bb"),
+    "\\u03bb" : character(u"\u03bb"),
     # BZZZZT!
     # Because this file is encoded as UTF-8, and the reader is expecting ASCII,
     # it will crap out every time. 
-    # "\\λ" : Character(u"\u03bb"),
+    # "\\λ" : character(u"\u03bb"),
     }
 
 literalCharacter_FAIL = [

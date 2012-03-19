@@ -6,6 +6,7 @@
 Tuesday, March 13 2012
 """
 
+import weakref
 from iprintable import IPrintable
 
 charToSymbol = {
@@ -17,9 +18,7 @@ charToSymbol = {
     "\r" : "return",
     }
 
-# XXX: unicode parent is so the compiler will handle it, for now.
-# I don't know how the compiler code works O_o
-class Character(unicode, IPrintable):
+class Character(IPrintable):
     """A single character.
 
     Python has no character type. It's simply a string of length 1. The
@@ -30,11 +29,39 @@ class Character(unicode, IPrintable):
     This class simply stores a string of length 1, as Python, but provides a
     distinct type for the clojure-py print routines."""
     def __init__(self, c):
-        self.c = c.encode("utf-8")
-    # Java Character.charValue() ... sort of
-    def charValue(self):
-        return self.c
+        self._c = c.encode("utf-8")
+    def __hash__(self):
+        return hash(self.c)
+    # XXX: temporary until writeAsString and writeAsReplString come on line
+    def __repr__(self):
+        return "\\" + charToSymbol.get(self.c, self.c)
     def writeAsString(self, writer):
-        writer.write("fuck" + self.c)
+        writer.write(self.c)
     def writeAsReplString(self, writer):
         writer.write("\\" + charToSymbol.get(self.c, self.c))
+    @property
+    def c(self):
+        """Return the internal one string character."""
+        return self._c
+
+# This is but a start to a Character implementation.
+# I think this might be the overhead halgari was alluding to.
+# It's not thread safe either.
+        
+_charCache = {}
+
+def character(c):
+    """Return a Character instance set to the one character Python string c.
+
+    Character instance are cached so:
+    character("x") is character("x") => True
+    """
+    wref = _charCache.get(c)
+    if wref and wref() is not None:
+        return wref()
+    ch = Character(c)
+    _charCache[c] = weakref.ref(ch)
+    for k in list(_charCache):
+        if _charCache[k]() is None:
+            del _charCache[k]
+    return ch
