@@ -632,4 +632,7 @@
 (deftest comment-tests
     (comment (assertions/assert-true false)))
 
+(deftest vec-tests
+    (assertions/assert-equal ((fn [& y] (vec y)) 1 2) [1 2]))
+
 (py/print "all tests passed")

@@ -202,11 +202,11 @@ def doAssoc(level, node, i, val):
 def vec(seq):
     if isinstance(seq, APersistentVector):
         return seq
-    s = seq.seq()
+    s = RT.seq(seq)
     v = EMPTY
     while s is not None:
-        v = v.cons(s.first())
-        s = s.next()
+        v = v.cons(RT.first(s))
+        s = RT.next(s)
     return v
     
 def create(*args):
@@ -215,6 +215,7 @@ def create(*args):
         x = x.cons(z)
     return x
 
+import clojure.lang.rt as RT
 
 NOEDIT = AtomicReference()
 EMPTY_NODE = Node(NOEDIT)
