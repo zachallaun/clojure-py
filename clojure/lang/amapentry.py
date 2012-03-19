@@ -10,7 +10,7 @@ class AMapEntry(APersistentVector):
         elif i == 1:
             return self.getValue()
         else:
-            raise IndexOutOfRangeException()
+            raise IndexOutOfBoundsException()
 
     def asVector(self):
         return createVector(self.getKey(), self.getValue())
@@ -20,12 +20,12 @@ class AMapEntry(APersistentVector):
 
     def __len__(self):
         return 2
-        
+
     def __contains__(self, x):
         if x == 0 or x == 1:
             return True
         return False
-        
+
     def seq(self):
         return self.asVector().seq()
 
