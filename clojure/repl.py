@@ -106,18 +106,40 @@ def unbalanced(line):
     """
     Returns true if the parentheses in the line are unbalanced.
     """
-    chars = (
-        ("(", "[", "{"),
-        (")", "]", "}"))
-    # Counts for (, [, {, and "
-    counts = [0, 0, 0]
+    open = ("(", "[", "{")
+    close = (")", "]", "}")
+    stack = []
+
+    open_ignore = ("\"", ";")
+    close_ignore = ("\"", "\n")
+    ignore = -1
     for c in line:
-        for i, paren in enumerate(zip(*chars)):
-            if c == paren[0]: # Paren open
-                counts[i] += 1
-            elif c == paren[1]: # Paren close
-                counts[i] -=1
-    for count in counts:
-        if count != 0:
-            return True
-    return False
+        if ignore != -1:
+            if c == close_ignore[ignore]:
+                ignore = -1
+            else:
+                continue
+        else:
+            for i, o in enumerate(open_ignore):
+                if o == c:
+                    ignore = i
+                if ignore != -1:
+                    continue
+
+        found = False
+        for t in open:
+            if c == t:
+                stack.append(c)
+                found = True
+        if found:
+            continue
+
+        found = False
+        for i, t in enumerate(close):
+            if c == t:
+                if not stack or stack[-1] != open[i]:
+                    # User error, return -1
+                    return -1
+                else:
+                    stack.pop()
+    return len(stack) != 0
