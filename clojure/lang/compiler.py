@@ -33,6 +33,9 @@ class GlobalPtr(MetaBytecode):
     def __init__(self, ns, name):
         self.ns = ns
         self.name = name
+        
+    def __repr__(self):
+        return "GblPtr<%s/%s>" % (self.ns.__name__, self.name)
     
     def emit(self, comp, mode):
         module = self.ns
