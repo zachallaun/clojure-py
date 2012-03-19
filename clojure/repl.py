@@ -80,7 +80,16 @@ def run_repl(comp=None):
         if not line:
             continue
 
-        while unbalanced(line):
+        invalid = False
+        while 1:
+            unbalance = unbalanced(line)
+
+            if unbalance == -1:
+                invalid = True
+                break
+            elif unbalance is False:
+                break
+
             try:
                 new_line = '\n' + raw_input('.' * len(comp.getNS().__name__) + '.. ')
             except EOFError:
@@ -88,6 +97,10 @@ def run_repl(comp=None):
 
             if not new_line.strip().startswith(';'):
                 line += new_line
+
+        if invalid:
+            print "Invalid input"
+            continue
 
         # Propogate break from above loop.
         if unbalanced(line):
