@@ -78,3 +78,7 @@ class ASeq(Obj, Sequential, ISeq, IHashEq, Iterable, IPrintable):
 
     def writeAsReplString(self, writer):
         writer.write(repr(self))
+        
+    def cons(self, other):
+        from clojure.lang.cons import Cons
+        return Cons(other, self)

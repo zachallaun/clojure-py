@@ -137,7 +137,8 @@ def intern(ns, sym):
         v = getattr(ns, str(sym))
         if not isinstance(v, Var):
             raise Exception("can't redefine " + str(v) + " as " + str(sym) + ": is not Var")
-        return v
+        if ns.__name__ == v.ns.__name__:
+            return v
     v = Var(ns, sym)
     setattr(ns, sym.name, v)
     return v

@@ -2887,34 +2887,6 @@
    :static true}
   [coll] (not (seq coll)))
 
-;;
-;; Redefine deftype with protocol support
-;;
-;;
-;;
-
-(defmacro deftype
-    [name fields & specs]
-    (loop [specs (seq specs)
-           inherits []
-           fns (if (= (py/len fields) 0) {} {"__init__" (make-init fields)})]
-          (cond (not specs)
-                  `(~'do (def ~name (py/type ~(.-name name)
-                                              (py/tuple ~(conj inherits py/object))
-                                              (.toDict ~fns)))
-                        ~@(map (fn [x] `(clojure.lang.protocol/extendForAllSubclasses ~x))
-                               inherits))
-                (symbol? (first specs))
-                    (recur (next specs) 
-                           (conj inherits (first specs))
-                           fns)
-                (instance? clojure.lang.ipersistentlist/IPersistentList
-                           (first specs))
-                    (recur (next specs)
-                           inherits
-                           (assoc fns (py/str (ffirst specs))
-                           	   	      (prop-wrap name fields (first specs)))))))
-
 (defn deref
   "Also reader macro: @ref/@agent/@var/@atom/@delay/@future/@promise. Within a transaction,
   returns the in-transaction-value of ref, else returns the
@@ -2946,26 +2918,13 @@
   {:added "1.0"}
   ([sym] `(ns-resolve ~'__name__ ~sym)))
 
-(defmacro defprotocol
-    [name & specs]
-    (let [doc (when (string? (first specs)) (first specs))
-          specs (if doc (next specs) specs)]
-         (loop [specs specs
-                fns []]
-               (if specs
-                   (recur (next specs) `((~(ffirst specs) [~'& ~'args])))
-                  `(do (deftype (~'quote ~name) []
-                          ~@fns)
-                       (clojure.lang.protocol/protocolFromType ~'__name__ 
-                                                               (resolve ~'__name__ (~'quote ~name))))))))
-                       
                 
 (defmacro comment
   "Ignores body, yields nil"
   {:added "1.0"}
   [& body])
 
-
+#_(require 'clojure.core-deftype :only ['deftype])
 
 
 
