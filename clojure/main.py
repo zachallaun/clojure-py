@@ -29,30 +29,23 @@ else:
         pass
     atexit.register(readline.write_history_file, histfile)
 
-import __builtin__
-import sys
-import os.path
+# Create a PEP 302 import hook
+class MetaImporter(object):
+    def find_module(self, fullname, path=None):
+        import os.path, sys
+        lastname = fullname.rsplit('.', 1)[-1]
+        for d in (path or (["."] + sys.path)):
+            clj = os.path.join(d, lastname + '.clj')
+            if os.path.exists(clj):
+                self.path = clj
+                return self
+        return None
 
-_old_import_ = __builtin__.__import__
-def import_hook(name, globals=None, locals=None, fromlist=None, level = -1):
-    try:
-        return _old_import_(name, globals, locals, fromlist, level)
-    except ImportError:
-        pass
+    def load_module(self, name):
+        requireClj(self.path)
+        return sys.modules[name]
 
-    conv = name.replace(".", "/")
-    for p in ["."] + sys.path:
-        f = p + "/" + conv + ".clj"
-        if os.path.exists(f):
-            requireClj(f)
-            try:
-                return _old_import_(name, globals, locals, fromlist, level)
-            except ImportError:
-                raise ImportError("could not find module " + name + " after loading " + f)
-
-    raise ImportError("module " + name + " not found")
-
-__builtin__.__import__ = import_hook
+sys.meta_path = [MetaImporter()]
 
 from clojure.lang.lispreader import read
 from clojure.lang.fileseq import StringReader
