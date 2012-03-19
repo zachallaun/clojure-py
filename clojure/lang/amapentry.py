@@ -36,4 +36,4 @@ class AMapEntry(APersistentVector):
         return None
 
     def pop(self):
-        return PersistentVector(self.getKey())
+        return createVector(self.getKey())
