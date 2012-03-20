@@ -17,6 +17,7 @@ from clojure.lang.fileseq import StringReader
 from clojure.lang.cljexceptions import ReaderException
 
 class TestReader(unittest.TestCase):
+    # literal integers
     def testIntegerReader_PASS(self):
         # base 8
         for k,v in base8IntegerMap_PASS.items():
@@ -38,6 +39,7 @@ class TestReader(unittest.TestCase):
         for t in integer_FAIL:
             r = StringReader(t)
             self.assertRaises(ReaderException, read, r, False, None, False)
+    # literal floating point
     def testFloatingPointReader_PASS(self):
         for k,v in floatingPointMap_PASS.items():
             r = StringReader(k)
@@ -46,6 +48,7 @@ class TestReader(unittest.TestCase):
         for t in floatingPoint_FAIL:
             r = StringReader(t)
             self.assertRaises(ReaderException, read, r, False, None, False)
+    # literal ratios 
     def testRationalReader_PASS(self):
         for k,v in rationalMap_PASS.items():
             r = StringReader(k)
@@ -54,6 +57,7 @@ class TestReader(unittest.TestCase):
         for t in rational_FAIL:
             r = StringReader(t)
             self.assertRaises(ReaderException, read, r, False, None, False)
+    # literal characters
     def testCharacterReader_PASS(self):
         for k,v in literalCharacterMap_PASS.items():
             r = StringReader(k)
@@ -62,6 +66,7 @@ class TestReader(unittest.TestCase):
         for s in literalCharacter_FAIL:
             r = StringReader(s)
             self.assertRaises(ReaderException, read, r, False, None, False)
+    # literal strings
     def testStringReader_PASS(self):
         for k,v in literalStringMap_PASS.items():
             r = StringReader('"' + k + '"')
@@ -73,12 +78,22 @@ class TestReader(unittest.TestCase):
         for s in literalString_FAIL:
             r = StringReader('"' + s + '"')
             self.assertRaises(ReaderException, read, r, False, None, False)
+    # literal regex pattern strings
     def testRegexPattern_PASS(self):
         for k,v in regexPatternMap_PASS.items():
             r = StringReader(k)
             self.assertEqual(read(r, False, None, False).pattern, v.pattern)
     def testRegexPattern_FAIL(self):
         for s in regexPattern_FAIL:
+            r = StringReader(s)
+            self.assertRaises(ReaderException, read, r, False, None, False)
+    # literal raw regex pattern strings
+    def testRawRegexPattern_PASS(self):
+        for k,v in rawRegexPatternMap_PASS.items():
+            r = StringReader(k)
+            self.assertEqual(read(r, False, None, False).pattern, v.pattern)
+    def testRawRegexPattern_FAIL(self):
+        for s in rawRegexPattern_FAIL:
             r = StringReader(s)
             self.assertRaises(ReaderException, read, r, False, None, False)
 
@@ -432,4 +447,50 @@ regexPattern_FAIL = [
     '#"\N{KLINGON LETTER NG}"',
     # empty {}
     '#"\N{}"', '#"\N{   }"',
+    ]
+
+rawRegexPatternMap_PASS = {
+    '#r""' : re.compile(r""),
+    '#r"\\."' : re.compile(r"\."),
+    '#r"\\."' : re.compile(r"\."),
+    '#r"\\n"' : re.compile(r"\n"),
+    '#r"\.\^\$\*\+\?\{\}\[\]"' : re.compile(r"\.\^\$\*\+\?\{\}\[\]"),
+    '#r"[\-\]\[]"' : re.compile(r"[\-\]\[]"),
+    '#r"[\w\S]"' : re.compile(r"[\w\S]"),
+    '#r"A|B[|]\|"' : re.compile(r"A|B[|]\|"),
+    '#r"([()]\(\))"' : re.compile(r"([()]\(\))"),
+    '#r"(.+) \\1"' : re.compile(r"(.+) \1"),
+    '#r"\\377\\021"' : re.compile(ur"\377\021"),
+    '#r"[\\1\\2\\3\\4\\5\\6\\7\\10]"' : re.compile(r"[\1\2\3\4\5\6\7\10]"),
+    '#r"\A\\b\B\d\D\s\S\w\W\Z"' : re.compile(r"\A\b\B\d\D\s\S\w\W\Z"),
+    '#r"\\a\\b\\f\\n\\r\\t\\v"' : re.compile(r"\a\b\f\n\r\t\v"),
+    '#r"\a\b\f\n\r\t\v"' : re.compile("\a\b\f\n\r\t\v"),
+    '#r"\N{DIGIT ZERO}{5, 10}"' : re.compile(ur"\N{DIGIT ZERO}{5, 10}"),
+    '#r"\u03bb{1,3}"' : re.compile(ur"\u03bb{1,3}"),
+    '#r"\\\u03bb{1,3}"' : re.compile(ur"\\u03bb{1,3}"),
+    '#r"\\\\\u03bb{1,3}"' : re.compile(ur"\\\u03bb{1,3}"),
+    '#r"\\\\\\\u03bb{1,3}"' : re.compile(ur"\\\\u03bb{1,3}"),
+    '#r"\U000003bb{1,3}"' : re.compile(ur"\U000003bb{1,3}"),
+    '#r"\\xff\\x7f"' : re.compile(ur"\xff\x7f"),
+    '#r"\\0"' : re.compile(ur"\0"),
+    '#r"\\01"' : re.compile(ur"\01"),
+    '#r"\\012"' : re.compile(ur"\012"),
+    '''#r"\\
+"''' : re.compile(r"""\
+"""),
+    }
+
+rawRegexPattern_FAIL = [
+    # craps out the regex compiler
+    '#r"\\x"',
+    # can't end with an odd number of \
+    '#r"\\"',                   # #r"\"    ; in clojure-py
+    '#r"\\\\\\"',               # #r"\\\"  ; in clojure-py
+    # missing trailing "
+    '#r"foo',
+    # need 4 hex digits
+    '#r"\u"', '#r"\u1"', '#r"\u12"', '#r"\u123"',
+    # need 8 hex digits
+    '#r"\U"', '#r"\U1"', '#r"\U12"', '#r"\U123"', '#r"\U1234"', '#r"\U12345"',
+    '#r"\U123456"', '#r"\U1234567"',
     ]
