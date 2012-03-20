@@ -500,6 +500,7 @@
     (assertions/assert-equal (sort-by first > [[1 2] [2 2] [2 3]]) [[2 2] [2 3] [1 2]]))
 
 (deftype Accum [i]
+    ISeq  ; Bit of a hack until we get definterface implemented
     (inc [self] (py/setattr self "i" (inc i))))
 
 
