@@ -7,12 +7,12 @@
 Friday, March 16 2012
 """
 
-import unittest, string
+import unittest, string, re
 from random import choice
 from fractions import Fraction
 
 from clojure.lang.lispreader import read
-from clojure.lang.character import Character
+from clojure.lang.character import character
 from clojure.lang.fileseq import StringReader
 from clojure.lang.cljexceptions import ReaderException
 
@@ -38,37 +38,49 @@ class TestReader(unittest.TestCase):
         for t in integer_FAIL:
             r = StringReader(t)
             self.assertRaises(ReaderException, read, r, False, None, False)
-    def testFloatingPointReader_FAIL(self):
-        for t in floatingPoint_FAIL:
-            r = StringReader(t)
-            self.assertRaises(ReaderException, read, r, False, None, False)
-    def testRationalReader_FAIL(self):
-        for t in rational_FAIL:
-            r = StringReader(t)
-            self.assertRaises(ReaderException, read, r, False, None, False)
     def testFloatingPointReader_PASS(self):
         for k,v in floatingPointMap_PASS.items():
             r = StringReader(k)
             self.assertEqual(read(r, False, None, False), v)
+    def testFloatingPointReader_FAIL(self):
+        for t in floatingPoint_FAIL:
+            r = StringReader(t)
+            self.assertRaises(ReaderException, read, r, False, None, False)
     def testRationalReader_PASS(self):
         for k,v in rationalMap_PASS.items():
             r = StringReader(k)
             self.assertEqual(read(r, False, None, False), v)
+    def testRationalReader_FAIL(self):
+        for t in rational_FAIL:
+            r = StringReader(t)
+            self.assertRaises(ReaderException, read, r, False, None, False)
     def testCharacterReader_PASS(self):
         for k,v in literalCharacterMap_PASS.items():
             r = StringReader(k)
             self.assertEqual(read(r, False, None, False), v)
+    def testCharacterReader_FAIL(self):
+        for s in literalCharacter_FAIL:
+            r = StringReader(s)
+            self.assertRaises(ReaderException, read, r, False, None, False)
     def testStringReader_PASS(self):
         for k,v in literalStringMap_PASS.items():
             r = StringReader('"' + k + '"')
             self.assertEqual(read(r, False, None, False), v)
-    # def testStringReader_FAIL(self):
-    #     # special case, missing trailing "
-    #     r = StringReader('"foo')
-    #     self.assertRaises(ReaderException, read, r, False, None, False)
-    #     for s in stringList_FAIL:
-    #         r = StringReader('"' + s + '"')
-    #         self.assertRaises(ReaderException, read, r, False, None, False)
+    def testStringReader_FAIL(self):
+        # special case, missing trailing "
+        r = StringReader('"foo')
+        self.assertRaises(ReaderException, read, r, False, None, False)
+        for s in literalString_FAIL:
+            r = StringReader('"' + s + '"')
+            self.assertRaises(ReaderException, read, r, False, None, False)
+    def testRegexPattern_PASS(self):
+        for k,v in regexPatternMap_PASS.items():
+            r = StringReader(k)
+            self.assertEqual(read(r, False, None, False).pattern, v.pattern)
+    def testRegexPattern_FAIL(self):
+        for s in regexPattern_FAIL:
+            r = StringReader(s)
+            self.assertRaises(ReaderException, read, r, False, None, False)
 
 # ======================================================================
 # Literal Integer Cases
@@ -200,6 +212,10 @@ rationalMap_PASS = {
     "0/1" : Fraction(0, 1),
     "-0/1" : Fraction(0, 1),
     "+0/1" : Fraction(0, 1),
+    # regex was fubar, didn't allow zeros after the first digit
+    "100/203" : Fraction(100, 203),
+    "-100/203" : Fraction(-100, 203),
+    "+100/203" : Fraction(100, 203),
     }
 
 rational_FAIL = [
@@ -214,30 +230,47 @@ rational_FAIL = [
 
 literalCharacterMap_PASS = {
     # basic
-    "\\x" : Character("x"),
-    "\\ " : Character(" "),
-    "\\X" : Character("X"),
+    "\\x" : character("x"),
+    "\\ " : character(" "),
+    "\\X" : character("X"),
     # newline after the \
     """\\
-""" : Character("\n"),
+""" : character("\n"),
     # named characters
-    "\\space" : Character(" "),
-    "\\newline" : Character("\n"),
-    "\\return" : Character("\r"),
-    "\\backspace" : Character("\b"),
-    "\\formfeed" : Character("\f"),
-    "\\tab" : Character("\t"),
+    "\\space" : character(" "),
+    "\\newline" : character("\n"),
+    "\\return" : character("\r"),
+    "\\backspace" : character("\b"),
+    "\\formfeed" : character("\f"),
+    "\\tab" : character("\t"),
     # octal
-    "\\o0" : Character("\x00"),
-    "\\o41" : Character("!"),
-    "\\o377" : Character(u"\u00ff"),
+    "\\o0" : character("\x00"),
+    "\\o41" : character("!"),
+    "\\o377" : character(u"\u00ff"),
     # hex
-    "\\u03bb" : Character(u"\u03bb"),
+    "\\u03bb" : character(u"\u03bb"),
     # BZZZZT!
-    # Becuase this file is encoded as UTF-8, and the reader is expecting ASCII,
+    # Because this file is encoded as UTF-8, and the reader is expecting ASCII,
     # it will crap out every time. 
-    # "\\λ" : Character(u"\u03bb"),
+    # "\\λ" : character(u"\u03bb"),
     }
+
+literalCharacter_FAIL = [
+    # According to a random web page:
+    # The only reason the range D800:DFFF is invalid is because of UTF-16's
+    # inability to encode it.
+    "\\ud800", "\\udfff",
+    # missing char at eof
+    "\\",
+    # not enough digits after \u (\u is the character u)
+    "\\u1", "\\u22", "\\u333",
+    # too many digits after \u
+    "\\u03bbb",
+    # too many digits after \o
+    "\\o0333",
+    # octal value > 0377
+    "\\o400"
+    ]
 
 # ======================================================================
 # Literal String Cases
@@ -270,7 +303,92 @@ literalStringMap_PASS = {
     "@\\176": "@~",
     }
 
-stringList_FAIL = [
-    # basic
-    '"\\"foo"',
+literalString_FAIL = [
+    # invalid escape characters
+    "\\x", "\\a", "\\v", "@\\x", "@\\a", "@\\v", "\\x@", "\\a@", "\\v@",
+    # not enough digits after \u
+    "\\u", "\\u3", "\\u33", "\\u333",
+    "@\\u", "@\\u3", "@\\u33", "@\\u333",
+    "\\u@", "\\u3@", "\\u33@", "\\u333@",
+    # missing octal digits
+    "\\o", "@\\o", "\\o@",
+    # octal value > 0377
+    "\\o400", "@\\o400", "\\o400@",
+    # octal digits > 7
+    "\\o8", "@\\o8", "\\o8@",
+    ]
+
+# ======================================================================
+# Regular Expression Pattern
+# ======================================================================
+
+regexPatternMap_PASS = {
+    # all using #"", not raw #r""
+    '#""' : re.compile(""),
+    '#"."' : re.compile("."),
+    '#"^."' : re.compile("^."),
+    '#".$"' : re.compile(".$"),
+    '#".*"' : re.compile(".*"),
+    '#".+"' : re.compile(".+"),
+    '#".?"' : re.compile(".?"),
+    '#".*?"' : re.compile(".*?"),
+    '#".+?"' : re.compile(".+?"),
+    '#".??"' : re.compile(".??"),
+    '#".{3}"' : re.compile(".{3}"),
+    '#".{3,}"' : re.compile(".{3,}"),
+    '#".{,3}"' : re.compile(".{,3}"),
+    '#".{3,3}"' : re.compile(".{3,3}"),
+    '#".{3,3}"' : re.compile(".{3,3}"),
+    '#".{3,3}?"' : re.compile(".{3,3}?"),
+    '#"\.\^\$\*\+\?\{\}\[\]"' : re.compile("\.\^\$\*\+\?\{\}\[\]"),
+    '#"[a-z]"' : re.compile("[a-z]"),
+    '#"[]]"' : re.compile("[]]"),
+    '#"[-]"' : re.compile("[-]"),
+    '#"[\-\]\[]"' : re.compile(r"[\-\]\[]"),
+    '#"[\w\S]"' : re.compile("[\w\S]"),
+    '#"[^5]"' : re.compile("[^5]"),
+    '#"A|B[|]\|"' : re.compile("A|B[|]\|"),
+    '#"([()]\(\))"' : re.compile("([()]\(\))"),
+    '#"(?iLmsux)"' : re.compile("(?iLmsux)"),
+    '#"(?iLmsux)"' : re.compile("(?iLmsux)"),
+    '#"(:?)"' : re.compile("(:?)"),
+    '#"(?P<foo>)"' : re.compile("(?P<foo>)"),
+    '#"(?P<foo>)(?P=foo)"' : re.compile("(?P<foo>)(?P=foo)"),
+    '#"(?# comment )"' : re.compile("(?# comment )"),
+    '#"(?=foo)"' : re.compile("(?=foo)"),
+    '#"(?!foo)"' : re.compile("(?!foo)"),
+    '#"(?<=foo)bar"' : re.compile("(?<=foo)bar"),
+    '#"(?<!foo)bar"' : re.compile("(?<!foo)bar"),
+    '#"(?P<foo>)(?(foo)yes|no)"' : re.compile("(?P<foo>)(?(foo)yes|no)"),
+    '#"(.+) \1"' : re.compile("(.+) \1"),
+    '#"\377\021"' : re.compile(u"\377\021"),
+    '#"[\1\2\3\4\5\6\7\10]"' : re.compile("[\1\2\3\4\5\6\7\10]"),
+    '#"\A\\\\b\B\d\D\s\S\w\W\Z"' : re.compile(r"\A\b\B\d\D\s\S\w\W\Z"),
+    '#"\\\\a\\\\b\\\\f\\\\n\\\\r\\\\t\\\\v"' : re.compile(r"\a\b\f\n\r\t\v"),
+    '#"\a\b\f\n\r\t\v"' : re.compile("\a\b\f\n\r\t\v"),
+    '#"\N{DIGIT ZERO}"' : re.compile(u"\N{DIGIT ZERO}"),
+    '#"\u03bb{1,3}"' : re.compile(u"\u03bb{1,3}"),
+    '#"\U000003bb{1,3}"' : re.compile(u"\U000003bb{1,3}"),
+'''#"(?x)
+     # foo
+     [a-z]
+     # bar
+     [0-9a-zA-Z_]+
+     "''' : re.compile("""(?x)
+     # foo
+     [a-z]
+     # bar
+     [0-9a-zA-Z_]+
+     """),
+    }
+
+regexPattern_FAIL = [
+    # unmatched paren, bracket, (can't make it catch a missing } O_o)
+    '#"([()]\(\)"', '#"["',
+    # foo not defined
+    '#"(?(foo)yes|no)"',
+    # bogus escape 
+    '#"[\8]"',
+    # NUL
+    '#"\0"',
     ]

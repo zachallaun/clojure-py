@@ -1,3 +1,4 @@
+from clojure.lang.character import Character
 from clojure.lang.symbol import Symbol, symbol
 from clojure.lang.namespace import findOrCreate as findOrCreateNamespace
 from clojure.lang.cljexceptions import CompilerException, AbstractMethodCall
@@ -1127,6 +1128,8 @@ class Compiler(object):
             elif isinstance(itm, long):
                 c.append((LOAD_CONST, itm))
             elif isinstance(itm, IPersistentSet):
+                c.append((LOAD_CONST, itm))
+            elif isinstance(itm, Character):
                 c.append((LOAD_CONST, itm))
             else:
                 raise CompilerException(" don't know how to compile "
