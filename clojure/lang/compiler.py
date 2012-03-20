@@ -1164,7 +1164,7 @@ class Compiler(object):
         newcode.append((RETURN_VALUE, None))
         c = Code(newcode, [], [], False, False, False, str(symbol(self.getNS().__name__, "<string>")), self.filename, 0, None)
         retval = eval(c.to_code(), self.getNS().__dict__)
-        self.getNS().__dict__["__file__"] = self.filename
+        self.getNS().__file__ = self.filename
         return retval
 
     def pushPropertyAlias(self, mappings):
