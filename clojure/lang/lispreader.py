@@ -229,11 +229,11 @@ def stringCodepointToUnicodeChar(token, offset, length, base):
 
     Return a unicode string of length one."""
     if len(token) != offset + length:
-        raise UnicodeError("Invalid unicode character: \\%s" % token)
+        raise UnicodeError("Invalid unicode character: \\{0}".format(token))
     try:
         return unichr(int(token[offset:], base))
     except:
-        raise UnicodeError("Invalid unicode character: \\%s" % token)
+        raise UnicodeError("Invalid unicode character: \\{0}".format(token))
 
 
 def readUnicodeChar(rdr, initch, base, length, exact):
@@ -252,8 +252,8 @@ def readUnicodeChar(rdr, initch, base, length, exact):
         int(initch, base)
         digits.append(initch)
     except ValueError:
-        raise ReaderException("Expected base %d digit, got: (%s)"
-                              % (base, initch if initch else "EOF"), rdr)
+        raise ReaderException("Expected base {0} digit, got:"
+                              " ({1})".format(base, initch or "EOF"), rdr)
     for i in range(2, length+1):
         ch = read1(rdr)
         if ch == "" or ch in whiteSpace or isMacro(ch):
@@ -265,14 +265,14 @@ def readUnicodeChar(rdr, initch, base, length, exact):
             digits.append(ch)
         except ValueError:
             if exact:
-                raise ReaderException("Expected base %d digit, got: (%s)"
-                                      % (base, ch or "EOF"), rdr)
+                raise ReaderException("Expected base {0} digit, got:"
+                                      " ({1})".format(base, ch or "EOF"), rdr)
             else:
                 rdr.back()
                 break
     if i != length and exact:
-        raise ReaderException("Invalid character length: (%d), should be:"
-                              " (%d)" % (i, length), rdr)
+        raise ReaderException("Invalid character length: ({0}), should be:"
+                              " ({1})".format(i, length), rdr)
     return unichr(int("".join(digits), base))
 
 
@@ -299,13 +299,13 @@ def characterReader(rdr, backslash):
         codepoint = ord(ch)
         if u"\ud800" <= ch <= u"\udfff":
             raise ReaderException("Invalid character constant in literal"
-                                  " string: \\%s" % token, rdr)
+                                  " string: \\{0}".format(token), rdr)
         return character(ch)
     elif token.startswith("o"):
         if len(token) > 4:
             raise ReaderException("Invalid octal escape sequence length in"
-                                  " literal string. Three digits max: \\%s"
-                                  % token, rdr)
+                                  " literal string. Three digits max:"
+                                  " \\{0}".format(token), rdr)
         try:
             ch = stringCodepointToUnicodeChar(token, 1, len(token) - 1, 8)
         except UnicodeError as e:
@@ -313,8 +313,8 @@ def characterReader(rdr, backslash):
         codepoint = ord(ch)
         if codepoint > 255:
             raise ReaderException("Octal escape sequence in literal string"
-                                  " must be in range [0, 377], got: (\\o%o)"
-                                  % codepoint, rdr)
+                                  " must be in range [0, 377], got:"
+                                  " (\\o{0})".format(codepoint), rdr)
         return character(ch)
     raise ReaderException("Unsupported character: \\" + token, rdr)
 
@@ -341,19 +341,19 @@ def stringReader(rdr, doublequote):
                 ch = read1(rdr)
                 if not ch in hexChars:
                     raise ReaderException("Hexidecimal digit expected after"
-                                          " \\u in literal string, got: (%s)"
-                                          % ch, rdr)
+                                          " \\u in literal string, got:"
+                                          " ({0})".format(ch), rdr)
                 ch = readUnicodeChar(rdr, ch, 16, 4, True)
             elif ch in octalChars:
                 ch = readUnicodeChar(rdr, ch, 8, 3, False)
                 if ord(ch) > 255:
                     raise ReaderException("Octal escape sequence in literal"
                                           " string must be in range [0, 377]"
-                                          ", got: (%o)" % ord(ch),
+                                          ", got: ({0})".format(ord(ch)),
                                           rdr)
             else:
                 raise ReaderException("Unsupported escape character in"
-                                      " literal string: \\%s" % ch, rdr)
+                                      " literal string: \\{0}".format(ch), rdr)
         elif ch == '"':
             return "".join(buf)
         buf += ch
@@ -608,7 +608,7 @@ def readNamedUnicodeChar(rdr):
     ch = read1(rdr)
     if ch != "{":
         raise ReaderException("Expected { in named unicode escape sequence,"
-                              " got: (%s)" % ch or "EOF", rdr)
+                              " got: ({0})".format(ch or "EOF"), rdr)
     while True:
         ch = read1(rdr)
         if ch == "":
@@ -624,7 +624,7 @@ def readNamedUnicodeChar(rdr):
             break
         else:
             raise ReaderException("Illegal character in named unicode"
-                                  " escape sequence: (%s)" % ch, rdr)
+                                  " escape sequence: ({0})".format(ch), rdr)
     name = "".join(buf).strip()
     if len(name) == 0:
         raise ReaderException("Expected name between {} in named unicode "
@@ -633,7 +633,7 @@ def readNamedUnicodeChar(rdr):
         return unicodedata.lookup(name)
     except KeyError:
         raise ReaderException("Unknown unicode character name in escape"
-                              " sequence: (%s)" % name, rdr)
+                              " sequence: ({0})".format(name), rdr)
 
 
 def rawRegexReader(rdr, r):
@@ -687,8 +687,8 @@ def rawRegexReader(rdr, r):
                 if not ch in hexChars:
                     raise ReaderException("Hexidecimal digit expected"
                                           " after \\u in regex pattern,"
-                                          " got: (%s)"
-                                          % ch or "EOF", rdr)
+                                          " got: ({0})".format(ch or "EOF"),
+                                          rdr)
                 pat.append(readUnicodeChar(rdr, ch, 16, 4, True))
                 nSlashes = 0
             # \uXXXXXXXX
@@ -697,8 +697,8 @@ def rawRegexReader(rdr, r):
                 if not ch in hexChars:
                     raise ReaderException("Hexidecimal digit expected"
                                           " after \\U in regex pattern,"
-                                          " got: (%s)"
-                                          % ch or "EOF", rdr)
+                                          " got: ({0})".format(ch or "EOF"),
+                                          rdr)
                 pat.append(readUnicodeChar(rdr, ch, 16, 8, True))
                 nSlashes = 0
             else:
@@ -712,7 +712,8 @@ def rawRegexReader(rdr, r):
     try:
         return re.compile(u"".join(pat))
     except re.error as e:
-        raise ReaderException("invalid regex pattern: %s" % e.args[0], rdr)
+        raise ReaderException("invalid regex pattern: {0}".format(e.args[0]),
+                              rdr)
 
 
 def regexReader(rdr, doublequote):
@@ -740,24 +741,24 @@ def regexReader(rdr, doublequote):
                 ch = read1(rdr)
                 if not ch in hexChars:
                     raise ReaderException("Hexidecimal digit expected after"
-                                          " \\u in regex pattern, got: (%s)"
-                                          % ch or "EOF", rdr)
+                                          " \\u in regex pattern, got:"
+                                          " ({0})".format(ch or "EOF"), rdr)
                 ch = readUnicodeChar(rdr, ch, 16, 4, True)
             # \uXXXXXXXX
             elif ch == "U":
                 ch = read1(rdr)
                 if not ch in hexChars:
                     raise ReaderException("Hexidecimal digit expected after"
-                                          " \\U in regex pattern, got: (%s)"
-                                          % ch or "EOF", rdr)
+                                          " \\U in regex pattern, got:"
+                                          " ({0})".format(ch or "EOF"), rdr)
                 ch = readUnicodeChar(rdr, ch, 16, 8, True)
             # \xXX
             elif ch == "x":
                 ch = read1(rdr)
                 if not ch in hexChars:
                     raise ReaderException("Hexidecimal digit expected after"
-                                          " \\x in regex pattern, got: (%s)"
-                                          % ch or "EOF", rdr)
+                                          " \\x in regex pattern, got:"
+                                          " ({0})".format(ch or "EOF"), rdr)
                 ch = readUnicodeChar(rdr, ch, 16, 2, True)
             #\O, \OO, or \OOO
             elif ch.isdigit():
@@ -774,7 +775,8 @@ def regexReader(rdr, doublequote):
     try:
         return re.compile(u"".join(pat))
     except re.error as e:
-        raise ReaderException("invalid regex pattern: %s" % e.args[0], rdr)
+        raise ReaderException("invalid regex pattern: {0}".format(e.args[0]),
+                              rdr)
 
 
 def metaReader(rdr, caret):
