@@ -257,7 +257,7 @@ def readUnicodeChar(rdr, initch, base, length, exact):
         except ValueError:
             if exact:
                 raise ReaderException("Expected base %d digit, got: (%s)"
-                                      % (base, ch if ch else "EOF"), rdr)
+                                      % (base, ch or "EOF"), rdr)
             else:
                 rdr.back()
                 break
@@ -584,7 +584,7 @@ def readNamedUnicodeChar(rdr):
     ch = read1(rdr)
     if ch != "{":
         raise ReaderException("Expected { in named unicode escape sequence,"
-                              " got: (%s)" % ch if ch else "EOF", rdr)
+                              " got: (%s)" % ch or "EOF", rdr)
     while True:
         ch = read1(rdr)
         if ch == "":
@@ -663,7 +663,7 @@ def rawRegexReader(rdr, r):
                     raise ReaderException("Hexidecimal digit expected"
                                           " after \\u in regex pattern,"
                                           " got: (%s)"
-                                          % ch if ch else "EOF", rdr)
+                                          % ch or "EOF", rdr)
                 pat.append(readUnicodeChar(rdr, ch, 16, 4, True))
                 nSlashes = 0
             # \uXXXXXXXX
@@ -673,7 +673,7 @@ def rawRegexReader(rdr, r):
                     raise ReaderException("Hexidecimal digit expected"
                                           " after \\U in regex pattern,"
                                           " got: (%s)"
-                                          % ch if ch else "EOF", rdr)
+                                          % ch or "EOF", rdr)
                 pat.append(readUnicodeChar(rdr, ch, 16, 8, True))
                 nSlashes = 0
             else:
@@ -715,7 +715,7 @@ def regexReader(rdr, doublequote):
                 if not ch in hexChars:
                     raise ReaderException("Hexidecimal digit expected after"
                                           " \\u in regex pattern, got: (%s)"
-                                          % ch if ch else "EOF", rdr)
+                                          % ch or "EOF", rdr)
                 ch = readUnicodeChar(rdr, ch, 16, 4, True)
             # \uXXXXXXXX
             elif ch == "U":
@@ -723,7 +723,7 @@ def regexReader(rdr, doublequote):
                 if not ch in hexChars:
                     raise ReaderException("Hexidecimal digit expected after"
                                           " \\U in regex pattern, got: (%s)"
-                                          % ch if ch else "EOF", rdr)
+                                          % ch or "EOF", rdr)
                 ch = readUnicodeChar(rdr, ch, 16, 8, True)
             # \xXX
             elif ch == "x":
@@ -731,7 +731,7 @@ def regexReader(rdr, doublequote):
                 if not ch in hexChars:
                     raise ReaderException("Hexidecimal digit expected after"
                                           " \\x in regex pattern, got: (%s)"
-                                          % ch if ch else "EOF", rdr)
+                                          % ch or "EOF", rdr)
                 ch = readUnicodeChar(rdr, ch, 16, 2, True)
             #\O, \OO, or \OOO
             elif ch.isdigit():
