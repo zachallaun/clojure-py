@@ -2928,7 +2928,7 @@
   {:added "1.0"}
   [& body])
 
-#_(require 'clojure.core-deftype :only ['deftype])
+(require 'clojure.core-deftype :only ['deftype])
 
 
 

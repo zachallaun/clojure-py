@@ -43,10 +43,9 @@
           methods (if (= (count fields) 0)
                       methods
                       (assoc methods "__init__" (clojure.core/make-init fields)))]
-          (debug `(~'do (def ~name (py/type ~(.-name name)
-                                      (py/tuple ~(conj interfaces py/object))
+          `(~'do (def ~name (py/type ~(.-name name)
+                                      (py/tuple ~(vec (concat interfaces [py/object])))
                                       (.toDict ~methods)))
-                        (dis/dis ~name)
-                ~@(map (fn [x] `(clojure.lang.protocol/extendForAllSubclasses ~x))
-                               interfaces)))))
+                ~@(map (fn [x] `(clojure.lang.protocol/extendForType ~x ~name))
+                               interfaces))))
 

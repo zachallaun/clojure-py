@@ -126,7 +126,14 @@ def _extendProtocolForAllSubclasses(proto, tp):
     for x in tp.__subclasses__():
         _extendProtocolForAllSubclasses(proto, x)
     
+
+def extendForType(interface, tp):
+    if not hasattr(interface, "__protocols__"):
+        return
     
+    for proto in interface.__protocols__:
+        extendProtocolForClass(proto, tp)
+
 def extendProtocolForClass(proto, tp):
     for fn in proto.protofns:
         
