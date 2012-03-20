@@ -1,4 +1,4 @@
-import re
+import re, unicodedata, string
 import fractions
 
 from clojure.lang.fileseq import FileSeq, MutatableFileSeq
@@ -21,13 +21,6 @@ from clojure.lang.cljkeyword import Keyword, keyword
 from clojure.lang.fileseq import StringReader
 from clojure.lang.character import character
 
-
-def read1(rdr):
-    rdr.next()
-    if rdr is None:
-        return ""
-    return rdr.first()
-
 _AMP_ = symbol("&")
 _FN_ = symbol("fn")
 _VAR_ = symbol("var")
@@ -45,9 +38,8 @@ _UNQUOTE_SPLICING_ = symbol("~@")
 ARG_ENV = var(None).setDynamic()
 GENSYM_ENV = var(None).setDynamic()
 
-WHITESPACE = [',', '\n', '\t', '\r', ' ']
-
 symbolPat = re.compile("[:]?([\\D^/].*/)?([\\D^/][^/]*)")
+
 intPat = re.compile(r"""
 (?P<sign>[+-])?
   (:?
@@ -87,39 +79,64 @@ $                               # ensure the entire string matched
 # The following re only allows base 10 integers.
 ratioPat = re.compile("[-+]?(0|[1-9]\d*)/(0|[1-9]\d*)$")
 
-def isWhitespace(c):
-    return c in WHITESPACE
+# clojure-py constants
+# for interpretToken()
+INTERPRET_TOKENS = {"nil": None,
+                    "true": True,
+                    "false": False,
+                    }
 
-def isMacro(c):
-    return c in macros
-
-def isTerminatingMacro(ch):
-    return ch != "#" and ch != "\'" and isMacro(ch)
-
-def forIter(start, whileexpr, next):
-    cur = start
-    while whileexpr(cur):
-        yield cur
-        cur = next()
-
-DIGITS = "0123456789abcdefghijklmnopqrstuvwxyz"
-def digit(d, base = 10):
-    idx = DIGITS.index(d)
-    if idx == -1 or idx >= base:
-        return -1
-    return idx
-
-def isDigit(d):
-    return d in DIGITS and DIGITS.index(d) < 10
-
-
+# for stringReader()
 chrLiterals = {'t': '\t',
                'r': '\r',
                'n': '\n',
                'b': '\b',
                '\\': '\\',
                '"': '"',
-               "f": '\f'}
+               "f": '\f',
+               }
+
+# for regexReader()
+# http://docs.python.org/reference/lexical_analysis.html
+regexCharLiterals = {'\\': '\\',
+                    "'": "\'",
+                    '"': '"',
+                    'a': '\a',
+                    'b': '\b',
+                    "f": '\f',
+                    'n': '\n',
+                    'r': '\r',
+                    't': '\t',
+                    'v': '\v',
+                    }
+
+# for characterReader()
+namedChars = {"newline": "\n",
+              "space": " ",
+              "tab": "\t",    
+              "backspace": "\b",    
+              "formfeed": "\f",    
+              "return": "\r",
+              }
+
+whiteSpace = set(",\n\t\r ")
+octalChars = set("01234567")
+commentTerminators = set(['', '\n', '\r'])
+# legal characters between the braces: "\N{...}" for readNamedUnicodeChar()
+unicodeNameChars = set(string.letters + "- ")
+hexChars = set("0123456789abcdefABCDEF")
+
+def read1(rdr):
+    rdr.next()
+    if rdr is None:
+        return ""
+    return rdr.first()
+
+def isMacro(c):
+    return c in macros
+
+def isTerminatingMacro(ch):
+    return ch != "#" and ch != "\'" and isMacro(ch)
 
 def readString(s):
     "Return the first object found in s"
@@ -145,7 +162,7 @@ def read(rdr, eofIsError, eofValue, isRecursive):
     while True:
         ch = read1(rdr)
 
-        while isWhitespace(ch):
+        while ch in whiteSpace:
             ch = read1(rdr)
 
         if ch == "":
@@ -154,7 +171,7 @@ def read(rdr, eofIsError, eofValue, isRecursive):
             else:
                 return eofValue
 
-        if isDigit(ch):
+        if ch.isdigit():
             return readNumber(rdr, ch)
 
         m = getMacro(ch)
@@ -166,7 +183,7 @@ def read(rdr, eofIsError, eofValue, isRecursive):
 
         if ch in ["+", "-"]:
             ch2 = read1(rdr)
-            if isDigit(ch2):
+            if ch2.isdigit():
                 rdr.back()
                 n = readNumber(rdr, ch)
                 return n
@@ -189,12 +206,6 @@ def unquoteReader(rdr, tilde):
         rdr.back()
         o = read(rdr, True, None, True)
         return RT.list(_UNQUOTE_, o)
-
-def isHexCharacter(ch):
-    return ch in "0123456789abcdefABCDEF"
-
-def isOctalCharacter(ch):
-    return ch in "01234567"
 
 # replaces the overloaded readUnicodeChar()
 # Not really cemented to the reader
@@ -230,11 +241,11 @@ def readUnicodeChar(rdr, initch, base, length, exact):
         int(initch, base)
         digits.append(initch)
     except ValueError:
-        raise ReaderException("Expected base %d digit, got: %s"
-                              % (base, initch), rdr)
+        raise ReaderException("Expected base %d digit, got: (%s)"
+                              % (base, initch if initch else "EOF"), rdr)
     for i in range(2, length+1):
         ch = read1(rdr)
-        if ch == "" or isWhitespace(ch) or isMacro(ch):
+        if ch == "" or ch in whiteSpace or isMacro(ch):
             rdr.back()
             i -= 1
             break
@@ -243,22 +254,15 @@ def readUnicodeChar(rdr, initch, base, length, exact):
             digits.append(ch)
         except ValueError:
             if exact:
-                raise ReaderException("Expected base %d digit, got: %s"
-                                      % (base, ch), rdr)
+                raise ReaderException("Expected base %d digit, got: (%s)"
+                                      % (base, ch if ch else "EOF"), rdr)
             else:
                 rdr.back()
                 break
     if i != length and exact:
-        raise ReaderException("Invalid character length: %d, should be: %d"
-                              % (i, length), rdr)
+        raise ReaderException("Invalid character length: (%d), should be:"
+                              " (%d)" % (i, length), rdr)
     return unichr(int("".join(digits), base))
-
-tokenMappings = {"newline": "\n",
-                 "space": " ",
-                 "tab": "\t",    
-                 "backspace": "\b",    
-                 "formfeed": "\f",    
-                 "return": "\r"}
 
 def characterReader(rdr, backslash):
     """Read a single clojure-py formatted character from rdr.
@@ -273,8 +277,8 @@ def characterReader(rdr, backslash):
     token = readToken(rdr, ch)
     if len(token) == 1:
         return character(token)
-    elif token in tokenMappings:
-        return character(tokenMappings[token])
+    elif token in namedChars:
+        return character(namedChars[token])
     elif token.startswith("u"):
         try:
             ch = stringCodepointToUnicodeChar(token, 1, 4, 16)
@@ -297,7 +301,7 @@ def characterReader(rdr, backslash):
         codepoint = ord(ch)
         if codepoint > 255:
             raise ReaderException("Octal escape sequence in literal string"
-                                  " must be in range [0, 377], got: \\o%o"
+                                  " must be in range [0, 377], got: (\\o%o)"
                                   % codepoint, rdr)
         return character(ch)
     raise ReaderException("Unsupported character: \\" + token, rdr)
@@ -323,17 +327,17 @@ def stringReader(rdr, doublequote):
                 ch = chrLiterals[ch]
             elif ch == "u":
                 ch = read1(rdr)
-                if not isHexCharacter(ch):
+                if not ch in hexChars:
                     raise ReaderException("Hexidecimal digit expected after"
-                                          " \\u in literal string, got: %s"
+                                          " \\u in literal string, got: (%s)"
                                           % ch, rdr)
                 ch = readUnicodeChar(rdr, ch, 16, 4, True)
-            elif isOctalCharacter(ch):
+            elif ch in octalChars:
                 ch = readUnicodeChar(rdr, ch, 8, 3, False)
                 if ord(ch) > 255:
                     raise ReaderException("Octal escape sequence in literal"
                                           " string must be in range [0, 377]"
-                                          ", got: %o" % ord(ch),
+                                          ", got: (%o)" % ord(ch),
                                           rdr)
             else:
                 raise ReaderException("Unsupported escape character in"
@@ -354,16 +358,12 @@ def readToken(rdr, initch):
     sb = [initch]
     while True:
         ch = read1(rdr)
-        if ch == "" or isWhitespace(ch) or isTerminatingMacro(ch):
+        if ch == "" or ch in whiteSpace or isTerminatingMacro(ch):
             rdr.back()
             break
         sb.append(ch)
     s = "".join(sb)
     return s
-
-INTERPRET_TOKENS = {"nil": None,
-                    "true": True,
-                    "false": False}
 
 def interpretToken(s):
     """Return the value defined by the string s.
@@ -390,7 +390,7 @@ def readNumber(rdr, initch):
     sb = [initch]
     while True:
         ch = read1(rdr)
-        if ch == "" or isWhitespace(ch) or isMacro(ch):
+        if ch == "" or ch in whiteSpace or isMacro(ch):
             rdr.back()
             break
         sb.append(ch)
@@ -447,8 +447,8 @@ def commentReader(rdr, semicolon):
     
     Return rdr"""
     while True:
-        chr = read1(rdr)
-        if chr == "" or chr == '\n' or chr == '\r':
+        ch = read1(rdr)
+        if ch in commentTerminators:
             break
     return rdr
 
@@ -549,7 +549,7 @@ def readDelimitedList(delim, rdr, isRecursive):
 
     while True:
         ch = read1(rdr)
-        while isWhitespace(ch):
+        while ch in whiteSpace:
             ch = read1(rdr)
         if ch == "":
             raise ReaderException("EOF while reading starting at line "
@@ -570,57 +570,104 @@ def readDelimitedList(delim, rdr, isRecursive):
 
     return a
 
-def regexReader(rdr, doubleQuote, raw=False):
+# This is the unicode name db Python uses:
+# ftp://ftp.unicode.org/Public/5.2.0/ucd/UnicodeData.txt
+def readNamedUnicodeChar(rdr):
+    """Read \N{foo} syntax, starting at the {.
+
+    rdr -- a read/unread
+
+    May raise ReaderException. Return the unicode character named by foo."""
+    buf = []
+    ch = read1(rdr)
+    if ch != "{":
+        raise ReaderException("Expected { in named unicode escape sequence,"
+                              " got: (%s)" % ch if ch else "EOF", rdr)
+    while True:
+        ch = read1(rdr)
+        if ch == "":
+            raise ReaderException("EOF while reading named unicode escape"
+                                  " sequence", rdr)
+        elif ch in unicodeNameChars:
+            buf.append(ch)
+            continue
+        elif ch == '"':
+            raise ReaderException("Missing } while reading named unicode"
+                                  " escape sequence", rdr)
+        elif ch == '}':
+            break
+        else:
+            raise ReaderException("Illegal character in named unicode"
+                                  " escape sequence: (%s)" % ch, rdr)
+    name = "".join(buf).strip()
+    if len(name) == 0:
+        raise ReaderException("Expected name between {} in named unicode "
+                              "escape sequence", rdr)
+    try:
+        return unicodedata.lookup(name)
+    except KeyError:
+        raise ReaderException("Unknown unicode character name in escape"
+                              " sequence: (%s)" % name, rdr)
+
+# TODO: raw reader syntax    
+def regexReader(rdr, doublequote, raw=False):
     """Read a possibly multi-line Python re pattern.
 
     rdr -- read/unread-able object
     doubleQuote -- ignored
-    raw -- if True, the string is to be treated as a Python r"string".
-
-    May raise ReaderException. Return a compiled Python re pattern object."""
-    # Read each character as is into the list pat. pat will have as the first
-    # characters u""" (or ur""" if raw is True) and as the last 3 character
-    # """. This will create a Python Unicode triple quoted string. Join pat
-    # and evaluate it, trapping any exceptions. This should make clojure-py
-    # use the exact same syntax as Python for regular expression patterns.
-    # 
-    # The only character that needs to be handled specially is ". If it's
-    # precede by a \ in the stream, append '\"' to pat. This will result in
-    # """\"""" for evaluation. If it's not preceded by \ it's the end of the
-    # string.
-    pat = ["u", 'r' if raw else '', '"', '"', '"']
+    raw -- if True, the string is to be treated as a Python r"string"."""
+    pat = []
     ch = read1(rdr)
-    # If raw is true, the reader is looking at the opening " instead of the
-    # first character after the opening ".
-    if raw:
-        if ch == "":
-            raise ReaderException("EOF reached expecting raw regex pattern"
-                                  " string", rdr)
-        elif ch != '"':
-            raise ReaderException("String expected after #r, got %s" % ch,
-                                  rdr)
-        # prime with the first character after the opening "
-        ch = read1(rdr)
-    lastch = ch
     while ch != '"':
         if ch == "":
             raise ReaderException("EOF while reading regex pattern", rdr)
+        if ch == "\\":
+            ch = read1(rdr)
+            if ch == "":
+                raise ReaderException("EOF while reading regex pattern", rdr)
+            # \, ', ", a, b, f, n, r, t, v
+            elif ch in regexCharLiterals:
+                ch = regexCharLiterals[ch]
+            # \uXXXX
+            elif ch == "u":
+                ch = read1(rdr)
+                if not ch in hexChars:
+                    raise ReaderException("Hexidecimal digit expected after"
+                                          " \\u in regex pattern, got: (%s)"
+                                          % ch if ch else "EOF", rdr)
+                ch = readUnicodeChar(rdr, ch, 16, 4, True)
+            # \uXXXXXXXX
+            elif ch == "U":
+                ch = read1(rdr)
+                if not ch in hexChars:
+                    raise ReaderException("Hexidecimal digit expected after"
+                                          " \\U in regex pattern, got: (%s)"
+                                          % ch if ch else "EOF", rdr)
+                ch = readUnicodeChar(rdr, ch, 16, 8, True)
+            # \xXX
+            elif ch == "x":
+                ch = read1(rdr)
+                if not ch in hexChars:
+                    raise ReaderException("Hexidecimal digit expected after"
+                                          " \\x in regex pattern, got: (%s)"
+                                          % ch if ch else "EOF", rdr)
+                ch = readUnicodeChar(rdr, ch, 16, 2, True)
+            #\O, \OO, or \OOO
+            elif ch.isdigit():
+                ch = readUnicodeChar(rdr, ch, 8, 3, False) # <= False
+            #\N{named unicode character}
+            elif ch == "N":
+                ch = readNamedUnicodeChar(rdr)
+            # Didnt recognize any escape sequence but ch got
+            # reset to the char after \\ so...
+            else:
+                pat.append("\\")
         pat.append(ch)
         ch = read1(rdr)
-        if ch == '"' and lastch == '\\':
-            pat.append('\"')
-        lastch = ch
-    pat.extend(['"', '"', '"'])
     try:
-        # cheater cheater pumpkin eater!
-        pystr = eval("".join(pat))
-        return re.compile(pystr)
-    except SyntaxError as e:    # bad string
-        raise ReaderException(e.args[0], rdr)
-    except re.error as e:       # bad regex
+        return re.compile(u"".join(pat))
+    except re.error as e:
         raise ReaderException("invalid regex pattern: %s" % e.args[0], rdr)
-    except Exception as e:      # who knows what else might happen
-        raise ReaderException(e.args[0], rdr)
 
 def metaReader(rdr, caret):
     """Read two objects from rdr. Return second with first as meta data.
@@ -686,7 +733,7 @@ def argReader(rdr, perc):
         return interpretToken(readToken(rdr, '%'))
     ch = read1(rdr)
     rdr.back()
-    if ch == "" or isWhitespace(ch) or isTerminatingMacro(ch):
+    if ch == "" or ch in whiteSpace or isTerminatingMacro(ch):
         return registerArg(1)
     n = read(rdr, True, None, True)
     if isinstance(n, Symbol) and n == _AMP_:

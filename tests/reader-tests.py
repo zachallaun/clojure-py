@@ -131,7 +131,7 @@ def gen_baseNIntegerMap_PASS():
         "2r10" : 2
 
     To see wtf is going on...
-    >>> pprint gen_baseNIntegerMap_PASS()"""
+    >>> pprint(eval(gen_baseNIntegerMap_PASS()))"""
     # don't change the order of these
     digits = "1023456789aBcDeFgHiJkLmNoPqRsTuVwXyZ"
     entries = []
@@ -259,21 +259,24 @@ literalCharacter_FAIL = [
     # According to a random web page:
     # The only reason the range D800:DFFF is invalid is because of UTF-16's
     # inability to encode it.
-    "\\ud800", "\\udfff",
+    "\ud800", "\udfff",
     # missing char at eof
     "\\",
     # not enough digits after \u (\u is the character u)
-    "\\u1", "\\u22", "\\u333",
+    "\u1", "\u22", "\u333",
     # too many digits after \u
-    "\\u03bbb",
+    "\u03bbb",
     # too many digits after \o
-    "\\o0333",
+    "\o0333",
     # octal value > 0377
-    "\\o400"
+    "\o400"
     ]
 
 # ======================================================================
 # Literal String Cases
+# These are tests that conform to Clojure. Some Python string syntax is
+# not permitted:
+# \U, \N{foo}, \x, \v, \a
 # ======================================================================
             
 literalStringMap_PASS = {
@@ -288,9 +291,9 @@ literalStringMap_PASS = {
     # escape           |  |<------ trailing escaped escape
     '\\"\\n\\t\\f\\b\\r\\\\': '"\n\t\f\b\r\\',
     # 4 hex digit
-    "\\u03bb": u"\u03bb",
-    "\\u03bb@": u"\u03bb@",
-    "@\\u03bb": u"@\u03bb",
+    "\u03bb": u"\u03bb",
+    "\u03bb@": u"\u03bb@",
+    "@\u03bb": u"@\u03bb",
     # octal
     "\\0": "\x00",
     "\\0@": "\x00@",
@@ -306,20 +309,22 @@ literalStringMap_PASS = {
 literalString_FAIL = [
     # invalid escape characters
     "\\x", "\\a", "\\v", "@\\x", "@\\a", "@\\v", "\\x@", "\\a@", "\\v@",
+    "\\o041"
     # not enough digits after \u
     "\\u", "\\u3", "\\u33", "\\u333",
     "@\\u", "@\\u3", "@\\u33", "@\\u333",
     "\\u@", "\\u3@", "\\u33@", "\\u333@",
-    # missing octal digits
-    "\\o", "@\\o", "\\o@",
     # octal value > 0377
-    "\\o400", "@\\o400", "\\o400@",
-    # octal digits > 7
-    "\\o8", "@\\o8", "\\o8@",
+    "\\400", "@\\400", "\\400@",
     ]
 
 # ======================================================================
 # Regular Expression Pattern
+#
+# Each key is the string sent to lispreader. The escapes have to be
+# handled in such a way as to allow the reader to do escape
+# interpretation. If Python would treat the escape special, it needs
+# an additional \ before sending it to the reader.
 # ======================================================================
 
 regexPatternMap_PASS = {
@@ -340,14 +345,20 @@ regexPatternMap_PASS = {
     '#".{3,3}"' : re.compile(".{3,3}"),
     '#".{3,3}"' : re.compile(".{3,3}"),
     '#".{3,3}?"' : re.compile(".{3,3}?"),
+    # None of these \ are special. Python will send them to the reader as is.
+    # \ . \ ^ \ $, etc.
     '#"\.\^\$\*\+\?\{\}\[\]"' : re.compile("\.\^\$\*\+\?\{\}\[\]"),
     '#"[a-z]"' : re.compile("[a-z]"),
     '#"[]]"' : re.compile("[]]"),
     '#"[-]"' : re.compile("[-]"),
+    # Nor are these
     '#"[\-\]\[]"' : re.compile(r"[\-\]\[]"),
+    # or these
     '#"[\w\S]"' : re.compile("[\w\S]"),
     '#"[^5]"' : re.compile("[^5]"),
+    # or the |
     '#"A|B[|]\|"' : re.compile("A|B[|]\|"),
+    # or ( )
     '#"([()]\(\))"' : re.compile("([()]\(\))"),
     '#"(?iLmsux)"' : re.compile("(?iLmsux)"),
     '#"(?iLmsux)"' : re.compile("(?iLmsux)"),
@@ -360,35 +371,65 @@ regexPatternMap_PASS = {
     '#"(?<=foo)bar"' : re.compile("(?<=foo)bar"),
     '#"(?<!foo)bar"' : re.compile("(?<!foo)bar"),
     '#"(?P<foo>)(?(foo)yes|no)"' : re.compile("(?P<foo>)(?(foo)yes|no)"),
-    '#"(.+) \1"' : re.compile("(.+) \1"),
-    '#"\377\021"' : re.compile(u"\377\021"),
-    '#"[\1\2\3\4\5\6\7\10]"' : re.compile("[\1\2\3\4\5\6\7\10]"),
+    #       |  |<---- Python will send two \'s to the lisp reader, not four
+    '#"(.+) \\\\1"' : re.compile("(.+) \\1"),
+    '#"(.+) \\\\1"' : re.compile(r"(.+) \1"),
+    # send one \ each, so the octal sequences are interpreted in lispreader
+    # >>> u"\377" == "\377"   # funky warning on the Python repl
+    '#"\\377\\021"' : re.compile(u"\377\021"),
+    # Again, send one \ each. Python would interpret \1 as the char 0x01
+    # *before* sending it to lispreader.
+    '#"[\\1\\2\\3\\4\\5\\6\\7\\10]"' : re.compile("[\1\2\3\4\5\6\7\10]"),
+    # Python does not interpret \A, but it does \b
+    # The dict value here is a raw string so the char sequence will be:
+    # \ A \ \ b \ B, etc.
     '#"\A\\\\b\B\d\D\s\S\w\W\Z"' : re.compile(r"\A\b\B\d\D\s\S\w\W\Z"),
+    # dict val is a raw string, and Python interprets all these chars
     '#"\\\\a\\\\b\\\\f\\\\n\\\\r\\\\t\\\\v"' : re.compile(r"\a\b\f\n\r\t\v"),
-    # '#"\a\b\f\n\r\t\v"' : re.compile("\a\b\f\n\r\t\v"),
-    '#"\N{DIGIT ZERO}"' : re.compile(u"\N{DIGIT ZERO}"),
+    # I want Python to interpret here. lispreader will simply return
+    # 0x07, 0x08 etc. (no escape interpretation)
+    '#"\a\b\f\n\r\t\v"' : re.compile("\a\b\f\n\r\t\v"),
+    # Send \ and letter separately. lispreader will see \ n and
+    # return 0x0a (reader interpretation)
+    '#"\\a\\b\\f\\n\\r\\t\\v"' : re.compile("\a\b\f\n\r\t\v"),
+    # \N, \u, and \U are only special in a unicode string (in Python)
+    '#"\N{DIGIT ZERO}{5, 10}"' : re.compile(u"\N{DIGIT ZERO}{5, 10}"),
     '#"\u03bb{1,3}"' : re.compile(u"\u03bb{1,3}"),
     '#"\U000003bb{1,3}"' : re.compile(u"\U000003bb{1,3}"),
-# '''#"(?x)
-#      # foo
-#      [a-z]
-#      # bar
-#      [0-9a-zA-Z_]+
-#      "''' : re.compile("""(?x)
-#      # foo
-#      [a-z]
-#      # bar
-#      [0-9a-zA-Z_]+
-#      """),
+    # but \x is always special, hence the \\
+    '#"\\xff\\x7f"' : re.compile(u"\xff\x7f"),
+    
+'''#"(?x)
+     # foo
+     [a-z]
+     # bar
+     [0-9a-zA-Z_]+
+     "''' : re.compile("""(?x)
+     # foo
+     [a-z]
+     # bar
+     [0-9a-zA-Z_]+
+     """),
     }
 
 regexPattern_FAIL = [
-    # unmatched paren, bracket, (can't make it catch a missing } O_o)
+    # # unmatched paren, bracket, (can't make it catch a missing } O_o)
     '#"([()]\(\)"', '#"["',
     # foo not defined
     '#"(?(foo)yes|no)"',
     # bogus escape 
-    '#"[\8]"',
-    # NUL
-    '#"\0"',
+    '#"[\\8]"',
+    # need 4 hex digits
+    '#"\u"', '#"\u1"', '#"\u12"', '#"\u123"',
+    # need 8 hex digits
+    '#"\U"', '#"\U1"', '#"\U12"', '#"\U123"', '#"\U1234"', '#"\U12345"',
+    '#"\U123456"', '#"\U1234567"',
+    # need 2 hex digits
+    '#"\\x"', '#"\\x1"',
+    # missing }, missing ",  can't escape }
+    '#"\N{foo"', '#"\N{foo', '#"\N{foo\\}}"',
+    # unknown name
+    '#"\N{KLINGON LETTER NG}"',
+    # empty {}
+    '#"\N{}"', '#"\N{   }"',
     ]
