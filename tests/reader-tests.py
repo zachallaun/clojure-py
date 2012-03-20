@@ -365,21 +365,21 @@ regexPatternMap_PASS = {
     '#"[\1\2\3\4\5\6\7\10]"' : re.compile("[\1\2\3\4\5\6\7\10]"),
     '#"\A\\\\b\B\d\D\s\S\w\W\Z"' : re.compile(r"\A\b\B\d\D\s\S\w\W\Z"),
     '#"\\\\a\\\\b\\\\f\\\\n\\\\r\\\\t\\\\v"' : re.compile(r"\a\b\f\n\r\t\v"),
-    '#"\a\b\f\n\r\t\v"' : re.compile("\a\b\f\n\r\t\v"),
+    # '#"\a\b\f\n\r\t\v"' : re.compile("\a\b\f\n\r\t\v"),
     '#"\N{DIGIT ZERO}"' : re.compile(u"\N{DIGIT ZERO}"),
     '#"\u03bb{1,3}"' : re.compile(u"\u03bb{1,3}"),
     '#"\U000003bb{1,3}"' : re.compile(u"\U000003bb{1,3}"),
-'''#"(?x)
-     # foo
-     [a-z]
-     # bar
-     [0-9a-zA-Z_]+
-     "''' : re.compile("""(?x)
-     # foo
-     [a-z]
-     # bar
-     [0-9a-zA-Z_]+
-     """),
+# '''#"(?x)
+#      # foo
+#      [a-z]
+#      # bar
+#      [0-9a-zA-Z_]+
+#      "''' : re.compile("""(?x)
+#      # foo
+#      [a-z]
+#      # bar
+#      [0-9a-zA-Z_]+
+#      """),
     }
 
 regexPattern_FAIL = [
