@@ -1,27 +1,28 @@
 # -*- coding: utf-8 -*-
 
-import re, unicodedata, string
 import fractions
+import re
+import string
+import unicodedata
 
-from clojure.lang.fileseq import FileSeq, MutatableFileSeq
-from clojure.lang.var import Var, pushThreadBindings, popThreadBindings, var
+from clojure.lang.character import character
+from clojure.lang.cljexceptions import ReaderException, IllegalStateException
+from clojure.lang.cljkeyword import Keyword, keyword, TAG_KEY, T, LINE_KEY
+from clojure.lang.fileseq import FileSeq, MutatableFileSeq, StringReader
+from clojure.lang.globals import currentCompiler
 from clojure.lang.ipersistentlist import IPersistentList
 from clojure.lang.ipersistentvector import IPersistentVector
-from clojure.lang.iseq import ISeq
 from clojure.lang.ipersistentmap import IPersistentMap
 from clojure.lang.ipersistentset import IPersistentSet
 from clojure.lang.ipersistentcollection import IPersistentCollection
+from clojure.lang.iseq import ISeq
 from clojure.lang.persistenthashmap import EMPTY as EMPTY_MAP
-import clojure.lang.persistenthashset
-from clojure.lang.cljexceptions import ReaderException, IllegalStateException
-import clojure.lang.rt as RT
-from clojure.lang.cljkeyword import LINE_KEY
-from clojure.lang.symbol import Symbol, symbol
 from clojure.lang.persistentvector import EMPTY as EMPTY_VECTOR
-from clojure.lang.globals import currentCompiler
-from clojure.lang.cljkeyword import Keyword, keyword
-from clojure.lang.fileseq import StringReader
-from clojure.lang.character import character
+import clojure.lang.persistenthashset
+from clojure.lang.persistenthashset import create
+import clojure.lang.rt as RT
+from clojure.lang.symbol import Symbol, symbol
+from clojure.lang.var import Var, pushThreadBindings, popThreadBindings, var
 
 _AMP_ = symbol("&")
 _FN_ = symbol("fn")
@@ -61,9 +62,9 @@ $                               # ensure the entire string matched
 # string to a floating point value for return. If it can't convert it (for
 # what ever reason), it throws.  Python float() is a lot more liberal. It's
 # not a parser:
-# 
+#
 # >>> float("08") => 8.0
-# 
+#
 # I could just check for a decimal in matchNumber(), but is that the *only*
 # case I need to check? I think it best to fully define a valid float in the
 # re.
@@ -115,9 +116,9 @@ regexCharLiterals = {'\\': '\\',
 # for characterReader()
 namedChars = {"newline": "\n",
               "space": " ",
-              "tab": "\t",    
-              "backspace": "\b",    
-              "formfeed": "\f",    
+              "tab": "\t",
+              "backspace": "\b",
+              "formfeed": "\f",
               "return": "\r",
               }
 
@@ -128,22 +129,27 @@ commentTerminators = set(['', '\n', '\r'])
 unicodeNameChars = set(string.letters + "- ")
 hexChars = set("0123456789abcdefABCDEF")
 
+
 def read1(rdr):
     rdr.next()
     if rdr is None:
         return ""
     return rdr.first()
 
+
 def isMacro(c):
     return c in macros
 
+
 def isTerminatingMacro(ch):
     return ch != "#" and ch != "\'" and isMacro(ch)
+
 
 def readString(s):
     "Return the first object found in s"
     r = StringReader(s)
     return read(r, False, None, False)
+
 
 def read(rdr, eofIsError, eofValue, isRecursive):
     """Read and return one object from rdr.
@@ -194,6 +200,7 @@ def read(rdr, eofIsError, eofValue, isRecursive):
         token = readToken(rdr, ch)
         return interpretToken(token)
 
+
 def unquoteReader(rdr, tilde):
     """Return one of:
     * (unquote-splicing next-object-read)
@@ -208,6 +215,7 @@ def unquoteReader(rdr, tilde):
         rdr.back()
         o = read(rdr, True, None, True)
         return RT.list(_UNQUOTE_, o)
+
 
 # replaces the overloaded readUnicodeChar()
 # Not really cemented to the reader
@@ -226,6 +234,7 @@ def stringCodepointToUnicodeChar(token, offset, length, base):
         return unichr(int(token[offset:], base))
     except:
         raise UnicodeError("Invalid unicode character: \\%s" % token)
+
 
 def readUnicodeChar(rdr, initch, base, length, exact):
     """Read a string that specifies a Unicode codepoint.
@@ -265,6 +274,7 @@ def readUnicodeChar(rdr, initch, base, length, exact):
         raise ReaderException("Invalid character length: (%d), should be:"
                               " (%d)" % (i, length), rdr)
     return unichr(int("".join(digits), base))
+
 
 def characterReader(rdr, backslash):
     """Read a single clojure-py formatted character from rdr.
@@ -314,7 +324,7 @@ def stringReader(rdr, doublequote):
 
     rdr -- a read/unread-able object
     doublequote -- ignored
-    
+
     May raise ReaderException. Return a str or unicode object."""
     buf = []
     ch = read1(rdr)
@@ -348,13 +358,14 @@ def stringReader(rdr, doublequote):
             return "".join(buf)
         buf += ch
         ch = read1(rdr)
-    
+
+
 def readToken(rdr, initch):
     """Read and return the next valid token from rdr.
 
     rdr -- read/unread-able object
     initch -- first character of returned token
-    
+
     Collect characters until the eof is reached, white space is read, or a
     terminating macro character is read."""
     sb = [initch]
@@ -366,6 +377,7 @@ def readToken(rdr, initch):
         sb.append(ch)
     s = "".join(sb)
     return s
+
 
 def interpretToken(s):
     """Return the value defined by the string s.
@@ -381,6 +393,7 @@ def interpretToken(s):
     if ret is None:
         raise ReaderException("Unknown symbol " + str(s))
     return ret
+
 
 def readNumber(rdr, initch):
     """Return the next number read from rdr.
@@ -405,6 +418,7 @@ def readNumber(rdr, initch):
     if n is None:
         raise ReaderException("Invalid number: " + s, rdr)
     return n
+
 
 def matchNumber(s):
     """Find if the string s is a valid literal number.
@@ -437,22 +451,25 @@ def matchNumber(s):
     # no match
     return None
 
+
 def getMacro(ch):
     """Return the function associated with the macro character ch"""
     return macros.get(ch)       # None if key not present
+
 
 def commentReader(rdr, semicolon):
     """Read and discard characters until a newline or eof is reached.
 
     rdr -- read/unread-able object
     semicolon -- ignored
-    
+
     Return rdr"""
     while True:
         ch = read1(rdr)
         if ch in commentTerminators:
             break
     return rdr
+
 
 def discardReader(rdr, underscore):
     """Read and discard the next object from rdr.
@@ -464,6 +481,7 @@ def discardReader(rdr, underscore):
     read(rdr, True, None, True)
     return rdr
 
+
 class wrappingReader(object):
     """Defines a callable object that reads the next object and returns:
     (sym next-object-read)
@@ -474,6 +492,7 @@ class wrappingReader(object):
     def __call__(self, rdr, quote):
         o = read(rdr, True, None, True)
         return RT.list(self.sym, o)
+
 
 def dispatchReader(rdr, hash):
     """Read and return the next object defined by the next dispatch character.
@@ -490,6 +509,7 @@ def dispatchReader(rdr, hash):
         raise ReaderException("No dispatch macro for: ("+ ch + ")", rdr)
     return dispatchMacros[ch](rdr, ch)
 
+
 def listReader(rdr, leftparen):
     """Read and return a possibly empty list () from rdr.
 
@@ -499,6 +519,7 @@ def listReader(rdr, leftparen):
     lst = readDelimitedList(')', rdr, True)
     lst = apply(RT.list, lst)
     return lst.withMeta(RT.map(LINE_KEY, startline))
+
 
 def vectorReader(rdr, leftbracket):
     """Read and return a possibly empty vector [] from rdr.
@@ -520,23 +541,25 @@ def mapReader(rdr, leftbrace):
     lst = apply(RT.map, lst)
     return lst
 
+
 def setReader(rdr, leftbrace):
     """Read and return a possibly empty set #{} from rdr.
 
     rdr -- a read/unread-able object
     leftbrace -- ignored"""
-    from persistenthashset import create
-    return create(readDelimitedList("}", rdr,  True))
+    return create(readDelimitedList("}", rdr, True))
+
 
 def unmatchedClosingDelimiterReader(rdr, un):
     """Raise ReaderException.
-    
+
     rdr -- read/unread-able object (used for exception message)
     un -- the stray delimiter
 
     This will be called if un has no matching opening delimiter in rdr."""
     raise ReaderException("Unmatched Delimiter " + un + " at "
                           + str(rdr.lineCol()))
+
 
 def readDelimitedList(delim, rdr, isRecursive):
     """Read and collect objects until an unmatched delim is reached.
@@ -571,6 +594,7 @@ def readDelimitedList(delim, rdr, isRecursive):
             a.append(o)
 
     return a
+
 
 # This is the unicode name db Python uses:
 # ftp://ftp.unicode.org/Public/5.2.0/ucd/UnicodeData.txt
@@ -611,6 +635,7 @@ def readNamedUnicodeChar(rdr):
         raise ReaderException("Unknown unicode character name in escape"
                               " sequence: (%s)" % name, rdr)
 
+
 def rawRegexReader(rdr, r):
     """Read a regex pattern string ignoring most escape sequences.
 
@@ -621,14 +646,14 @@ def rawRegexReader(rdr, r):
     are not preceded by an even number of backslashes. When \ are in pairs
     they've lost their abilty to escape the next character. Both backslashes
     *still* get put into the string.
-    
+
       * \uXXXX
         \u03bb => λ
         \\u03bb => \ \ u 0 3 b b
         \\\u03bb => \ \ λ
       * \UXXXXXXXX
         same as above
-        
+
     Everything else will result in two characters in the string:
     \n => \ n
     \r => \ r
@@ -688,6 +713,7 @@ def rawRegexReader(rdr, r):
         return re.compile(u"".join(pat))
     except re.error as e:
         raise ReaderException("invalid regex pattern: %s" % e.args[0], rdr)
+
 
 def regexReader(rdr, doublequote):
     """Read a possibly multi-line Python re pattern string.
@@ -750,6 +776,7 @@ def regexReader(rdr, doublequote):
     except re.error as e:
         raise ReaderException("invalid regex pattern: %s" % e.args[0], rdr)
 
+
 def metaReader(rdr, caret):
     """Read two objects from rdr. Return second with first as meta data.
 
@@ -757,9 +784,6 @@ def metaReader(rdr, caret):
     caret -- ignored
 
     May raise ReaderException."""
-    from clojure.lang.symbol import Symbol
-    from clojure.lang.cljkeyword import Keyword, TAG_KEY, T
-    from clojure.lang.ipersistentmap import IPersistentMap
     line = rdr.lineCol()[0]
     meta = read(rdr, True, None, True)
     if isinstance(meta, (str, Symbol)):
@@ -777,12 +801,11 @@ def metaReader(rdr, caret):
                               " .withMeta")
     return o.withMeta(meta)
 
+
 def matchSymbol(s):
     """Return a symbol or keyword.
-    
+
     Return None if the string s does not define a legal symbol or keyword."""
-    from clojure.lang.symbol import Symbol
-    from clojure.lang.cljkeyword import Keyword
     m = symbolPat.match(s)
     if m is not None:
         ns = m.group(1)
@@ -801,7 +824,8 @@ def matchSymbol(s):
         else:
             return symbol(ns, name)
     return None
-    
+
+
 def argReader(rdr, perc):
     """Read and intern an anonymous function argument (%, %1, %&, etc.).
 
@@ -823,6 +847,7 @@ def argReader(rdr, perc):
         raise ReaderException("arg literal must be %, %& or %integer", rdr)
     return registerArg(n)
 
+
 def varQuoteReader(rdr, singlequote):
     """Return the list (var next-object-read)
 
@@ -832,8 +857,8 @@ def varQuoteReader(rdr, singlequote):
     form = read(rdr, True, None, True)
     return RT.list(_VAR_, form).withMeta(RT.map(LINE_KEY, line))
 
+
 def registerArg(arg):
-    """"""
     argsyms = ARG_ENV.deref()
     if argsyms is None:
         raise IllegalStateException("arg literal not in #()")
@@ -843,13 +868,11 @@ def registerArg(arg):
         ARG_ENV.set(argsyms.assoc(arg, ret))
     return ret
 
-def fnReader(rdr, lparen):
-    from clojure.lang.persistenthashmap import EMPTY
-    from clojure.lang.var import popThreadBindings, pushThreadBindings
 
+def fnReader(rdr, lparen):
     if ARG_ENV.deref() is not None:
         raise IllegalStateException("Nested #()s are not allowed")
-    pushThreadBindings(RT.map(ARG_ENV, EMPTY))
+    pushThreadBindings(RT.map(ARG_ENV, EMPTY_MAP))
     rdr.back()
     form = read(rdr, True, None, True)
     drefed = ARG_ENV.deref()
@@ -870,13 +893,16 @@ def fnReader(rdr, lparen):
     popThreadBindings()
     return RT.list(_FN_, vargs, form)
 
+
 def isUnquote(form):
     """Return True if form is (unquote ...)"""
     return isinstance(form, ISeq) and form.first() == _UNQUOTE_
 
+
 def isUnquoteSplicing(form):
     """Return True if form is (unquote-splicing ...)"""
     return isinstance(form, ISeq) and form.first() == _UNQUOTE_SPLICING_
+
 
 class SyntaxQuoteReader(object):
     def __call__(self, r, backquote):
@@ -889,6 +915,7 @@ class SyntaxQuoteReader(object):
             popThreadBindings()
 
     def syntaxQuote(self, form):
+        # compiler uses this module, so import it lazily
         from clojure.lang.compiler import builtins as compilerbuiltins
 
         if form in compilerbuiltins:
@@ -974,7 +1001,6 @@ class SyntaxQuoteReader(object):
 
 
 def garg(n):
-    from symbol import Symbol
     return symbol(None,  "rest" if n == -1 else  ("p" + str(n)) + "__" +
                   str(RT.nextID()) + "#")
 
