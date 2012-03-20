@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import re, unicodedata, string
 import fractions
 
@@ -609,13 +611,92 @@ def readNamedUnicodeChar(rdr):
         raise ReaderException("Unknown unicode character name in escape"
                               " sequence: (%s)" % name, rdr)
 
-# TODO: raw reader syntax    
-def regexReader(rdr, doublequote, raw=False):
-    """Read a possibly multi-line Python re pattern.
+def rawRegexReader(rdr, r):
+    """Read a regex pattern string ignoring most escape sequences.
+
+    rdr -- a read/unread-able object
+    r -- ignored
+
+    The following two are the only valid escape sequences. But only if they
+    are not preceded by an even number of backslashes. When \ are in pairs
+    they've lost their abilty to escape the next character. Both backslashes
+    *still* get put into the string.
+    
+      * \uXXXX
+        \u03bb => λ
+        \\u03bb => \ \ u 0 3 b b
+        \\\u03bb => \ \ λ
+      * \UXXXXXXXX
+        same as above
+        
+    Everything else will result in two characters in the string:
+    \n => \ n
+    \r => \ r
+    \t => \ t
+    \" => \ "
+    \xff => \ x f f
+    \377 => \ 3 7 7
+    \N{foo} \ N { f o o }
+
+    May raise ReaderException. Return a Unicode string.
+    """
+    nSlashes = 0
+    pat = []
+    ch = read1(rdr)
+    if ch == "":
+        raise ReaderException("EOF expecting regex pattern", rdr)
+    if ch != '"':
+        raise ReaderException("Expected regex pattern after #r", rdr)
+    ch = read1(rdr)
+    while ch != '"':
+        if ch == "":
+            raise ReaderException("EOF while reading regex pattern", rdr)
+        if ch == "\\":
+            nSlashes += 1
+            ch = read1(rdr)
+            if ch == "":
+                raise ReaderException("EOF while reading regex pattern", rdr)
+            # \uXXXX
+            elif ch == "u" and nSlashes % 2 != 0:
+                ch = read1(rdr)
+                if not ch in hexChars:
+                    raise ReaderException("Hexidecimal digit expected"
+                                          " after \\u in regex pattern,"
+                                          " got: (%s)"
+                                          % ch if ch else "EOF", rdr)
+                pat.append(readUnicodeChar(rdr, ch, 16, 4, True))
+                nSlashes = 0
+            # \uXXXXXXXX
+            elif ch == "U" and nSlashes % 2 != 0:
+                ch = read1(rdr)
+                if not ch in hexChars:
+                    raise ReaderException("Hexidecimal digit expected"
+                                          " after \\U in regex pattern,"
+                                          " got: (%s)"
+                                          % ch if ch else "EOF", rdr)
+                pat.append(readUnicodeChar(rdr, ch, 16, 8, True))
+                nSlashes = 0
+            else:
+                if ch == "\\":
+                    nSlashes += 1
+                pat.append("\\")
+                pat.append(ch)
+        else:
+            pat.append(ch)
+        ch = read1(rdr)
+    try:
+        return re.compile(u"".join(pat))
+    except re.error as e:
+        raise ReaderException("invalid regex pattern: %s" % e.args[0], rdr)
+
+def regexReader(rdr, doublequote):
+    """Read a possibly multi-line Python re pattern string.
 
     rdr -- read/unread-able object
     doubleQuote -- ignored
-    raw -- if True, the string is to be treated as a Python r"string"."""
+    raw -- if True, the string is to be treated as a Python r"string".
+
+    May raise ReaderException. Return a Unicode string"""
     pat = []
     ch = read1(rdr)
     while ch != '"':
@@ -922,5 +1003,5 @@ dispatchMacros = {"\"": regexReader,
                   "'": varQuoteReader,
                   "^": metaReader,
                   # Use Python raw string syntax as #r"foo"
-                  "r": lambda x, _ : regexReader(x, _, True),
+                  "r": rawRegexReader,
                   }
