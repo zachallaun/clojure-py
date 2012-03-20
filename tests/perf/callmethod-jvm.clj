@@ -1,4 +1,4 @@
-(ns perf.callmethod)
+(ns tests.perf.callmethod)
 ; Let's test some ways of calling functions. To do this we'll simply count
 ; how long it takes to count to some insanely high number over and over again
 

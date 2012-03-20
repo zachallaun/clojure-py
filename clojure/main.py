@@ -88,6 +88,7 @@ def main():
 
     if not sys.argv[1:]:
         import clojure.repl
+        clojure.repl.enable_readline()
         clojure.repl.run_repl(comp)
     else:
         for x in sys.argv[1:]:
