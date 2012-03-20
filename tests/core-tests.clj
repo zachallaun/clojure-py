@@ -636,4 +636,10 @@
 (deftest vec-tests
     (assertions/assert-equal ((fn [& y] (vec y)) 1 2) [1 2]))
 
+(deftest reify-tests
+    (let [f (fn [y] (reify ISeq
+                           (seq [self] self)
+                           (first [self] y)))]
+         (assertions/assert-equal (first (f 42)) 42))) 
+
 (py/print "all tests passed")
