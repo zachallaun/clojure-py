@@ -1,25 +1,33 @@
+import __builtin__
+import dis
+import marshal
+import new
+import pickle
+import py_compile
+import re
+import sys
+import time
+
 from clojure.lang.character import Character
-from clojure.lang.symbol import Symbol, symbol
-from clojure.lang.namespace import findOrCreate as findOrCreateNamespace
+from clojure.lang.cons import Cons
 from clojure.lang.cljexceptions import CompilerException, AbstractMethodCall
-from clojure.lang.persistentvector import PersistentVector
+from clojure.lang.cljkeyword import Keyword, keyword
 from clojure.lang.ipersistentvector import IPersistentVector
 from clojure.lang.ipersistentmap import IPersistentMap
 from clojure.lang.ipersistentset import IPersistentSet
 from clojure.lang.ipersistentlist import IPersistentList
+from clojure.lang.iseq import ISeq
+from clojure.lang.lispreader import _AMP_, LINE_KEY, garg
+from clojure.lang.namespace import (findItem,
+                                    find as findNamespace,
+                                    findOrCreate as findOrCreateNamespace)
+from clojure.lang.persistentlist import PersistentList, EmptyList
+from clojure.lang.persistentvector import PersistentVector
+import clojure.lang.rt as RT
+from clojure.lang.symbol import Symbol, symbol
 from clojure.lang.var import Var, define, intern as internVar, var as createVar
 from clojure.util.byteplay import *
 import clojure.util.byteplay as byteplay
-from clojure.lang.cljkeyword import Keyword, keyword
-from clojure.lang.namespace import find as findNamespace
-import new
-import clojure.lang.rt as RT
-from clojure.lang.lispreader import _AMP_
-from clojure.lang.namespace import findItem
-from clojure.lang.lispreader import LINE_KEY, garg
-import re
-import new
-import sys
 
 _MACRO_ = keyword(symbol("macro"))
 version = (sys.version_info[0] * 10) + sys.version_info[1]
@@ -30,18 +38,19 @@ PTR_MODE_DEREF = "PTR_MODE_DEREF"
 class MetaBytecode(object):
     pass
 
+
 class GlobalPtr(MetaBytecode):
     def __init__(self, ns, name):
         self.ns = ns
         self.name = name
-        
+
     def __repr__(self):
         return "GblPtr<%s/%s>" % (self.ns.__name__, self.name)
-    
+
     def emit(self, comp, mode):
         module = self.ns
         val = getattr(module, self.name)
-        
+
         if isinstance(val, Var):
             if not val.isDynamic():
                 val = val.deref()
@@ -53,10 +62,11 @@ class GlobalPtr(MetaBytecode):
                             (CALL_FUNCTION, 0)]
                 else:
                     raise CompilerException("Invalid deref mode", mode)
-        
+
         return [(LOAD_CONST, module),
                (LOAD_ATTR, self.name)]
-                
+
+
 def expandMetas(bc, comp):
     code = []
     for x in bc:
@@ -65,8 +75,7 @@ def expandMetas(bc, comp):
         else:
             code.append(x)
     return code
-        
-            
+
 
 def emitJump(label):
     if version == 26:
@@ -75,6 +84,7 @@ def emitJump(label):
     else:
         return [(POP_JUMP_IF_FALSE, label)]
 
+
 def emitLanding(label):
     if version == 26:
         return [(label, None),
@@ -82,12 +92,14 @@ def emitLanding(label):
     else:
         return [(label, None)]
 
+
 def compileNS(comp, form):
     rest = form.next()
     if len(rest) != 1:
         raise CompilerException("ns only supports one item", rest)
     comp.setNS(rest.first())
     return [(LOAD_CONST, None)]
+
 
 def compileDef(comp, form):
     if len(form) not in [2, 3]:
@@ -102,7 +114,6 @@ def compileDef(comp, form):
         ns = sym.ns
 
     comp.pushName(sym.name)
-
     code = []
     v = internVar(comp.getNS(), sym)
     v.setDynamic(True)
@@ -110,14 +121,10 @@ def compileDef(comp, form):
     code.append((LOAD_ATTR, "bindRoot"))
     code.extend(comp.compile(value))
     code.append((CALL_FUNCTION, 1))
-    #code.append((LOAD_CONST, v.setDynamic))
-    #code.append((LOAD_CONST, False))
-    #code.append((CALL_FUNCTION, 1))
-    #code.append((POP_TOP, None))
     v.setMeta(sym.meta())
-
     comp.popName()
     return code
+
 
 def compileBytecode(comp, form):
     codename = form.first().name
@@ -149,18 +156,19 @@ def compileBytecode(comp, form):
     if se[1] == 0:
         code.append((LOAD_CONST, None))
     return code
-    
+
+
 def compileKWApply(comp, form):
     if len(form) < 3:
         raise CompilerException("at least two arguments required to kwapply", form)
-    
+
     form = form.next()
     fn = form.first()
     form = form.next()
     kws = form.first()
     args = form.next()
     code = []
-   
+
     s = args
     code.extend(comp.compile(fn))
     while s is not None:
@@ -169,13 +177,8 @@ def compileKWApply(comp, form):
     code.extend(comp.compile(kws))
     code.append((LOAD_ATTR, "toDict"))
     code.append((CALL_FUNCTION, 0))
-    
     code.append((CALL_FUNCTION_KW, 0 if args is None else len(args)))
-    
     return code
-    
-    
-    
 
 
 def compileLoopStar(comp, form):
@@ -222,6 +225,7 @@ def compileLoopStar(comp, form):
     comp.popAliases(args)
     return code
 
+
 def compileLetStar(comp, form):
     if len(form) < 3:
         raise CompilerException("let* takes at least two args")
@@ -264,9 +268,6 @@ def compileLetStar(comp, form):
 
 
 def compileDot(comp, form):
-    from clojure.lang.persistentlist import PersistentList
-    from clojure.lang.iseq import ISeq
-
     if len(form) != 3:
         raise CompilerException(". form must have two arguments", form)
     clss = form.next().first()
@@ -296,13 +297,14 @@ def compileDot(comp, form):
     for x in args:
         code.extend(x)
     code.append((CALL_FUNCTION, len(args)))
-
     return code
+
 
 def compileQuote(comp, form):
     if len(form) != 2:
         raise CompilerException("Quote must only have one argument", form)
     return [(LOAD_CONST, form.next().first())]
+
 
 def compilePyIf(comp, form):
     if len(form) != 3 and len(form) != 4:
@@ -324,6 +326,7 @@ def compilePyIf(comp, form):
     code.extend(body2)
     code.append((endlabel, None))
     return code
+
 
 def compileIf(comp, form):
     if len(form) != 3 and len(form) != 4:
@@ -355,6 +358,7 @@ def compileIf(comp, form):
     code.append((endlabel, None))
     return code
 
+
 def unpackArgs(form):
     locals = {}
     args = []
@@ -373,11 +377,12 @@ def unpackArgs(form):
                                     " got " + str(form) + " instead", form)
         locals[x] = RT.list(x)
         args.append(x.name)
-
     return locals, args, lastisargs, argsname
+
 
 def compileDo(comp, form):
     return compileImplcitDo(comp, form.next())
+
 
 def compileFn(comp, name, form, orgform):
     locals, args, lastisargs, argsname = unpackArgs(form.first())
@@ -402,9 +407,7 @@ def compileFn(comp, name, form, orgform):
     comp.pushRecur(recur)
     code.extend(compileImplcitDo(comp, form.next()))
     comp.popRecur()
-
     code.append((RETURN_VALUE,None))
-
     comp.popAliases(locals)
 
     clist = map(lambda x: x.sym.name, comp.closureList())
@@ -414,6 +417,7 @@ def compileFn(comp, name, form, orgform):
         c = new.function(c.to_code(), comp.ns.__dict__, name.name)
 
     return [(LOAD_CONST, c)], c
+
 
 def cleanRest(name):
     label = Label("isclean")
@@ -430,6 +434,7 @@ def cleanRest(name):
         code.append((LOAD_CONST, None))
     code.extend(emitLanding(label))
     return code
+
 
 class MultiFn(object):
     def __init__(self, comp, form):
@@ -513,12 +518,10 @@ def compileMultiFn(comp, name, form):
     clist = map(lambda x: x.sym.name, comp.closureList())
     code = expandMetas(code, comp)
     c = Code(code, clist, argslist, hasvararg, False, True, str(symbol(comp.getNS().__name__, name.name)), comp.filename, 0, None)
-
     if not clist:
         c = new.function(c.to_code(), comp.ns.__dict__, name.name)
-
-
     return [(LOAD_CONST, c)], c
+
 
 def compileImplcitDo(comp, form):
     code = []
@@ -563,11 +566,10 @@ def compileFNStar(comp, form):
     # to call themselves. But we can't get a pointer to a closure until after
     # it's created, which is when we actually run this code. So, we're going to
     # create a tmp local that is None at first, then pass that in as a possible
-    # closure cell. Then after we create the closure with MAKE_CLOSURE we'll 
+    # closure cell. Then after we create the closure with MAKE_CLOSURE we'll
     # populate this var with the correct value
 
     selfalias = Closure(name)
-
     comp.pushAlias(name, selfalias)
 
     if isinstance(form.first(), IPersistentVector):
@@ -607,6 +609,7 @@ def compileFNStar(comp, form):
     comp.popAlias(symbol(name)) #closure
     return code
 
+
 def compileVector(comp, form):
     code = []
     code.extend(comp.compile(symbol("clojure.lang.rt", "vector")))
@@ -614,6 +617,7 @@ def compileVector(comp, form):
         code.extend(comp.compile(x))
     code.append((CALL_FUNCTION, len(form)))
     return code
+
 
 def compileRecur(comp, form):
     s = form.next()
@@ -633,6 +637,7 @@ def compileRecur(comp, form):
         code.extend(x)
     code.append((JUMP_ABSOLUTE, comp.recurPoint.first()["label"]))
     return code
+
 
 def compileIs(comp, form):
     if len(form) != 3:
@@ -659,11 +664,14 @@ def compileMap(comp, form):
     code.append([CALL_FUNCTION, c])
     return code
 
+
 def compileKeyword(comp, kw):
     return [(LOAD_CONST, kw)]
 
+
 def compileBool(comp, b):
     return [(LOAD_CONST, b)]
+
 
 def compileThrow(comp, form):
     if len(form) != 2:
@@ -671,6 +679,7 @@ def compileThrow(comp, form):
     code = comp.compile(form.next().first())
     code.append((RAISE_VARARGS, 1))
     return code
+
 
 def compileApply(comp, form):
     s = form.next()
@@ -685,26 +694,24 @@ def compileApply(comp, form):
     code.append((CALL_FUNCTION_VAR, len(form) - 3))
     return code
 
+
 def compileBuiltin(comp, form):
     if len(form) != 2:
         raise CompilerException("throw requires two arguments", form)
     name = str(form.next().first())
     return [(LOAD_CONST, getBuiltin(name))]
 
+
 def getBuiltin(name):
-    import __builtin__
     if hasattr(__builtin__, name):
         return getattr(__builtin__, name)
-
     raise CompilerException("Python builtin not found " + name, name)
+
 
 def compileLetMacro(comp, form):
     if len(form) < 3:
         raise CompilerException("alias-properties takes at least two args", form)
-
     form = form.next()
-
-
     s = RT.seq(form.first())
     syms = []
     while s is not None:
@@ -714,17 +721,13 @@ def compileLetMacro(comp, form):
         if s is None:
             raise CompilerException("let-macro takes a even number of bindings")
         macro = s.first()
-
         comp.pushAlias(sym, LocalMacro(sym, macro))
-
         s = s.next()
-
     body = form.next()
-
     code = compileImplcitDo(comp, body)
-
     comp.popAliases(syms)
     return code
+
 
 def compileCompiler(comp, form):
     return [(LOAD_CONST, comp)]
@@ -770,10 +773,6 @@ As each new local is created, it is pushed onto the stack, then only the
 top most local is executed whenever a new local is resolved. This allows
 the above example to resolve exactly as desired. lets will never stop on
 top of eachother, let-macros can turn 'x into (.-x self), etc.
-
-
-
-
 """
 
 class AAlias(object):
@@ -787,6 +786,7 @@ class AAlias(object):
     def next(self):
         return self.rest
 
+
 class FnArgument(AAlias):
     """An alias provided by the arguments to a fn*
        in the fragment (fn [a] a) a is a FnArgument"""
@@ -798,6 +798,7 @@ class FnArgument(AAlias):
     def compileSet(self, comp):
         return [(STORE_FAST, self.sym.name)]
 
+
 class RenamedLocal(AAlias):
     """An alias created by a let, loop, etc."""
     def __init__(self, sym, rest = None):
@@ -808,6 +809,7 @@ class RenamedLocal(AAlias):
         return [(LOAD_FAST, self.newsym.name)]
     def compileSet(self, comp):
         return [(STORE_FAST, self.newsym.name)]
+
 
 class Closure(AAlias):
     """Represents a value that is contained in a closure"""
@@ -834,6 +836,7 @@ class LocalMacro(AAlias):
         code = comp.compile(self.macroform)
         return code
 
+
 class SelfReference(AAlias):
     def __init__(self, var, rest = None):
         AAlias.__init__(self, rest)
@@ -844,6 +847,7 @@ class SelfReference(AAlias):
         return [(LOAD_CONST, self.var),
                 (LOAD_ATTR, "deref"),
                 (CALL_FUNCTION, 0)]
+
 
 class Name(object):
     """Slot for a name"""
@@ -864,6 +868,7 @@ class Name(object):
             s = s + str(RT.nextID())
         return s
 
+
 def evalForm(form, ns):
     comp = Compiler()
     comp.setNS(ns)
@@ -873,17 +878,19 @@ def evalForm(form, ns):
 
 
 def ismacro(macro):
-    if not isinstance(macro, type) \
-            and (hasattr(macro, "meta") and macro.meta() and macro.meta()[_MACRO_])\
-            or (hasattr(macro, "macro?") and getattr(macro, "macro?")):
-            return True
+    return (not isinstance(macro, type)
+            and (hasattr(macro, "meta")
+            and macro.meta()
+            and macro.meta()[_MACRO_])
+            or (hasattr(macro, "macro?")
+                and getattr(macro, "macro?")))
 
-    return False
 
 def meta(form):
     if hasattr(form, "meta"):
         return form.meta()
     return None
+
 
 def macroexpand(form, comp, one = False):
     if isinstance(form.first(), Symbol):
@@ -910,11 +917,11 @@ def macroexpand(form, comp, one = False):
             if hasattr(mresult, "withMeta") \
                and hasattr(form, "meta"):
                 mresult = mresult.withMeta(form.meta())
-            mresult = comp.compile(mresult)   
+            mresult = comp.compile(mresult)
             return mresult, True
 
     return form, False
-    
+
 
 class Compiler(object):
     def __init__(self):
@@ -1091,8 +1098,6 @@ class Compiler(object):
 
     def compile(self, itm):
         try:
-            from clojure.lang.persistentlist import PersistentList, EmptyList
-            from clojure.lang.cons import Cons
             c = []
             lineset = False
             if hasattr(itm, "meta") and itm.meta() is not None:
@@ -1153,7 +1158,6 @@ class Compiler(object):
             return self.ns
 
     def executeCode(self, code):
-        import sys
         if code == []:
             return None
         newcode = expandMetas(code, self)
@@ -1189,11 +1193,6 @@ class Compiler(object):
     def executeModule(self, code):
         code.append((RETURN_VALUE, None))
         c = Code(code, [], [], False, False, False, str(symbol(self.getNS().__name__, "<string>")), self.filename, 0, None)
-        import marshal
-        import pickle
-        import py_compile
-        import time
-        import dis
 
         dis.dis(c)
         codeobject = c.to_code()
