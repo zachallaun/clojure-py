@@ -1049,10 +1049,9 @@ class Compiler(object):
 
         splt = []
         if sym.ns is not None:
-            module = findNamespace(sym.ns) 
+            module = findNamespace(sym.ns)
             if not hasattr(module, sym.name):
                 raise CompilerException(str(module) + " does not define " + sym.name, None)
-            
             return [GlobalPtr(module, sym.name)]
 
         code = LOAD_ATTR if sym.ns else LOAD_GLOBAL
@@ -1158,6 +1157,7 @@ class Compiler(object):
         newcode.append((RETURN_VALUE, None))
         c = Code(newcode, [], [], False, False, False, str(symbol(self.getNS().__name__, "<string>")), self.filename, 0, None)
         retval = eval(c.to_code(), self.getNS().__dict__)
+        self.getNS().__dict__["__file__"] = self.filename
         return retval
 
     def pushPropertyAlias(self, mappings):
