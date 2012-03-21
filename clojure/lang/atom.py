@@ -23,7 +23,7 @@ class Atom(ARef):
         """Return this Atom's current state."""
         return self._state.get()
     def swap(self, *args):
-        """Change this Atom current state.
+        """Change this Atom's current state.
 
         args must be one of:
         
@@ -50,7 +50,7 @@ class Atom(ARef):
             # I'm not sure how to handle the ISeq
             raise NotImplementedError
             # ifn, arg2, arg3, arg4 = args
-            # func = lambda v: ifn(arg2, arg3, arg4)
+            # func = lambda v: ifn(v, arg2, arg3, arg4)
         else:
             raise ArityException("Atom.swap() expected 1 to 4 arguments,"
                                  " got: ({})".format(len(args)))
@@ -62,12 +62,14 @@ class Atom(ARef):
                 self.notifyWatches(val, newv)
                 return newv
     def compareAndSet(self, oldv, newv):
-        """Set the state of this Atom to newv if oldv == newv.
+        """Set the state of this Atom to newv.
 
-        oldv, newv -- any object
+        oldv -- Any object. The expected current state of this Atom.
+        newv -- any object
 
-        A validator, if one exists is called prior to setting.
-        Any watches are notified after successfully setting.
+        If the current state of this Atom is oldv set it to newv. A
+        validator, if one exists is called prior to setting. Any watches are
+        notified after successfully setting.
 
         Return True if successful, False otherwise."""
         self.validate(newv)
@@ -76,7 +78,7 @@ class Atom(ARef):
             self.notifyWatches(oldv, newv)
         return ret
     def reset(self, newval):
-        """Unconditionally reset this Atom's state to newval.
+        """Reset this Atom's state to newval.
 
         newval -- any object
 
