@@ -59,10 +59,27 @@
                           (map #(identity `(~'fn ~(symbol (str name "_" (clojure.core/name (first %))))
                                                  ~@'([self & args] 
                                                  (throw (AbstractMethodCall self))))) sigs))]
-         `(def ~name (py/type ~(clojure.core/name name)
+                `(do (def ~name (py/type ~(clojure.core/name name)
                                       (py/tuple [py/object])
-                                      (.toDict ~methods)))))
-        
+                                      (.toDict ~methods))))))
+
+
+(defmacro defprotocol
+    [name & sigs]
+    (let [methods (zipmap (map #(clojure.core/name (first %)) sigs)
+                          (map #(identity `(~'fn ~(symbol (str name "_" (clojure.core/name (first %))))
+                                                 ~@'([self & args] 
+                                                 (throw (AbstractMethodCall self))))) sigs))]
+         `(do (def ~name (py/type ~(clojure.core/name name)
+                                      (py/tuple [py/object])
+                                      (.toDict ~methods)))
+                     (clojure.lang.protocol/protocolFromType ~'__name__ ~name)
+                ~@(for [s sigs :when (string? (last s))]
+                    `(py/setattr (resolve ~(list 'quote (first s)))
+                                 "__doc__"
+                                 ~(last s))))))
+
+
 (defmacro reify 
   "reify is a macro with the following structure:
 
