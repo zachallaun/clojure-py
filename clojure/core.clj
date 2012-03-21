@@ -2928,7 +2928,7 @@
   {:added "1.0"}
   [& body])
 
-(require 'clojure.core-deftype :only ['deftype 'reify])
+(require 'clojure.core-deftype :only ['deftype 'reify 'definterface 'defprotocol])
 
 
 
