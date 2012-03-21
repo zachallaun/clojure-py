@@ -572,13 +572,13 @@ def compileFNStar(comp, form):
     selfalias = Closure(name)
     comp.pushAlias(name, selfalias)
 
-    # (fn [x] x)
+    # form = ([x] x)
     if isinstance(form.first(), IPersistentVector):
         code, ptr = compileFn(comp, name, form, orgform)
-    # (fn ([x] x))
-    elif len(form.first()) == 1:
-        code, ptr = compileFn(comp, name, form.first(), orgform)
-    # (fn ([x] x) ([x y] x))
+    # form = (([x] x))
+    elif len(form) == 1:
+        code, ptr = compileFn(comp, name, RT.list(*form.first()), orgform)
+    # form = (([x] x) ([x y] x))
     else:
         code, ptr = compileMultiFn(comp, name, form)
 
