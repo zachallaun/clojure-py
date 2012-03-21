@@ -49,8 +49,20 @@
                 ~@(map (fn [x] `(clojure.lang.protocol/extendForType ~x ~name))
                                interfaces))))
 
+(defn abstract-fn [self & args]
+    (throw (AbstractMethodCall self)))
+    
 
-
+(defmacro definterface
+    [name & sigs]
+    (let [methods (zipmap (map #(clojure.core/name (first %)) sigs)
+                          (map #(identity `(~'fn ~(symbol (str name "_" (clojure.core/name (first %))))
+                                                 ~@'([self & args] 
+                                                 (throw (AbstractMethodCall self))))) sigs))]
+         (debug `(def ~name (py/type ~(clojure.core/name name)
+                                      (py/tuple [py/object])
+                                      (.toDict ~methods))))))
+        
 (defmacro reify 
   "reify is a macro with the following structure:
 
