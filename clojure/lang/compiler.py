@@ -119,7 +119,15 @@ def compileDef(comp, form):
     v.setDynamic(True)
     code.append((LOAD_CONST, v))
     code.append((LOAD_ATTR, "bindRoot"))
-    code.extend(comp.compile(value))
+    compiledValue = comp.compile(value)
+    if isinstance(value, ISeq) \
+       and value.first().getName() == 'fn' \
+       and sym.meta() is not None:
+        try:
+            compiledValue[0][1].__doc__ = sym.meta()[keyword('doc')]
+        except AttributeError:
+            pass
+    code.extend(compiledValue)
     code.append((CALL_FUNCTION, 1))
     v.setMeta(sym.meta())
     comp.popName()
