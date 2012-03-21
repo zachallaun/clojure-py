@@ -338,7 +338,14 @@
     (assertions/assert-true (= 4 (get #{1 2 3 4} 4)))
     (assertions/assert-true (contains? #{1 2 3 4} 4))
     (assertions/assert-true (contains? #{[] nil 0 {} #{}} {}))
-    ;FIXME vectorfind (assertions/assert-true (contains? #{[1 2 3]} [1 2 3]))
+    (assertions/assert-true (contains? #{[1 2 3]} [1 2 3]))
+    (assertions/assert-false (= () #{}))
+    (assertions/assert-true (= () []))
+    (assertions/assert-true (= [] ()))
+    (assertions/assert-true (= #{1 2 3} #{1 2 3}))
+    (assertions/assert-true (= #{#{1 2 3}} #{#{1 2 3}}))
+    (assertions/assert-true (= #{[4 5 6]} #{[4 5 6]}))
+    
 )
 
 (deftest find-tests

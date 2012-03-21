@@ -7,13 +7,15 @@ from clojure.lang.ihasheq import IHashEq
 from clojure.lang.iterable import Iterable
 import clojure.lang.rt as RT
 from clojure.lang.iprintable import IPrintable
+from clojure.lang.ipersistentset import IPersistentSet
+
 
 
 class ASeq(Obj, Sequential, ISeq, IHashEq, Iterable, IPrintable):
     def __eq__(self, other):
         if self is other:
             return True
-        if not RT.isSeqable(other):
+        if not RT.isSeqable(other) or (isinstance(other,IPersistentSet)):
             return False
         se = RT.seq(other)
         if isinstance(se, RT.NotSeq):
@@ -68,10 +70,10 @@ class ASeq(Obj, Sequential, ISeq, IHashEq, Iterable, IPrintable):
             s = s.next()
 
     def hasheq(self):
-        hash = 1
+        ret = 1
         for s in self:
-            hash = 31 * hash + Util.hasheq(s.first())#FIXME: Util is... where?
-        return hash
+            ret = 31 * ret + hash(s) #Util.hasheq(s.first())#FIXME: Util is... where?
+        return ret
 
     def writeAsString(self, writer):
         writer.write(repr(self))

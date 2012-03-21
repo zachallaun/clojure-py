@@ -3,6 +3,7 @@ from clojure.lang.cljexceptions import AbstractMethodCall, ArityException
 from clojure.lang.indexableseq import IndexableSeq
 import clojure.lang.rt as RT
 from clojure.lang.iprintable import IPrintable
+from clojure.lang.ipersistentset import IPersistentSet
 
 class APersistentVector(IPersistentVector, IPrintable):
     def __iter__(self):
@@ -24,10 +25,17 @@ class APersistentVector(IPersistentVector, IPrintable):
         
     def __eq__(self, other):
         s = self.seq()
-        if not RT.isSeqable(other):
+        if not RT.isSeqable(other) or isinstance(other, IPersistentSet):
             return False
         o = RT.seq(other)
         return s == o
+    
+    def __hash__(self):
+        s = self.seq()
+        if not s is None:
+            return s.hasheq();
+        else:
+            return 0
 
     def __ne__(self, other):
         return not self == other
