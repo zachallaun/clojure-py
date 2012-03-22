@@ -649,4 +649,8 @@
                            (first [self] y)))]
          (assertions/assert-equal (first (f 42)) 42))) 
 
+(deftest defprotocol-tests
+    (defprotocol Foo "Foo Protocol"
+        (foo [self] "Foo_foo")))
+
 (py/print "all tests passed")
