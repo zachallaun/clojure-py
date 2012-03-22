@@ -42,7 +42,18 @@ class Character(IPrintable):
         self._c = c.encode("utf-8")
     def __hash__(self):
         return hash(self._c)
-    # quack quack
+    def __eq__(self, other):
+        """Return True if other is a Charcter and their code points match.
+
+        other -- any object
+        """
+        if self is other:
+            return True
+        elif isinstance(other, Character):
+            return self._c == other._c
+        else:
+            return False
+    # quack quack (this is defintely broke)
     def __int__(self):
         return ord(self._c.decode("utf-8"))
     # XXX: temporary until writeAsString and writeAsReplString come on line
