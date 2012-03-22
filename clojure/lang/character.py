@@ -26,7 +26,7 @@ charToSymbol = {
 # associated core-print functions
 # * char-escape-string
 
-# TODO: maybe store the charcter internally as an integer codepoint
+# TODO: maybe store the character internally as an integer code point
 
 class Character(IPrintable):
     """A single character.
@@ -40,8 +40,9 @@ class Character(IPrintable):
     distinct type for the clojure-py print routines."""
     def __init__(self, c):
         self._c = c.encode("utf-8")
+        self._hash = hash(c)
     def __hash__(self):
-        return hash(self._c)
+        return self._hash
     def __eq__(self, other):
         """Return True if other is a Charcter and their code points match.
 
@@ -53,7 +54,7 @@ class Character(IPrintable):
             return self._c == other._c
         else:
             return False
-    # quack quack (this is defintely broke)
+    # quack quack (this is definitely broke)
     def __int__(self):
         return ord(self._c.decode("utf-8"))
     # XXX: temporary until writeAsString and writeAsReplString come on line
@@ -81,6 +82,8 @@ def character(c):
     Character instances are cached so:
     character("x") is character("x") => True
     """
+    if isinstance(c, Character):
+        return c
     wref = _charCache.get(c)
     if wref:
         o = wref()

@@ -214,7 +214,7 @@ def _extendSeqableForManuals():
     
     protocols.seq.extendForTypes([tuple, type([])],
                                  lambda obj: createIndexableSeq(obj))
-    protocols.seq.extendForTypes([str, unicode], lambda obj : stringseq(obj))
+    protocols.seq.extendForTypes([str, unicode], stringseq)
     protocols.seq.extend(type(None), lambda x: None)
     
     #protocols.seq.setDefault(lambda x: NotSeq())

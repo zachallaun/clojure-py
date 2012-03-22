@@ -1148,6 +1148,8 @@ class Compiler(object):
                 c.append((LOAD_CONST, itm))
             elif isinstance(itm, Character):
                 c.append((LOAD_CONST, itm))
+            elif isinstance(itm, type(re.compile(""))):
+                c.append((LOAD_CONST, itm))
             else:
                 raise CompilerException(" don't know how to compile "
                                         + str(type(itm)), None)
