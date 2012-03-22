@@ -10,6 +10,7 @@ from clojure.lang.symbol import symbol
 from clojure.lang.var import Var, intern as internVar
 from clojure.lang.lispreader import read
 from clojure.lang.fileseq import StringReader
+from clojure.main import VERSION
 
 
 def enable_readline():
@@ -44,6 +45,7 @@ def run_repl(comp=None):
     """
     Starts the repl. Assumes that RT.init has allready be called.
     """
+    print "clojure-py", VERSION
     if comp is None:
         curr = currentCompiler.get(lambda: None)
         if curr == None:
