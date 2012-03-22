@@ -2929,10 +2929,3 @@
   [& body])
 
 (require 'clojure.core-deftype :only ['deftype 'reify 'definterface 'defprotocol])
-
-
-
-(py/print "clojure-py 0.1.0")
-
-
-
