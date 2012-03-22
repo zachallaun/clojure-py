@@ -601,7 +601,7 @@ def readDelimitedList(delim, rdr, isRecursive):
 def readNamedUnicodeChar(rdr):
     """Read \N{foo} syntax, starting at the {.
 
-    rdr -- a read/unread
+    rdr -- a read/unread-able object
 
     May raise ReaderException. Return the unicode character named by foo."""
     buf = []
@@ -872,6 +872,12 @@ def registerArg(arg):
 
 
 def fnReader(rdr, lparen):
+    """Read an anonymous function #() from reader
+
+    rdr -- a read/unread-able object
+    lparen -- ignored
+
+    Return an IPersistentList"""
     if ARG_ENV.deref() is not None:
         raise IllegalStateException("Nested #()s are not allowed")
     pushThreadBindings(RT.map(ARG_ENV, EMPTY_MAP))
@@ -1007,6 +1013,25 @@ def garg(n):
                   str(RT.nextID()) + "#")
 
 
+def derefNotImplemented(rdr, _):
+    """Unconditionally raise ReaderException.
+
+    The deref syntax @foo is not currently implemented. @foo will pass through
+    silently as a symbol unless it's caught here, as it should be."""
+    raise ReaderException("Deref syntax @foo not currently implemented.",
+                          rdr)
+
+
+def evalReaderNotImplemented(rdr, _):
+    """Unconditionally raise ReaderException.
+
+    The eval syntax #= not currently implemented and should be caught by the
+    #reader. This message is more informative than the `no dispatch macro'
+    message."""
+    raise ReaderException("Eval syntax #= not currently implemented.",
+                          rdr)
+
+
 macros = {'\"': stringReader,
           "\'": wrappingReader(_QUOTE_),
           "(": listReader,
@@ -1021,7 +1046,9 @@ macros = {'\"': stringReader,
           "%": argReader,
           "`": SyntaxQuoteReader(),
           "~": unquoteReader,
-          "\\": characterReader}
+          "\\": characterReader,
+          "@": derefNotImplemented, # temporary?
+          }
 
 dispatchMacros = {"\"": regexReader,
                   "{": setReader,
@@ -1032,4 +1059,5 @@ dispatchMacros = {"\"": regexReader,
                   "^": metaReader,
                   # Use Python raw string syntax as #r"foo"
                   "r": rawRegexReader,
+                  "=": evalReaderNotImplemented, # temporary?
                   }
