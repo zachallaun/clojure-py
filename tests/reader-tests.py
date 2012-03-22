@@ -25,6 +25,9 @@ from clojure.lang.fileseq import StringReader
 from clojure.lang.cljexceptions import ReaderException
 
 regexType = type(re.compile(""))
+nilType = type(None)
+trueType = type(True)
+falseType= type(False)
 
 class TestReader(unittest.TestCase):
     # literal integers
@@ -545,21 +548,32 @@ delimitedListLength_PASS = {
     "0 0]" : [0, 0],
     "0 0)" : [0, 0],
     "0 0}" : [0, 0],
-    "0 0]" : [0, 0],
-    "0 0)" : [0, 0],
-    "0 0}" : [0, 0],
     }
 
 # ======================================================================
 # Returned Type
 # ======================================================================
 returnedType_PASS = {
+    "" : nilType,
+    "," : nilType,
+    " " : nilType,
+    """
+""" : nilType,
+    "\r" : nilType,
+    "\n" : nilType,
+    "\r\n" : nilType,
+    "\n\r" : nilType,
+    "\t" : nilType,
+    "\b" : nilType,
+    "\f" : nilType,
+    ", \n\r\n\t\n\b\r\f" : nilType,
+    "\v" : Symbol,              # O_o
     "\\x" : Character,
     "%foo" : Symbol,            # not in an anonymous function #()
     "[]" : PersistentVector,
     "()" : EmptyList,
     "{}" : PersistentHashMap,
-    '"foo"' : str,
+    '"foo"' : str,              # TODO: always return unicode, never str
     '#"foo"' : regexType,
     '#r"foo"' : regexType,
     "#()" : PersistentList,
@@ -569,8 +583,8 @@ returnedType_PASS = {
     "~@(foo)" : PersistentList,
     "#^:foo()" : EmptyList,
     "^:foo()" : EmptyList,
-    "; comment" : type(None),
-    "#_ foo" : type(None),
+    "; comment" : nilType,
+    "#_ foo" : nilType,
     "0" : int,
     "0x0" : int,
     "041" : int,
@@ -578,7 +592,16 @@ returnedType_PASS = {
     "2.2" : float,
     "2e-3" : float,
     "1/2" : Fraction,
-    "foo" : Symbol
+    "foo" : Symbol,
+    ".3" : Symbol,
+    "+.3" : Symbol,
+    "-.3" : Symbol,
+    "true" : trueType,
+    "True" : Symbol,
+    "false" : falseType,
+    "False" : Symbol,
+    "nil" : nilType,
+    "None" : Symbol,
     }
 
 # ======================================================================
