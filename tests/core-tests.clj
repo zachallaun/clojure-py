@@ -1,4 +1,4 @@
-(ns tests.core
+(ns tests.core-tests
     (:require [tests.assertions :as assertions])
     (:require [tests.utils :only [deftest]]))
 
@@ -397,7 +397,7 @@
 	(assertions/assert-equal (if-let [a nil] (+ a 4) (+ 10 10)) 20))
 
 
-(deftest when-let
+(deftest when-let-tests
     (assertions/assert-equal (when-let [a 9] (+ a 4))  13)
     (assertions/assert-equal (when-let [a nil] (+ a 4)) nil))
 

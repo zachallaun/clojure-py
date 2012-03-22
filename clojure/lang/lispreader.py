@@ -19,7 +19,7 @@ from clojure.lang.iseq import ISeq
 from clojure.lang.persistenthashmap import EMPTY as EMPTY_MAP
 from clojure.lang.persistentvector import EMPTY as EMPTY_VECTOR
 import clojure.lang.persistenthashset
-from clojure.lang.persistenthashset import create
+from clojure.lang.persistenthashset import create as createSet
 import clojure.lang.rt as RT
 from clojure.lang.symbol import Symbol, symbol
 from clojure.lang.var import Var, pushThreadBindings, popThreadBindings, var
@@ -547,7 +547,7 @@ def setReader(rdr, leftbrace):
 
     rdr -- a read/unread-able object
     leftbrace -- ignored"""
-    return create(readDelimitedList("}", rdr, True))
+    return createSet(readDelimitedList("}", rdr, True))
 
 
 def unmatchedClosingDelimiterReader(rdr, un):
@@ -999,11 +999,11 @@ class SyntaxQuoteReader(object):
 
     def flattenMap(self, m):
         keyvals = EMPTY_VECTOR
-        s = form.seq()#FIXME: undefined 'form'
+        s = m.seq()#FIXME: undefined 'form'
         while s is not None:
             e = s.first()
             keyvals = keyvals.cons(e.getKey())
-            keyvals = keyvals.cons(e.getVal())
+            keyvals = keyvals.cons(e.getValue())
             s = s.next()
         return keyvals
 
