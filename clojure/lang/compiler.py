@@ -119,7 +119,15 @@ def compileDef(comp, form):
     v.setDynamic(True)
     code.append((LOAD_CONST, v))
     code.append((LOAD_ATTR, "bindRoot"))
-    code.extend(comp.compile(value))
+    compiledValue = comp.compile(value)
+    if isinstance(value, ISeq) \
+       and value.first().getName() == 'fn' \
+       and sym.meta() is not None:
+        try:
+            compiledValue[0][1].__doc__ = sym.meta()[keyword('doc')]
+        except AttributeError:
+            pass
+    code.extend(compiledValue)
     code.append((CALL_FUNCTION, 1))
     v.setMeta(sym.meta())
     comp.popName()
@@ -572,13 +580,13 @@ def compileFNStar(comp, form):
     selfalias = Closure(name)
     comp.pushAlias(name, selfalias)
 
-    # (fn [x] x)
+    # form = ([x] x)
     if isinstance(form.first(), IPersistentVector):
         code, ptr = compileFn(comp, name, form, orgform)
-    # (fn ([x] x))
-    elif len(form.first()) == 1:
-        code, ptr = compileFn(comp, name, form.first(), orgform)
-    # (fn ([x] x) ([x y] x))
+    # form = (([x] x))
+    elif len(form) == 1:
+        code, ptr = compileFn(comp, name, RT.list(*form.first()), orgform)
+    # form = (([x] x) ([x y] x))
     else:
         code, ptr = compileMultiFn(comp, name, form)
 

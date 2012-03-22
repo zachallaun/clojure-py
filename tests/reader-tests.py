@@ -3,36 +3,49 @@
 
 """reader-tests.py
 
-<stirfoo@gmail.com>
 Friday, March 16 2012
 """
 
-import unittest, string, re
+import re
+import string
+import unittest
+
 from random import choice
 from fractions import Fraction
-
-from clojure.lang.lispreader import read
-from clojure.lang.character import character
+from clojure.lang.lispreader import read, readDelimitedList
+from clojure.lang.symbol import Symbol
+from clojure.lang.character import character, Character
+from clojure.lang.ipersistentlist import IPersistentList
+from clojure.lang.persistentlist import PersistentList
+from clojure.lang.persistentlist import EmptyList
+from clojure.lang.persistentvector import PersistentVector
+from clojure.lang.persistenthashmap import PersistentHashMap
+from clojure.lang.persistenthashset import PersistentHashSet
 from clojure.lang.fileseq import StringReader
 from clojure.lang.cljexceptions import ReaderException
+
+regexType = type(re.compile(""))
+nilType = type(None)
+trueType = type(True)
+falseType= type(False)
 
 class TestReader(unittest.TestCase):
     # literal integers
     def testIntegerReader_PASS(self):
         # base 8
-        for k,v in base8IntegerMap_PASS.items():
+        for k, v in base8IntegerMap_PASS.items():
             r = StringReader(k)
             self.assertEqual(read(r, False, None, False), v)
         # base 10
-        for k,v in base10IntegerMap_PASS.items():
+        for k, v in base10IntegerMap_PASS.items():
             r = StringReader(k)
             self.assertEqual(read(r, False, None, False), v)
         # base 16
-        for k,v in base16IntegerMap_PASS.items():
+        for k, v in base16IntegerMap_PASS.items():
             r = StringReader(k)
             self.assertEqual(read(r, False, None, False), v)
         # base N
-        for k,v in baseNIntegerMap_PASS.items():
+        for k, v in baseNIntegerMap_PASS.items():
             r = StringReader(k)
             self.assertEqual(read(r, False, None, False), v)
     def testIntegerReader_FAIL(self):
@@ -41,7 +54,7 @@ class TestReader(unittest.TestCase):
             self.assertRaises(ReaderException, read, r, False, None, False)
     # literal floating point
     def testFloatingPointReader_PASS(self):
-        for k,v in floatingPointMap_PASS.items():
+        for k, v in floatingPointMap_PASS.items():
             r = StringReader(k)
             self.assertEqual(read(r, False, None, False), v)
     def testFloatingPointReader_FAIL(self):
@@ -50,7 +63,7 @@ class TestReader(unittest.TestCase):
             self.assertRaises(ReaderException, read, r, False, None, False)
     # literal ratios 
     def testRationalReader_PASS(self):
-        for k,v in rationalMap_PASS.items():
+        for k, v in rationalMap_PASS.items():
             r = StringReader(k)
             self.assertEqual(read(r, False, None, False), v)
     def testRationalReader_FAIL(self):
@@ -59,7 +72,7 @@ class TestReader(unittest.TestCase):
             self.assertRaises(ReaderException, read, r, False, None, False)
     # literal characters
     def testCharacterReader_PASS(self):
-        for k,v in literalCharacterMap_PASS.items():
+        for k, v in literalCharacterMap_PASS.items():
             r = StringReader(k)
             self.assertEqual(read(r, False, None, False), v)
     def testCharacterReader_FAIL(self):
@@ -68,7 +81,7 @@ class TestReader(unittest.TestCase):
             self.assertRaises(ReaderException, read, r, False, None, False)
     # literal strings
     def testStringReader_PASS(self):
-        for k,v in literalStringMap_PASS.items():
+        for k, v in literalStringMap_PASS.items():
             r = StringReader('"' + k + '"')
             self.assertEqual(read(r, False, None, False), v)
     def testStringReader_FAIL(self):
@@ -80,7 +93,7 @@ class TestReader(unittest.TestCase):
             self.assertRaises(ReaderException, read, r, False, None, False)
     # literal regex pattern strings
     def testRegexPattern_PASS(self):
-        for k,v in regexPatternMap_PASS.items():
+        for k, v in regexPatternMap_PASS.items():
             r = StringReader(k)
             self.assertEqual(read(r, False, None, False).pattern, v.pattern)
     def testRegexPattern_FAIL(self):
@@ -89,13 +102,31 @@ class TestReader(unittest.TestCase):
             self.assertRaises(ReaderException, read, r, False, None, False)
     # literal raw regex pattern strings
     def testRawRegexPattern_PASS(self):
-        for k,v in rawRegexPatternMap_PASS.items():
+        for k, v in rawRegexPatternMap_PASS.items():
             r = StringReader(k)
             self.assertEqual(read(r, False, None, False).pattern, v.pattern)
     def testRawRegexPattern_FAIL(self):
         for s in rawRegexPattern_FAIL:
             r = StringReader(s)
             self.assertRaises(ReaderException, read, r, False, None, False)
+    # delimited lists
+    def testDelimitedLists_PASS(self):
+        # length test
+        for k, v in delimitedListLength_PASS.items():
+            r = StringReader(k)
+            delim = k[-1]
+            self.assertEqual(readDelimitedList(delim, r, False), v)
+    # returned type tests
+    def testReturnedType_PASS(self):
+        for k, v in returnedType_PASS.items():
+            r = StringReader(k)
+            self.assertEqual(type(read(r, False, None, False)), v)
+    # miscellaneous failures
+    def testMiscellaneous_FAIL(self):
+        for s in miscellaneous_FAIL:
+            r = StringReader(s)
+            self.assertRaises(ReaderException, read, r, False, None, False)
+
 
 # ======================================================================
 # Literal Integer Cases
@@ -493,4 +524,96 @@ rawRegexPattern_FAIL = [
     # need 8 hex digits
     '#r"\U"', '#r"\U1"', '#r"\U12"', '#r"\U123"', '#r"\U1234"', '#r"\U12345"',
     '#r"\U123456"', '#r"\U1234567"',
+    ]
+
+# ======================================================================
+# Literal Delimited Lists
+# ======================================================================
+
+# The keys define the clojure syntax of any object that would result in a call
+# to lispreader.readDelimitedList() (minus the leading macro character(s)).
+# Some objects like map and set have the same terminating character `}'. So
+# there is only one entry for both.
+#
+# The value is a the expected contents of the Python list returned from
+# readDelimitedList(). Integers are used because I don't care what type the
+# items are. There are separate tests for that.
+delimitedListLength_PASS = {
+    "]" : [],
+    "}" : [],
+    ")" : [],
+    "0]" : [0],
+    "0)" : [0],
+    "0}" : [0],
+    "0 0]" : [0, 0],
+    "0 0)" : [0, 0],
+    "0 0}" : [0, 0],
+    }
+
+# ======================================================================
+# Returned Type
+# ======================================================================
+returnedType_PASS = {
+    "" : nilType,
+    "," : nilType,
+    " " : nilType,
+    """
+""" : nilType,
+    "\r" : nilType,
+    "\n" : nilType,
+    "\r\n" : nilType,
+    "\n\r" : nilType,
+    "\t" : nilType,
+    "\b" : nilType,
+    "\f" : nilType,
+    ", \n\r\n\t\n\b\r\f" : nilType,
+    "\v" : Symbol,              # O_o
+    "\\x" : Character,
+    "%foo" : Symbol,            # not in an anonymous function #()
+    "[]" : PersistentVector,
+    "()" : EmptyList,
+    "{}" : PersistentHashMap,
+    '"foo"' : str,              # TODO: always return unicode, never str
+    '#"foo"' : regexType,
+    '#r"foo"' : regexType,
+    "#()" : PersistentList,
+    "#{}" : PersistentHashSet,
+    "'foo" : PersistentList,
+    "~foo" : PersistentList,
+    "~@(foo)" : PersistentList,
+    "#^:foo()" : EmptyList,
+    "^:foo()" : EmptyList,
+    "; comment" : nilType,
+    "#_ foo" : nilType,
+    "0" : int,
+    "0x0" : int,
+    "041" : int,
+    "2r10" : int,
+    "2.2" : float,
+    "2e-3" : float,
+    "1/2" : Fraction,
+    "foo" : Symbol,
+    ".3" : Symbol,
+    "+.3" : Symbol,
+    "-.3" : Symbol,
+    "true" : trueType,
+    "True" : Symbol,
+    "false" : falseType,
+    "False" : Symbol,
+    "nil" : nilType,
+    "None" : Symbol,
+    }
+
+# ======================================================================
+# Miscellaneous Failures
+# Any type of random failures should go here
+# ======================================================================
+
+miscellaneous_FAIL = [
+    # always raises
+    "#<unreadable object>",
+    # deref not implemented (yet)
+    "@foo",
+    # reader eval not implemented (yet)
+    "#=foo",
     ]

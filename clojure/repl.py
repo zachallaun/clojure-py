@@ -2,6 +2,9 @@
 Contains enhancements to the REPL that do not belong in the core language.
 """
 
+import atexit
+import os
+import sys
 import traceback
 
 from clojure.lang.globals import currentCompiler
@@ -10,6 +13,7 @@ from clojure.lang.symbol import symbol
 from clojure.lang.var import Var, intern as internVar
 from clojure.lang.lispreader import read
 from clojure.lang.fileseq import StringReader
+from clojure.main import VERSION
 
 
 def enable_readline():
@@ -24,8 +28,6 @@ def enable_readline():
     except ImportError:
         return False
 
-    import os
-    import atexit
     histfile = os.path.join(os.path.expanduser("~"), ".clojurepyhist")
     if not os.path.isfile(histfile):
         with open(histfile, 'a'):
@@ -44,6 +46,9 @@ def run_repl(comp=None):
     """
     Starts the repl. Assumes that RT.init has allready be called.
     """
+    print "clojure-py", VERSION
+    print "Python", sys.version
+
     if comp is None:
         curr = currentCompiler.get(lambda: None)
         if curr == None:
@@ -75,6 +80,7 @@ def run_repl(comp=None):
         try:
             line = raw_input(comp.getNS().__name__ + "=> ")
         except EOFError:
+            print
             break
 
         if not line:

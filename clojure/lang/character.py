@@ -2,7 +2,6 @@
 
 """character.py
 
-<stirfoo@gmail.com>
 Tuesday, March 13 2012
 """
 
