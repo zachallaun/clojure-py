@@ -1,6 +1,6 @@
 # clojure-py
 
-An implementation of Clojure in pure Python.
+An implementation of Clojure in pure Python. [![Build Status](https://secure.travis-ci.org/halgari/clojure-py.png?branch=master)](http://travis-ci.org/halgari/clojure-py)
 
 ## Why Python? 
 
