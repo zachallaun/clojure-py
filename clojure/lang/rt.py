@@ -198,6 +198,7 @@ def subvec(v, start, end):
         return EMPTY_VECTOR
     return SubVec(None, v, start, end)
 
+
 def _extendIPrintableForManuals():
     protocols.writeAsString.extend(type(None), lambda obj, writer: writer.write("nil"))
     protocols.writeAsReplString.extend(type(None), lambda obj, writer: writer.write("nil"))
@@ -205,12 +206,15 @@ def _extendIPrintableForManuals():
     protocols.writeAsString.extend(int, lambda obj, writer: writer.write(str(obj)))
     protocols.writeAsReplString.extend(int, lambda obj, writer: writer.write(str(obj)))
 
+
 def _extendSeqableForManuals():
     from clojure.lang.indexableseq import create as createIndexableSeq
     from clojure.lang.persistentvector import PersistentVector
+    from clojure.lang.stringseq import stringseq
     
-    protocols.seq.extendForTypes([tuple, type([]), str, unicode],  
-                         lambda obj: createIndexableSeq(obj))
+    protocols.seq.extendForTypes([tuple, type([])],
+                                 lambda obj: createIndexableSeq(obj))
+    protocols.seq.extendForTypes([str, unicode], lambda obj : stringseq(obj))
     protocols.seq.extend(type(None), lambda x: None)
     
     #protocols.seq.setDefault(lambda x: NotSeq())
