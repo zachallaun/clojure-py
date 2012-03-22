@@ -999,7 +999,7 @@ class SyntaxQuoteReader(object):
 
     def flattenMap(self, m):
         keyvals = EMPTY_VECTOR
-        s = m.seq()#FIXME: undefined 'form'
+        s = m.seq()
         while s is not None:
             e = s.first()
             keyvals = keyvals.cons(e.getKey())
