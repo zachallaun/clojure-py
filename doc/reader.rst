@@ -373,7 +373,7 @@ return the list::
 Clojure Conformance
 -------------------
 
-Same syntax.
+None. This is not currently implemented. The reader will raise an exception.
 
 ^
 ===
@@ -448,7 +448,7 @@ list.
 Clojure Conformance
 -------------------
 
-Same syntax.
+None. This is not currently implemented. The reader will raise an exception.
 
 #_
 ===
