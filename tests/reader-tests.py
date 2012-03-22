@@ -14,7 +14,6 @@ from random import choice
 from fractions import Fraction
 from clojure.lang.lispreader import read, readDelimitedList
 from clojure.lang.symbol import Symbol
-from clojure.lang.character import character, Character
 from clojure.lang.ipersistentlist import IPersistentList
 from clojure.lang.persistentlist import PersistentList
 from clojure.lang.persistentlist import EmptyList
@@ -276,25 +275,25 @@ rational_FAIL = [
 
 literalCharacterMap_PASS = {
     # basic
-    "\\x" : character("x"),
-    "\\ " : character(" "),
-    "\\X" : character("X"),
+    "\\x" : "x",
+    "\\ " : " ",
+    "\\X" : "X",
     # newline after the \
     """\\
-""" : character("\n"),
+""" : "\n",
     # named characters
-    "\\space" : character(" "),
-    "\\newline" : character("\n"),
-    "\\return" : character("\r"),
-    "\\backspace" : character("\b"),
-    "\\formfeed" : character("\f"),
-    "\\tab" : character("\t"),
+    "\\space" : " ",
+    "\\newline" : "\n",
+    "\\return" : "\r",
+    "\\backspace" : "\b",
+    "\\formfeed" : "\f",
+    "\\tab" : "\t",
     # octal
-    "\\o0" : character("\x00"),
-    "\\o41" : character("!"),
-    "\\o377" : character(u"\u00ff"),
+    "\\o0" : "\x00",
+    "\\o41" : "!",
+    "\\o377" : u"\u00ff",
     # hex
-    "\\u03bb" : character(u"\u03bb"),
+    "\\u03bb" : u"\u03bb",
     # BZZZZT!
     # Because this file is encoded as UTF-8, and the reader is expecting ASCII,
     # it will crap out every time. 
@@ -568,7 +567,7 @@ returnedType_PASS = {
     "\f" : nilType,
     ", \n\r\n\t\n\b\r\f" : nilType,
     "\v" : Symbol,              # O_o
-    "\\x" : Character,
+    "\\x" : str,
     "%foo" : Symbol,            # not in an anonymous function #()
     "[]" : PersistentVector,
     "()" : EmptyList,

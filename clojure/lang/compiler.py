@@ -8,7 +8,6 @@ import re
 import sys
 import time
 
-from clojure.lang.character import Character
 from clojure.lang.cons import Cons
 from clojure.lang.cljexceptions import CompilerException, AbstractMethodCall
 from clojure.lang.cljkeyword import Keyword, keyword
@@ -1145,8 +1144,6 @@ class Compiler(object):
             elif isinstance(itm, long):
                 c.append((LOAD_CONST, itm))
             elif isinstance(itm, IPersistentSet):
-                c.append((LOAD_CONST, itm))
-            elif isinstance(itm, Character):
                 c.append((LOAD_CONST, itm))
             elif isinstance(itm, type(re.compile(""))):
                 c.append((LOAD_CONST, itm))

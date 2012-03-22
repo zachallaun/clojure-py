@@ -5,7 +5,6 @@ import re
 import string
 import unicodedata
 
-from clojure.lang.character import character
 from clojure.lang.cljexceptions import ReaderException, IllegalStateException
 from clojure.lang.cljkeyword import Keyword, keyword, TAG_KEY, T, LINE_KEY
 from clojure.lang.fileseq import FileSeq, MutatableFileSeq, StringReader
@@ -282,15 +281,15 @@ def characterReader(rdr, backslash):
     rdr -- read/unread-able object
     backslash -- ignored
 
-    May raise ReaderException. Return a Character instance."""
+    May raise ReaderException. Return a unicode string of lenght one."""
     ch = rdr.read()
     if ch == "":
         raise ReaderException("EOF while reading character", rdr)
     token = readToken(rdr, ch)
     if len(token) == 1:
-        return character(token)
+        return token
     elif token in namedChars:
-        return character(namedChars[token])
+        return namedChars[token]
     elif token.startswith("u"):
         try:
             ch = stringCodepointToUnicodeChar(token, 1, 4, 16)
@@ -300,7 +299,7 @@ def characterReader(rdr, backslash):
         if u"\ud800" <= ch <= u"\udfff":
             raise ReaderException("Invalid character constant in literal"
                                   " string: \\{0}".format(token), rdr)
-        return character(ch)
+        return ch
     elif token.startswith("o"):
         if len(token) > 4:
             raise ReaderException("Invalid octal escape sequence length in"
@@ -315,7 +314,7 @@ def characterReader(rdr, backslash):
             raise ReaderException("Octal escape sequence in literal string"
                                   " must be in range [0, 377], got:"
                                   " (\\o{0})".format(codepoint), rdr)
-        return character(ch)
+        return ch
     raise ReaderException("Unsupported character: \\" + token, rdr)
 
 

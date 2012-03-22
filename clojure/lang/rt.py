@@ -210,11 +210,9 @@ def _extendIPrintableForManuals():
 def _extendSeqableForManuals():
     from clojure.lang.indexableseq import create as createIndexableSeq
     from clojure.lang.persistentvector import PersistentVector
-    from clojure.lang.stringseq import stringseq
     
-    protocols.seq.extendForTypes([tuple, type([])],
+    protocols.seq.extendForTypes([tuple, type([]), str, unicode],
                                  lambda obj: createIndexableSeq(obj))
-    protocols.seq.extendForTypes([str, unicode], stringseq)
     protocols.seq.extend(type(None), lambda x: None)
     
     #protocols.seq.setDefault(lambda x: NotSeq())
