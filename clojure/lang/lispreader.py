@@ -122,7 +122,7 @@ namedChars = {"newline": "\n",
               "return": "\r",
               }
 
-whiteSpace = set(",\n\t\r ")
+whiteSpace = set(",\n\t\r\b\f ")
 octalChars = set("01234567")
 commentTerminators = set(['', '\n', '\r'])
 # legal characters between the braces: "\N{...}" for readNamedUnicodeChar()
