@@ -75,6 +75,7 @@ def run_repl(comp=None):
         try:
             line = raw_input(comp.getNS().__name__ + "=> ")
         except EOFError:
+            print
             break
 
         if not line:
