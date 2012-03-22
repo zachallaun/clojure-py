@@ -25,6 +25,13 @@
    :added "1.0"}
   vector clojure.lang.rt/vector)
 
+
+(def
+ ^{:arglists '([& items])
+   :doc "Creates a new hashmap containing the items."
+   :added "1.0"}
+  hashmap clojure.lang.rt/map)
+
 (def
  ^{:arglists '([x seq])
     :doc "Returns a new seq where x is the first element and seq is
