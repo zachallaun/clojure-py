@@ -66,18 +66,21 @@
 
 (defmacro defprotocol
     [name & sigs]
-    (let [methods (zipmap (map #(clojure.core/name (first %)) sigs)
+    (let [docstr (when (string? (first sigs)) (first sigs))
+          sigs (if docstr (next sigs) sigs)
+          methods (zipmap (map #(clojure.core/name (first %)) sigs)
                           (map #(identity `(~'fn ~(symbol (str name "_" (clojure.core/name (first %))))
                                                  ~@'([self & args] 
-                                                 (throw (AbstractMethodCall self))))) sigs))]
-         `(do (def ~name (py/type ~(clojure.core/name name)
+                                                 (throw (AbstractMethodCall self))))) sigs))
+          methods (assoc methods "__doc__" docstr)]
+         (debug `(do (def ~name (py/type ~(clojure.core/name name)
                                       (py/tuple [py/object])
                                       (.toDict ~methods)))
                      (clojure.lang.protocol/protocolFromType ~'__name__ ~name)
                 ~@(for [s sigs :when (string? (last s))]
                     `(py/setattr (resolve ~(list 'quote (first s)))
                                  "__doc__"
-                                 ~(last s))))))
+                                 ~(last s)))))))
 
 
 (defmacro reify 
@@ -143,3 +146,38 @@
                 ~@(map (fn [x] `(clojure.lang.protocol/extendForType ~x ~'type))
                                interfaces)
                   (~'type))))
+
+(require 'copy)
+
+(def recordfns { "assoc" (fn record-assoc
+                               [self k v]
+                               (let [copied (copy/copy self)]
+                                    (py/setattr copied (name k) v)
+                                    copied))
+    
+                 "containsKey" (fn record-contains-key 
+                                   [self k]
+                                   (py/hasattr self (name k)))
+                 
+                 "entryAt"  (fn entryAt
+                                   [self k]
+                                   (when (py/hasattr self (name k))
+                                         (clojure.lang.mapentry/MapEntry 
+                                             k
+                                             (py/getattr self (name k)))))})
+
+
+#_(defmacro defrecord
+    [name fields & specs]
+    (let [[interfaces methods] (parse-opts+specs specs)
+          interfaces (concat interfaces [ILookup IAssociative])
+          methods (wrap-specs name fields methods) 
+          methods (if (= (count fields) 0)
+                      methods
+                      (assoc methods "__init__" (clojure.core/make-init fields)))
+          methods (merge recordfns methods)]
+          `(~'do (def ~name (py/type ~(.-name name)
+                                      (py/tuple ~(vec (concat interfaces [py/object])))
+                                      (.toDict ~methods)))
+                ~@(map (fn [x] `(clojure.lang.protocol/extendForType ~x ~name))
+                               interfaces))))
