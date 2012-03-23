@@ -86,8 +86,9 @@ def creator(*args):
         ret = ret.cons(args[x])
     return ret
 
+from clojure.lang.iprintable import IPrintable
 
-class EmptyList(Obj, IPersistentList, ISeq, Counted):
+class EmptyList(Obj, IPersistentList, ISeq, Counted, IPrintable):
     def __init__(self, meta = None):
         self._meta = meta
 
@@ -134,6 +135,12 @@ class EmptyList(Obj, IPersistentList, ISeq, Counted):
 
     def seq(self):
         return None
+
+    def writeAsString(self, writer):
+        writer.write(repr(self))
+
+    def writeAsReplString(self, writer):
+        writer.write(repr(self))
 
     def __repr__(self):
         return "()"

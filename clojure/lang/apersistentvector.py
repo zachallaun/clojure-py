@@ -40,11 +40,42 @@ class APersistentVector(IPersistentVector, IPrintable):
     def __ne__(self, other):
         return not self == other
 
+    # $$$:
+    # Placing these print methods here will cover:
+    # MapEntry, PersistentVector, and SubVec
+    #
+    # But I'm calling seq().
+    #
+    # The commented out loop below does not have to call seq, but it will not
+    # work for map entry (no nth() error). I'm guessing seq() isn't as
+    # efficient as the second method. At this point I'm just trying to get a
+    # complete IPrintable system *working*.
     def writeAsString(self, writer):
-        writer.write(repr(self))
+        writer.write("[")
+        s = self.seq()
+        while s is not None:
+            RT.protocols.writeAsString(s.first(), writer)
+            if s.next() is not None:
+                writer.write(" ")
+            s = s.next()
+        writer.write("]")
+        # n = len(self) - 1
+        # writer.write("[")
+        # for i, item in enumerate(self):
+        #     RT.protocols.writeAsString(item, writer)
+        #     if i < n:
+        #         writer.write(" ")
+        # writer.write("]")
 
     def writeAsReplString(self, writer):
-        writer.write(repr(self))
+        writer.write("[")
+        s = self.seq()
+        while s is not None:
+            RT.protocols.writeAsReplString(s.first(), writer)
+            if s.next() is not None:
+                writer.write(" ")
+            s = s.next()
+        writer.write("]")
 
 
 class SubVec(APersistentVector):

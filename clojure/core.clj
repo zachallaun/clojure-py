@@ -2951,3 +2951,70 @@
     (instance? Number n))
 
 (defn boolean [x] (if x true false))
+
+;; ======================================================================
+;; Printing
+;; newline, flush, pr, and prn, print, println.
+;; It's in place for live IPrintable testing.
+;;
+;; None instead of nil is printed after each call because the repl is
+;; printing the raw Python result of pr, print, etc.
+;;
+;; None of this is final.
+;; ======================================================================
+
+;; Need binding
+;; (def ^:dynamic *flush-on-newline* false)
+;; (def ^:dynamic *print-dup* false)
+;; (def ^:dynamic *print-meta* false)
+;; (def ^:dynamic *print-readably* true)
+(def ^:dynamic *out* sys/stdout)
+
+(defn newline [] (.write *out* "\n") nil)
+(defn flush [] (.flush *out*) nil)
+
+(defn pr
+  "readable, no newline"
+  ([] nil)
+  ([x]
+     (clojure.protocols/writeAsReplString x *out*))
+  ([x & more]
+     (pr x)
+     (.write *out* " ")
+     (if-let [nmore (next more)]
+       (recur (first more) nmore)
+       (apply pr more))))
+
+(defn prn
+  "readable, newline follows"
+  [& more]
+  (apply pr more)
+  (newline))
+
+;; XXX: for testing only
+(defn print-pr
+  ([] nil)
+  ([x]
+     (clojure.protocols/writeAsString x *out*))
+  ([x & more]
+     (print-pr x)
+     (.write *out* " ")
+     (if-let [nmore (next more)]
+       (recur (first more) nmore)
+       (apply print-pr more))))
+
+(defn print
+  "unreadable-ish, no newline"
+  [& more]
+  (apply print-pr more))
+
+;; XXX: for testing only
+(defn print-prn
+  [& more]
+  (apply print-pr more)
+  (newline))
+
+(defn println
+  "unreadable-ishishly, newline follows"
+  [& more]
+  (apply print-prn more))

@@ -1,10 +1,11 @@
 import types
 
+from clojure.lang.iprintable import IPrintable
 from clojure.lang.iobj import IObj
 from clojure.lang.cljexceptions import ArityException
 
 
-class Symbol(IObj, object):
+class Symbol(IObj, IPrintable):
     def __init__(self, *args):
         if len(args) == 2:
             self.ns = args[0].name if isinstance(args[0], Symbol) else args[0]
@@ -45,6 +46,12 @@ class Symbol(IObj, object):
 
     def __hash__(self):
         return hash(self.name) ^ hash(self.ns)
+
+    def writeAsString(self, writer):
+        writer.write(repr(self))
+
+    def writeAsReplString(self, writer):
+        writer.write(repr(self))
 
     def __repr__(self):
         if self.ns is None:

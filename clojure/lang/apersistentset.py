@@ -54,7 +54,21 @@ class APersistentSet(IPersistentSet, IFn, IPrintable):
         return self._hash
 
     def writeAsString(self, writer):
-        writer.write(repr(self))
+        writer.write("#{")
+        s = self.seq()
+        while s is not None:
+            RT.protocols.writeAsString(s.first(), writer)
+            if s.next() is not None:
+                writer.write(" ")
+            s = s.next()
+        writer.write("}")
 
     def writeAsReplString(self, writer):
-        writer.write(repr(self))
+        writer.write("#{")
+        s = self.seq()
+        while s is not None:
+            RT.protocols.writeAsReplString(s.first(), writer)
+            if s.next() is not None:
+                writer.write(" ")
+            s = s.next()
+        writer.write("}")

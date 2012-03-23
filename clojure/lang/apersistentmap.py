@@ -5,6 +5,7 @@ from clojure.lang.cljexceptions import (ArityException,
                                            InvalidArgumentException)
 from clojure.lang.aseq import ASeq
 from clojure.lang.iprintable import IPrintable
+import clojure.lang.rt as RT
 
 
 class APersistentMap(IPersistentMap, IPrintable):
@@ -59,10 +60,30 @@ class APersistentMap(IPersistentMap, IPrintable):
         return self.containsKey(item)
 
     def writeAsString(self, writer):
-        writer.write(repr(self))
+        writer.write("{")
+        s = self.seq()
+        while s is not None:
+            e = s.first()
+            RT.protocols.writeAsString(e.key, writer)
+            writer.write(" ")
+            RT.protocols.writeAsString(e.value, writer)
+            if s.next() is not None:
+                writer.write(", ")
+            s = s.next()
+        writer.write("}")
 
     def writeAsReplString(self, writer):
-        writer.write(repr(self))
+        writer.write("{")
+        s = self.seq()
+        while s is not None:
+            e = s.first()
+            RT.protocols.writeAsReplString(e.key, writer)
+            writer.write(" ")
+            RT.protocols.writeAsReplString(e.value, writer)
+            if s.next() is not None:
+                writer.write(", ")
+            s = s.next()
+        writer.write("}")
 
 
 def mapEquals(m1, m2):

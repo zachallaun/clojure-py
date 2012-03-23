@@ -1,9 +1,14 @@
+import re
+
 from clojure.lang.ipersistentvector import IPersistentVector
 from clojure.lang.cljexceptions import InvalidArgumentException
 from clojure.lang.comparator import Comparator
 from clojure.lang.threadutil import AtomicInteger
 
 from clojure.lang.iseq import ISeq
+
+
+regexType = type(re.compile(""))
 
 mapInter = map
 _list = list
@@ -68,9 +73,6 @@ def next(obj):
     
 def isSeqable(obj):
     return protocols.seq.isExtendedBy(type(obj))
-    
-    
-    
 
 def applyTo(fn, args):
     return apply(fn, tuple(map(lambda x: x.first(), args)))
@@ -198,13 +200,60 @@ def subvec(v, start, end):
         return EMPTY_VECTOR
     return SubVec(None, v, start, end)
 
+stringEscapeMap = {
+    "\a" : "?",
+    "\b" : "\\b",
+    "\f" : "\\f",
+    "\n" : "\\n",
+    "\r" : "\\r",
+    "\t" : "\\t",
+    "\v" : "?",
+    "\\" : "\\\\",
+    '"' : '\\\"'
+    }
+
+def stringEscape(s):
+    return "".join([stringEscapeMap.get(c, c) for c in s])
+
 
 def _extendIPrintableForManuals():
-    protocols.writeAsString.extend(type(None), lambda obj, writer: writer.write("nil"))
-    protocols.writeAsReplString.extend(type(None), lambda obj, writer: writer.write("nil"))
-    
-    protocols.writeAsString.extend(int, lambda obj, writer: writer.write(str(obj)))
-    protocols.writeAsReplString.extend(int, lambda obj, writer: writer.write(str(obj)))
+    # None
+    protocols.writeAsString.extend(
+        type(None),
+        lambda obj, writer: writer.write("nil"))
+    protocols.writeAsReplString.extend(
+        type(None),
+        lambda obj, writer: writer.write("nil"))
+    # True, False
+    protocols.writeAsString.extend(
+        bool,
+        lambda obj, writer: writer.write(obj and "true" or "false"))
+    protocols.writeAsReplString.extend(
+        bool,
+        lambda obj, writer: writer.write(obj and "true" or "false"))
+    # int, float, but what precision?
+    protocols.writeAsString.extendForTypes(
+        [int, float],
+        lambda obj, writer: writer.write(str(obj)))
+    protocols.writeAsReplString.extendForTypes(
+        [int, float],
+        lambda obj, writer: writer.write(str(obj)))
+    # str
+    protocols.writeAsString.extend(
+        str,
+        lambda obj, writer: writer.write(str(obj)))
+    protocols.writeAsReplString.extend(
+        str,
+        lambda s, writer: writer.write('"{0}"'.format(stringEscape(s))))
+    # regex
+    protocols.writeAsString.extend(
+        regexType,
+        lambda regex, writer:   # not sure about this one
+            writer.write('#"{0}"'.format(stringEscape(regex.pattern))))
+    protocols.writeAsReplString.extend(
+        regexType,
+        lambda regex, writer:
+            writer.write('#"{0}"'.format(stringEscape(regex.pattern))))
 
 
 def _extendSeqableForManuals():

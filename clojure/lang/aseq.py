@@ -10,7 +10,6 @@ from clojure.lang.iprintable import IPrintable
 from clojure.lang.ipersistentset import IPersistentSet
 
 
-
 class ASeq(Obj, Sequential, ISeq, IHashEq, Iterable, IPrintable):
     def __eq__(self, other):
         if self is other:
@@ -75,12 +74,30 @@ class ASeq(Obj, Sequential, ISeq, IHashEq, Iterable, IPrintable):
             ret = 31 * ret + hash(s) #Util.hasheq(s.first())#FIXME: Util is... where?
         return ret
 
-    def writeAsString(self, writer):
-        writer.write(repr(self))
-
-    def writeAsReplString(self, writer):
-        writer.write(repr(self))
-        
     def cons(self, other):
         from clojure.lang.cons import Cons
         return Cons(other, self)
+
+    # These could be refactored into a smaller utility function to print the
+    # inner sequence like Clojure does, but If I pass:
+    # RT.protocols.writeAsString or writeAsReplString, to the utility it goes
+    # into an infinite loop.
+    def writeAsString(self, writer):
+        writer.write("(")
+        s = self
+        while s is not None:
+            RT.protocols.writeAsString(s.first(), writer)
+            if s.next() is not None:
+                writer.write(" ")
+            s = s.next()
+        writer.write(")")
+
+    def writeAsReplString(self, writer):
+        writer.write("(")
+        s = self
+        while s is not None:
+            RT.protocols.writeAsReplString(s.first(), writer)
+            if s.next() is not None:
+                writer.write(" ")
+            s = s.next()
+        writer.write(")")
