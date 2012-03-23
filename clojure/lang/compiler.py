@@ -27,12 +27,15 @@ from clojure.lang.symbol import Symbol, symbol
 from clojure.lang.var import Var, define, intern as internVar, var as createVar
 from clojure.util.byteplay import *
 import clojure.util.byteplay as byteplay
+import marshal
 
 _MACRO_ = keyword(symbol("macro"))
 version = (sys.version_info[0] * 10) + sys.version_info[1]
 
 PTR_MODE_GLOBAL = "PTR_MODE_GLOBAL"
 PTR_MODE_DEREF = "PTR_MODE_DEREF"
+
+AUDIT_CONSTS = False
 
 class MetaBytecode(object):
     pass
@@ -69,6 +72,15 @@ class GlobalPtr(MetaBytecode):
 def expandMetas(bc, comp):
     code = []
     for x in bc:
+        print x
+        if AUDIT_CONSTS and isinstance(x, tuple):
+            if x[0] == LOAD_CONST:
+                try:
+                    marshal.dumps(x[1])
+                except:
+                    print "Can't marshal", x[1], type(x[1])
+                    raise
+        
         if isinstance(x, MetaBytecode):
             code.extend(x.emit(comp, PTR_MODE_DEREF))
         else:
