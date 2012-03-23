@@ -72,7 +72,6 @@ class GlobalPtr(MetaBytecode):
 def expandMetas(bc, comp):
     code = []
     for x in bc:
-        print x
         if AUDIT_CONSTS and isinstance(x, tuple):
             if x[0] == LOAD_CONST:
                 try:
@@ -80,7 +79,7 @@ def expandMetas(bc, comp):
                 except:
                     print "Can't marshal", x[1], type(x[1])
                     raise
-        
+
         if isinstance(x, MetaBytecode):
             code.extend(x.emit(comp, PTR_MODE_DEREF))
         else:
@@ -372,7 +371,10 @@ def compileIfStar(comp, form):
     code.extend(emitJump(elseLabel))
     code.append((LOAD_FAST, condition_name))
     code.append((LOAD_CONST, 0))
-    code.append((COMPARE_OP, "is not"))
+    if version == 27:
+        code.append((COMPARE_OP, "is not"))
+    else:
+        code.append((COMPARE_OP, "!="))
     code.extend(emitJump(ifLabel))
     code.append((LOAD_FAST, condition_name))
     code.append((LOAD_CONST, False))
