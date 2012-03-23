@@ -103,6 +103,21 @@ def emitLanding(label):
         return [(label, None)]
 
 
+builtins = {}
+
+def register_builtin(sym):
+    """
+    A decorator to register a new builtin macro. Pass the symbol that the macro
+    represents as the argument. If the argument is a string, it will be
+    converted to a symbol.
+    """
+    def inner(func):
+        builtins[sym if isinstance(sym, Symbol) else symbol(sym)] = func
+        return func
+    return inner
+
+
+@register_builtin("ns*")
 def compileNS(comp, form):
     rest = form.next()
     if len(rest) != 1:
@@ -111,6 +126,7 @@ def compileNS(comp, form):
     return [(LOAD_CONST, None)]
 
 
+@register_builtin("def")
 def compileDef(comp, form):
     if len(form) not in [2, 3]:
         raise CompilerException("Only 2 or 3 arguments allowed to def", form)
@@ -176,6 +192,7 @@ def compileBytecode(comp, form):
     return code
 
 
+@register_builtin("kwapply")
 def compileKWApply(comp, form):
     if len(form) < 3:
         raise CompilerException("at least two arguments required to kwapply", form)
@@ -199,6 +216,7 @@ def compileKWApply(comp, form):
     return code
 
 
+@register_builtin("loop*")
 def compileLoopStar(comp, form):
     if len(form) < 3:
         raise CompilerException("loop* takes at least two args")
@@ -244,6 +262,7 @@ def compileLoopStar(comp, form):
     return code
 
 
+@register_builtin("let*")
 def compileLetStar(comp, form):
     if len(form) < 3:
         raise CompilerException("let* takes at least two args")
@@ -285,6 +304,7 @@ def compileLetStar(comp, form):
     return code
 
 
+@register_builtin(".")
 def compileDot(comp, form):
     if len(form) != 3:
         raise CompilerException(". form must have two arguments", form)
@@ -318,12 +338,14 @@ def compileDot(comp, form):
     return code
 
 
+@register_builtin("quote")
 def compileQuote(comp, form):
     if len(form) != 2:
         raise CompilerException("Quote must only have one argument", form)
     return [(LOAD_CONST, form.next().first())]
 
 
+@register_builtin(symbol("py", "if"))
 def compilePyIf(comp, form):
     if len(form) != 3 and len(form) != 4:
         raise CompilerException("if takes 2 or 3 args", form)
@@ -346,6 +368,7 @@ def compilePyIf(comp, form):
     return code
 
 
+@register_builtin("if*")
 def compileIfStar(comp, form):
     """
     Compiles the form (if* pred val else?).
@@ -403,6 +426,7 @@ def unpackArgs(form):
     return locals, args, lastisargs, argsname
 
 
+@register_builtin("do")
 def compileDo(comp, form):
     return compileImplcitDo(comp, form.next())
 
@@ -559,6 +583,7 @@ def compileImplcitDo(comp, form):
     return code
 
 
+@register_builtin("fn*")
 def compileFNStar(comp, form):
     haslocalcaptures = False
     aliases = []
@@ -647,6 +672,7 @@ def compileVector(comp, form):
     return code
 
 
+@register_builtin("recur")
 def compileRecur(comp, form):
     s = form.next()
     idx = 0
@@ -667,6 +693,7 @@ def compileRecur(comp, form):
     return code
 
 
+@register_builtin("is?")
 def compileIs(comp, form):
     if len(form) != 3:
         raise CompilerException("is? requires 2 arguments", form)
@@ -701,6 +728,7 @@ def compileBool(comp, b):
     return [(LOAD_CONST, b)]
 
 
+@register_builtin("throw")
 def compileThrow(comp, form):
     if len(form) != 2:
         raise CompilerException("throw requires two arguments", form)
@@ -709,6 +737,7 @@ def compileThrow(comp, form):
     return code
 
 
+@register_builtin("apply")
 def compileApply(comp, form):
     s = form.next()
     code = []
@@ -736,6 +765,7 @@ def getBuiltin(name):
     raise CompilerException("Python builtin not found " + name, name)
 
 
+@register_builtin("let-macro")
 def compileLetMacro(comp, form):
     if len(form) < 3:
         raise CompilerException("alias-properties takes at least two args", form)
@@ -757,27 +787,9 @@ def compileLetMacro(comp, form):
     return code
 
 
+@register_builtin("__compiler__")
 def compileCompiler(comp, form):
     return [(LOAD_CONST, comp)]
-
-
-builtins = {symbol("ns*"): compileNS,
-            symbol("def"): compileDef,
-            symbol("."): compileDot,
-            symbol("fn*"): compileFNStar,
-            symbol("quote"): compileQuote,
-            symbol("py", "if"): compilePyIf,
-            symbol("if*"): compileIfStar,
-            symbol("recur"): compileRecur,
-            symbol("do"): compileDo,
-            symbol("let*"): compileLetStar,
-            symbol("loop*"): compileLoopStar,
-            symbol("is?"): compileIs,
-            symbol("throw"): compileThrow,
-            symbol("apply"): compileApply,
-            symbol("let-macro"): compileLetMacro,
-            symbol("__compiler__"): compileCompiler,
-            symbol("kwapply"): compileKWApply}
 
 
 """
