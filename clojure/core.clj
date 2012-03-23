@@ -2949,3 +2949,5 @@
 (defn number? [n]
     "Returns true if n is a number. Works for int, long, Decimal, Fractions and anything else that implements the Number Abstract Base Class"
     (instance? Number n))
+
+(defn boolean [x] (if x true false))
