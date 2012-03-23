@@ -72,7 +72,6 @@ class GlobalPtr(MetaBytecode):
 def expandMetas(bc, comp):
     code = []
     for x in bc:
-        print x
         if AUDIT_CONSTS and isinstance(x, tuple):
             if x[0] == LOAD_CONST:
                 try:
