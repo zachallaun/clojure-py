@@ -35,7 +35,7 @@ version = (sys.version_info[0] * 10) + sys.version_info[1]
 PTR_MODE_GLOBAL = "PTR_MODE_GLOBAL"
 PTR_MODE_DEREF = "PTR_MODE_DEREF"
 
-AUDIT_CONSTS = True
+AUDIT_CONSTS = False
 
 class MetaBytecode(object):
     pass
