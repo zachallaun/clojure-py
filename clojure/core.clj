@@ -2935,4 +2935,12 @@
   {:added "1.0"}
   [& body])
 
+(defn aclone
+  "Returns a clone of the Python list. Works on any type implementing slices and lists."
+  [l] (.__getitem__ l (py/slice 0 (py/len l))))
+
+(defn aset [l i item]
+  "Equivalent to l[i] = item in Pytyon"
+  (.__setitem__ l i item))
+
 (require 'clojure.core-deftype :only ['deftype 'reify 'definterface 'defprotocol])

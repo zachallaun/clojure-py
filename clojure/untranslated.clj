@@ -1,22 +1,5 @@
 
 
-(defn into-array
-  "Returns an array with components set to the values in aseq. The array's
-  component type is type if provided, or the type of the first value in
-  aseq if present, or Object. All values in aseq must be compatible with
-  the component type. Class objects for the primitive types can be obtained
-  using, e.g., Integer/TYPE."
-  {:added "1.0"
-   :static true}
-  ([aseq]
-     (clojure.lang.rt/seqToTypedArray (seq aseq)))
-  ([type aseq]
-     (clojure.lang.rt/seqToTypedArray type (seq aseq))))
-
-(defn ^{:private true}
-  array [& items]
-    (into-array items))
-
 (defn type 
   "Returns the :type metadata of x, or its Class if none"
   {:added "1.0"
@@ -305,43 +288,6 @@
 
 (import '(java.lang.reflect Array))
 
-(defn alength
-  "Returns the length of the Java array. Works on arrays of all
-  types."
-  {:inline (fn [a] `(. clojure.lang.rt (alength ~a)))
-   :added "1.0"}
-  [array] (. clojure.lang.rt (alength array)))
-
-(defn aclone
-  "Returns a clone of the Java array. Works on arrays of known
-  types."
-  {:inline (fn [a] `(. clojure.lang.rt (aclone ~a)))
-   :added "1.0"}
-  [array] (. clojure.lang.rt (aclone array)))
-
-(defn aget
-  "Returns the value at the index/indices. Works on Java arrays of all
-  types."
-  {:inline (fn [a i] `(. clojure.lang.rt (aget ~a (int ~i))))
-   :inline-arities #{2}
-   :added "1.0"}
-  ([array idx]
-   (clojure.lang.Reflector/prepRet (.getComponentType (class array)) (. Array (get array idx))))
-  ([array idx & idxs]
-   (apply aget (aget array idx) idxs)))
-
-(defn aset
-  "Sets the value at the index/indices. Works on Java arrays of
-  reference types. Returns val."
-  {:inline (fn [a i v] `(. clojure.lang.rt (aset ~a (int ~i) ~v)))
-   :inline-arities #{3}
-   :added "1.0"}
-  ([array idx val]
-   (. Array (set array idx val))
-   val)
-  ([array idx idx2 & idxv]
-   (apply aset (aget array idx) idx2 idxv)))
-
 (defmacro
   ^{:private true}
   def-aset [name method coerce]
@@ -352,78 +298,6 @@
         val#)
        ([array# idx# idx2# & idxv#]
         (apply ~name (aget array# idx#) idx2# idxv#))))
-
-(def-aset
-  ^{:doc "Sets the value at the index/indices. Works on arrays of int. Returns val."
-    :added "1.0"}
-  aset-int setInt int)
-
-(def-aset
-  ^{:doc "Sets the value at the index/indices. Works on arrays of long. Returns val."
-    :added "1.0"}
-  aset-long setLong long)
-
-(def-aset
-  ^{:doc "Sets the value at the index/indices. Works on arrays of boolean. Returns val."
-    :added "1.0"}
-  aset-boolean setBoolean boolean)
-
-(def-aset
-  ^{:doc "Sets the value at the index/indices. Works on arrays of float. Returns val."
-    :added "1.0"}
-  aset-float setFloat float)
-
-(def-aset
-  ^{:doc "Sets the value at the index/indices. Works on arrays of double. Returns val."
-    :added "1.0"}
-  aset-double setDouble double)
-
-(def-aset
-  ^{:doc "Sets the value at the index/indices. Works on arrays of short. Returns val."
-    :added "1.0"}
-  aset-short setShort short)
-
-(def-aset
-  ^{:doc "Sets the value at the index/indices. Works on arrays of byte. Returns val."
-    :added "1.0"}
-  aset-byte setByte byte)
-
-(def-aset
-  ^{:doc "Sets the value at the index/indices. Works on arrays of char. Returns val."
-    :added "1.0"}
-  aset-char setChar char)
-
-(defn make-array
-  "Creates and returns an array of instances of the specified class of
-  the specified dimension(s).  Note that a class object is required.
-  Class objects can be obtained by using their imported or
-  fully-qualified name.  Class objects for the primitive types can be
-  obtained using, e.g., Integer/TYPE."
-  {:added "1.0"
-   :static true}
-  ([^Class type len]
-   (. Array (newInstance type (int len))))
-  ([^Class type dim & more-dims]
-   (let [dims (cons dim more-dims)
-         ^"[I" dimarray (make-array (. Integer TYPE)  (count dims))]
-     (dotimes [i (alength dimarray)]
-       (aset-int dimarray i (nth dims i)))
-     (. Array (newInstance type dimarray)))))
-
-(defn to-array-2d
-  "Returns a (potentially-ragged) 2-dimensional array of Objects
-  containing the contents of coll, which can be any Collection of any
-  Collection."
-  {:tag "[[Ljava.lang.Object;"
-   :added "1.0"
-   :static true}
-  [^java.util.Collection coll]
-    (let [ret (make-array (. Class (forName "[Ljava.lang.Object;")) (. coll (size)))]
-      (loop [i 0 xs (seq coll)]
-        (when xs
-          (aset ret i (to-array (first xs)))
-          (recur (inc i) (next xs))))
-      ret))
 
 (defn macroexpand-1
   "If form represents a macro form, returns its expansion,
