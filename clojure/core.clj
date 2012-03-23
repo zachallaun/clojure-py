@@ -2936,3 +2936,10 @@
   [& body])
 
 (require 'clojure.core-deftype :only ['deftype 'reify 'definterface 'defprotocol])
+
+; FIXME: Am I polluting the namespace by requiring those?!
+(require 'numbers :only ['Number])
+
+(defn number? [n]
+    "Returns true if n is a number. Works for int, long, Decimal, Fractions and anything else that implements the Number Abstract Base Class"
+    (instance? Number n))
