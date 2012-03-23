@@ -654,9 +654,16 @@
         (foo [self] "Foo_foo")))
 
 (deftest truthiness-tests
+    (assertions/assert-true (if true true false))
     (assertions/assert-true (if 0 true false))
+    (assertions/assert-true (if '() true false))
+    (assertions/assert-true (if '(1) true false))
     (assertions/assert-true (if [] true false))
+    (assertions/assert-true (if [1] true false))
     (assertions/assert-true (if {} true false))
+    (assertions/assert-true (if {1 2} true false))
+    (assertions/assert-true (if #{} true false))
+    (assertions/assert-true (if #{1} true false))
     (assertions/assert-true (if "" true false))
     (assertions/assert-true (if 1 true false))
     (assertions/assert-true (if :spam true false))
