@@ -56,6 +56,12 @@
          (cons 'fn* decl)))
 
 (def
+  ^{:macro true
+    :added "1.0"
+    :arglists '([pred val] [pred val else])}
+  if (fn* if [ form env & decl] (cons 'if* decl)))
+
+(def
     ^{:arglists '([& args])
       :doc "Clojure version of RT.assoc"
       :added "1.0"}

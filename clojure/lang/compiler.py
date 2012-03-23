@@ -347,7 +347,10 @@ def compilePyIf(comp, form):
     return code
 
 
-def compileIf(comp, form):
+def compileIfStar(comp, form):
+    """
+    Compiles the form (if* pred val else?).
+    """
     if len(form) != 3 and len(form) != 4:
         raise CompilerException("if takes 2 or 3 args", form)
     cmp = comp.compile(form.next().first())
@@ -357,6 +360,7 @@ def compileIf(comp, form):
     else:
         body2 = comp.compile(form.next().next().next().first())
 
+    ifLabel = Label("IfIf")
     elseLabel = Label("IfElse")
     endlabel = Label("IfEnd")
     condition_name = garg(0).name
@@ -367,9 +371,14 @@ def compileIf(comp, form):
     code.append((COMPARE_OP, 'is not'))
     code.extend(emitJump(elseLabel))
     code.append((LOAD_FAST, condition_name))
+    code.append((LOAD_CONST, 0))
+    code.append((COMPARE_OP, "is not"))
+    code.extend(emitJump(ifLabel))
+    code.append((LOAD_FAST, condition_name))
     code.append((LOAD_CONST, False))
     code.append((COMPARE_OP, '!='))
     code.extend(emitJump(elseLabel))
+    code.extend(emitLanding(ifLabel))
     code.extend(body)
     code.append((JUMP_ABSOLUTE, endlabel))
     code.extend(emitLanding(elseLabel))
@@ -763,7 +772,7 @@ builtins = {symbol("ns*"): compileNS,
             symbol("fn*"): compileFNStar,
             symbol("quote"): compileQuote,
             symbol("py", "if"): compilePyIf,
-            symbol("if"): compileIf,
+            symbol("if*"): compileIfStar,
             symbol("recur"): compileRecur,
             symbol("do"): compileDo,
             symbol("let*"): compileLetStar,
