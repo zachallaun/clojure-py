@@ -17,12 +17,6 @@
   array [& items]
     (into-array items))
 
-(defn class
-  "Returns the Class of x"
-  {:added "1.0"
-   :static true}
-  ^Class [^Object x] (if (nil? x) x (. x (getClass))))
-
 (defn type 
   "Returns the :type metadata of x, or its Class if none"
   {:added "1.0"
@@ -30,98 +24,12 @@
   [x]
   (or (get (meta x) :type) (class x)))
 
-(defn num
-  "Coerce to Number"
-  {:tag Number
-   :inline (fn  [x] `(. clojure.lang.Numbers (num ~x)))
-   :added "1.0"}
-  [x] (. clojure.lang.Numbers (num x)))
-
-(defn long
-  "Coerce to long"
-  {:inline (fn  [x] `(. clojure.lang.rt (longCast ~x)))
-   :added "1.0"}
-  [^Number x] (clojure.lang.rt/longCast x))
-
-(defn float
-  "Coerce to float"
-  {:inline (fn  [x] `(. clojure.lang.rt (~(if *unchecked-math* 'uncheckedFloatCast 'floatCast) ~x)))
-   :added "1.0"}
-  [^Number x] (clojure.lang.rt/floatCast x))
-
-(defn double
-  "Coerce to double"
-  {:inline (fn  [x] `(. clojure.lang.rt (doubleCast ~x)))
-   :added "1.0"}
-  [^Number x] (clojure.lang.rt/doubleCast x))
-
-(defn short
-  "Coerce to short"
-  {:inline (fn  [x] `(. clojure.lang.rt (~(if *unchecked-math* 'uncheckedShortCast 'shortCast) ~x)))
-   :added "1.0"}
-  [^Number x] (clojure.lang.rt/shortCast x))
-
-(defn byte
-  "Coerce to byte"
-  {:inline (fn  [x] `(. clojure.lang.rt (~(if *unchecked-math* 'uncheckedByteCast 'byteCast) ~x)))
-   :added "1.0"}
-  [^Number x] (clojure.lang.rt/byteCast x))
-
-(defn char
-  "Coerce to char"
-  {:inline (fn  [x] `(. clojure.lang.rt (~(if *unchecked-math* 'uncheckedCharCast 'charCast) ~x)))
-   :added "1.1"}
-  [x] (. clojure.lang.rt (charCast x)))
-
 (defn boolean
   "Coerce to boolean"
   {
    :inline (fn  [x] `(. clojure.lang.rt (booleanCast ~x)))
    :added "1.0"}
   [x] (clojure.lang.rt/booleanCast x))
-
-(defn unchecked-byte
-  "Coerce to byte. Subject to rounding or truncation."
-  {:inline (fn  [x] `(. clojure.lang.rt (uncheckedByteCast ~x)))
-   :added "1.3"}
-  [^Number x] (clojure.lang.rt/uncheckedByteCast x))
-
-(defn unchecked-short
-  "Coerce to short. Subject to rounding or truncation."
-  {:inline (fn  [x] `(. clojure.lang.rt (uncheckedShortCast ~x)))
-   :added "1.3"}
-  [^Number x] (clojure.lang.rt/uncheckedShortCast x))
-
-(defn unchecked-char
-  "Coerce to char. Subject to rounding or truncation."
-  {:inline (fn  [x] `(. clojure.lang.rt (uncheckedCharCast ~x)))
-   :added "1.3"}
-  [x] (. clojure.lang.rt (uncheckedCharCast x)))
-
-(defn unchecked-int
-  "Coerce to int. Subject to rounding or truncation."
-  {:inline (fn  [x] `(. clojure.lang.rt (uncheckedIntCast ~x)))
-   :added "1.3"}
-  [^Number x] (clojure.lang.rt/uncheckedIntCast x))
-
-(defn unchecked-long
-  "Coerce to long. Subject to rounding or truncation."
-  {:inline (fn  [x] `(. clojure.lang.rt (uncheckedLongCast ~x)))
-   :added "1.3"}
-  [^Number x] (clojure.lang.rt/uncheckedLongCast x))
-
-(defn unchecked-float
-  "Coerce to float. Subject to rounding."
-  {:inline (fn  [x] `(. clojure.lang.rt (uncheckedFloatCast ~x)))
-   :added "1.3"}
-  [^Number x] (clojure.lang.rt/uncheckedFloatCast x))
-
-(defn unchecked-double
-  "Coerce to double. Subject to rounding."
-  {:inline (fn  [x] `(. clojure.lang.rt (uncheckedDoubleCast ~x)))
-   :added "1.3"}
-  [^Number x] (clojure.lang.rt/uncheckedDoubleCast x))
-
 
 (defn number?
   "Returns true if x is a Number"
@@ -382,16 +290,6 @@
                     `(~f ~gx)))
                 forms)
          ~gx)))
-
-(defmacro memfn
-  "Expands into code that creates a fn that expects to be passed an
-  object and any args and calls the named instance method on the
-  object passing the args. Use when you want to treat a Java method as
-  a first-class fn."
-  {:added "1.0"}
-  [name & args]
-  `(fn [target# ~@args]
-     (. target# (~name ~@args))))
 
 (defmacro time
   "Evaluates expr and prints the time it took.  Returns the value of
@@ -1736,12 +1634,6 @@
                         (cons (if (identical? x NIL) nil x) (drain)))))))]
      (send-off agt fill)
      (drain))))
-
-(defn class?
-  "Returns true if x is an instance of Class"
-  {:added "1.0"
-   :static true}
-  [x] (instance? Class x))
 
 (defn- is-annotation? [c]
   (and (class? c)
