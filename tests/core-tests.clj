@@ -647,10 +647,20 @@
     (let [f (fn [y] (reify ISeq
                            (seq [self] self)
                            (first [self] y)))]
-         (assertions/assert-equal (first (f 42)) 42))) 
+         (assertions/assert-equal (first (f 42)) 42)))
 
 (deftest defprotocol-tests
     (defprotocol Foo "Foo Protocol"
         (foo [self] "Foo_foo")))
+
+(deftest truthiness-tests
+    (assertions/assert-true (if 0 true false))
+    (assertions/assert-true (if [] true false))
+    (assertions/assert-true (if {} true false))
+    (assertions/assert-true (if "" true false))
+    (assertions/assert-true (if 1 true false))
+    (assertions/assert-true (if :spam true false))
+    (assertions/assert-false (if false true false))
+    (assertions/assert-false (if nil true false)))
 
 (py/print "all tests passed")
