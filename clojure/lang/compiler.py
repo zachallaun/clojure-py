@@ -359,7 +359,6 @@ def compileIfStar(comp, form):
     else:
         body2 = comp.compile(form.next().next().next().first())
 
-    ifLabel = Label("IfIf")
     elseLabel = Label("IfElse")
     endlabel = Label("IfEnd")
     condition_name = garg(0).name
@@ -370,17 +369,11 @@ def compileIfStar(comp, form):
     code.append((COMPARE_OP, 'is not'))
     code.extend(emitJump(elseLabel))
     code.append((LOAD_FAST, condition_name))
-    code.append((LOAD_CONST, 0))
-    if version == 27:
-        code.append((COMPARE_OP, "is not"))
-    else:
-        code.append((COMPARE_OP, "!="))
-    code.extend(emitJump(ifLabel))
-    code.append((LOAD_FAST, condition_name))
     code.append((LOAD_CONST, False))
-    code.append((COMPARE_OP, '!='))
+    code.append((COMPARE_OP, 'is not'))
+    # Use is not instead of != as bool is a subclass of int, and
+    # therefore False == 0
     code.extend(emitJump(elseLabel))
-    code.extend(emitLanding(ifLabel))
     code.extend(body)
     code.append((JUMP_ABSOLUTE, endlabel))
     code.extend(emitLanding(elseLabel))
