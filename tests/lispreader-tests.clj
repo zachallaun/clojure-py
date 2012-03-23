@@ -9,5 +9,3 @@
     (assertions/assert-equal \space " ")
     (assertions/assert-equal \z "z")
     (assertions/assert-equal \a "a"))
-
-(py/print "all tests passed")

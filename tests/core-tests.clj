@@ -669,5 +669,3 @@
     (assertions/assert-true (if :spam true false))
     (assertions/assert-false (if false true false))
     (assertions/assert-false (if nil true false)))
-
-(py/print "all tests passed")
