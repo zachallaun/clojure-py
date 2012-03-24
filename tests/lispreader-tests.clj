@@ -17,5 +17,5 @@
   (assertions/assert-true (= `-> 'clojure.core/->))
   (assertions/assert-true (= `recur 'recur))
   (assertions/assert-true (= `quote 'quote))
-  (assertions/assert-true (= `deftest 'tests.utils.deftest))
+  (assertions/assert-true (= `deftest 'tests.utils/deftest))
   )
