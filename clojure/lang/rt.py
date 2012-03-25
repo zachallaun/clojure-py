@@ -1,14 +1,14 @@
 import re
+import sys
 
 from clojure.lang.ipersistentvector import IPersistentVector
 from clojure.lang.cljexceptions import InvalidArgumentException
 from clojure.lang.comparator import Comparator
 from clojure.lang.threadutil import AtomicInteger
-
 from clojure.lang.iseq import ISeq
+# I don't like * either, but this should be fine
+from pytypes import *
 
-
-regexType = type(re.compile(""))
 
 mapInter = map
 _list = list
@@ -171,7 +171,6 @@ def set(*args):
     return m
 
 
-
 def getDefaultImports():
     from clojure.lang.persistentlist import PersistentList
     import sys
@@ -183,12 +182,12 @@ def getDefaultImports():
          "clojure.lang.RT": sys.modules[__name__]}
     return d
 
-
-id = AtomicInteger()
+# need id for print protocol
+_id = AtomicInteger()
 
 
 def nextID():
-    return id.getAndIncrement()
+    return _id.getAndIncrement()
 
 
 def subvec(v, start, end):
@@ -200,14 +199,15 @@ def subvec(v, start, end):
         return EMPTY_VECTOR
     return SubVec(None, v, start, end)
 
+
 stringEscapeMap = {
-    "\a" : "?",
+    "\a" : "<???>",                  # XXX
     "\b" : "\\b",
     "\f" : "\\f",
     "\n" : "\\n",
     "\r" : "\\r",
     "\t" : "\\t",
-    "\v" : "?",
+    "\v" : "<???>",                  # XXX
     "\\" : "\\\\",
     '"' : '\\\"'
     }
@@ -217,44 +217,115 @@ def stringEscape(s):
 
 
 def _extendIPrintableForManuals():
+
+    # Any added writeAsReplString handlers need
+    # to write the unreadable syntax:
+    # #<foo>
+    # if lispreader cannot recognize it.
+
     # None
     protocols.writeAsString.extend(
-        type(None),
+        pyNoneType,
         lambda obj, writer: writer.write("nil"))
     protocols.writeAsReplString.extend(
-        type(None),
+        pyNoneType,
         lambda obj, writer: writer.write("nil"))
     # True, False
     protocols.writeAsString.extend(
-        bool,
+        pyBoolType,
         lambda obj, writer: writer.write(obj and "true" or "false"))
     protocols.writeAsReplString.extend(
-        bool,
+        pyBoolType,
         lambda obj, writer: writer.write(obj and "true" or "false"))
-    # int, float, but what precision?
+    # int, long
     protocols.writeAsString.extendForTypes(
-        [int, float],
+        [pyIntType, pyLongType],
         lambda obj, writer: writer.write(str(obj)))
     protocols.writeAsReplString.extendForTypes(
-        [int, float],
+        [pyIntType, pyLongType],
+        lambda obj, writer: writer.write(str(obj)))
+    # float separate to allow for possible precision state
+    protocols.writeAsString.extend(
+        pyFloatType,
+        lambda obj, writer: writer.write(str(obj)))
+    protocols.writeAsReplString.extend(
+        pyFloatType,
         lambda obj, writer: writer.write(str(obj)))
     # str
     protocols.writeAsString.extend(
-        str,
-        lambda obj, writer: writer.write(str(obj)))
+        pyStrType,
+        lambda s, writer: writer.write(obj))
     protocols.writeAsReplString.extend(
-        str,
+        pyStrType,
+        # XXX: Will not correctly escape Python strings because clojure-py
+        #      will currently only read Clojure-compliant literal strings.
         lambda s, writer: writer.write('"{0}"'.format(stringEscape(s))))
+    # unicode
+    protocols.writeAsString.extend(
+        pyUnicodeType,
+        lambda s, writer: writer.write(s.encode("utf-8")))
+    protocols.writeAsReplString.extend(
+        pyUnicodeType,
+        lambda s, writer: writer.write((u'"{0}"'.format(stringEscape(s)))
+                                       .encode("utf-8")))
     # regex
     protocols.writeAsString.extend(
-        regexType,
+        pyRegexType,
         lambda regex, writer:   # not sure about this one
             writer.write('#"{0}"'.format(stringEscape(regex.pattern))))
     protocols.writeAsReplString.extend(
-        regexType,
+        pyRegexType,
         lambda regex, writer:
             writer.write('#"{0}"'.format(stringEscape(regex.pattern))))
+    # tuple, list, dict, and set
+    # This is the same as default below, but maybe these will be handled
+    # specially at some point.
+    protocols.writeAsString.extendForTypes(
+        [pyTupleType, pyListType, pyDictType, pySetType],
+        lambda col, writer: writer.write(repr(col)))
+    protocols.writeAsReplString.extendForTypes(
+        [pyTupleType, pyListType, pyDictType, pySetType],
+        # possibly print a preview of the collection:
+        # #<__builtin__.dict obj at 0xdeadbeef {'one': 1, 'two': 2 ... >
+        lambda col, writer:
+            writer.write('#<{0}.{1} obj at 0x{2:08x}>'
+                         .format(type(col).__module__, type(col).__name__,
+                                 id(col))))
+    # type
+    # #<fully.qualified.name> or fully.qualified.name ?
+    protocols.writeAsString.extend(
+        pyTypeType,
+        lambda t, writer:
+            writer.write('#<{0}.{1}>'.format(t.__module__, t.__name__)))
+    protocols.writeAsReplString.extend(
+        pyTypeType,
+        lambda t, writer:
+            writer.write('#<{0}.{1}>'.format(t.__module__, t.__name__)))
+    # function
+    # #<function name at 0x21d20c8>
+    protocols.writeAsString.extend(
+        pyFuncType,
+        lambda fn, writer: writer.write('#{0}'.format(str(fn))))
+    protocols.writeAsReplString.extend(
+        pyFuncType,
+        lambda fn, writer: writer.write('#{0}'.format(repr(fn))))
+    # default
+    # This *should* allow pr and family to handle anything not specified
+    # above.
+    protocols.writeAsString.setDefault(
+        # repr or str here?
+        lambda obj, writer: writer.write(str(obj)))
+    protocols.writeAsReplString.setDefault(
+        lambda obj, writer:
+            writer.write('#<{0}.{1} obj at 0x{2:08x}>'
+                         .format(type(obj).__module__, type(obj).__name__,
+                                 id(obj))))
 
+# this is only for the current Python-coded repl
+def printTo(obj, writer=sys.stdout):
+    protocols.writeAsReplString(obj, writer)
+    writer.write("\n")
+    writer.flush()
 
 def _extendSeqableForManuals():
     from clojure.lang.indexableseq import create as createIndexableSeq
@@ -279,7 +350,6 @@ def _bootstrap_protocols():
     protocolFromType("clojure.protocols", seqable)
     extendForAllSubclasses(seqable)
     
-    
     protocolFromType("clojure.protocols", iseq)
     extendForAllSubclasses(iseq)
     import sys 
@@ -287,13 +357,15 @@ def _bootstrap_protocols():
     seq = protocols.seq
     _extendSeqableForManuals()
     _extendIPrintableForManuals()
-    
-    
 
+# init is being called each time a .clj is loaded
+initialized = False
 def init():
-    global DEFAULT_IMPORTS
-    DEFAULT_IMPORTS = map(getDefaultImports())
-    _bootstrap_protocols()
+    global DEFAULT_IMPORTS, initialized
+    if not initialized:
+        DEFAULT_IMPORTS = map(getDefaultImports())
+        _bootstrap_protocols()
+        initialized = True
 
 
 DEFAULT_IMPORTS = None

@@ -778,7 +778,30 @@
 	(cons [self o]
 	    (cons o (.seq self)))
 	(empty [self]
-	    (list)))
+	    (list))
+        ;; IPrintable protocol
+        ;; These methods realize the entire sequence as Clojure does. But
+        ;; __repr__ does not. Is the intent to prevent spamming the repl?
+        clojure.lang.iprintable/IPrintable
+        (writeAsString [self writer]
+          (.write writer "(")
+          (loop [s (.seq self)]
+            (when s
+              (clojure.protocols/writeAsString (.first s) writer)
+              (when (.next s)
+                (.write writer " "))
+              (recur (.next s))))
+          (.write writer ")"))
+        (writeAsReplString [self writer]
+          (.write writer "(")
+          (loop [s (.seq self)]
+            (when s
+              (clojure.protocols/writeAsReplString (.first s) writer)
+              (when (.next s)
+                (.write writer " "))
+              (recur (.next s))))
+          (.write writer ")")))
+
 
 (clojure.lang.protocol/extendForAllSubclasses clojure.lang.iseq/ISeq)
 

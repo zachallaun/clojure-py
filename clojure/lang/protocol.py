@@ -1,8 +1,9 @@
 from clojure.lang.namespace import findOrCreate as findNamespace
 
 class ProtocolException(Exception):
-    def __init__(self, msg):
-        Exception.__init__(msg)
+    pass
+    # def __init__(self, msg):
+    #     Exception__init__(msg)
 
 
 
@@ -43,12 +44,33 @@ class ProtocolFn(object):
         if hasattr(x, self.attrname):
             return getattr(x, self.attrname)(*args)
         else:
-            try:
-                return self.dispatchTable[x](*args)
-            except:
+            # The table needs to be checked before the fn is called.
+            #
+            # If the following is used:
+            #
+            # try:
+            #     return self.dispatchTable[x](*args)
+            # except
+            #     if self.default:
+            #         return self.default(*args)
+            #     raise
+            #
+            # the dispatched fn may raise (even a KeyError). That exception
+            # will get silently swallowed and the default fn will get called.
+            # I believe the following will handle this, but it will also
+            # affect performance.
+            fn = self.dispatchTable.get(x)
+            if fn:
+                # let any fn exceptions propogate
+                return fn(*args)
+            else:
+                # now try the default and raise a specific exception
                 if self.default:
+                    # let any default fn exceptions propogate
                     return self.default(*args)
-                raise
+                raise ProtocolException("{0} not extended to handle: {1}"
+                                        .format(self.name, x))
+
             
     def __repr__(self):
         return "ProtocolFn<" + self.name + ">"

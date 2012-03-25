@@ -9,6 +9,7 @@ from clojure.lang.persistenthashmap import EMPTY
 from clojure.lang.threadutil import ThreadLocal, currentThread
 from clojure.lang.symbol import symbol
 from clojure.lang.cljkeyword import keyword
+from clojure.lang.iprintable import IPrintable
 import persistentarraymap
 
 privateKey = keyword(symbol("private"))
@@ -44,7 +45,7 @@ def popThreadBindings():
     dvals.set(f.prev)
 
 
-class Var(ARef, Settable, IFn, IRef):
+class Var(ARef, Settable, IFn, IPrintable):
     def __init__(self, ns, sym, root=UKNOWN):
         if root == UKNOWN:
             self.root = Unbound(self)
@@ -123,6 +124,12 @@ class Var(ARef, Settable, IFn, IRef):
 
     def setMacro(self):
         self.alterMeta(lambda x, y, z: x.assoc(y, z), macrokey, True)
+
+    def writeAsString(self, writer):
+        writer.write(repr(self))
+
+    def writeAsReplString(self, writer):
+        writer.write(repr(self))
 
     def __repr__(self):
         if self.ns is not None:
