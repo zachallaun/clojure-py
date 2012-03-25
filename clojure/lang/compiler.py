@@ -792,6 +792,96 @@ def compileCompiler(comp, form):
     return [(LOAD_CONST, comp)]
 
 
+@register_builtin("try")
+def compileTry(comp, form):
+    """
+    Compiles the try macro.
+    """
+    assert form.first() == symbol("try")
+    form = form.next()
+
+    if not form:
+        raise CompilerException("try requires at least one argument", form)
+
+    # Extract the thing that may raise exceptions
+    body = form.first()
+    form = form.next()
+
+    catch = []
+    els = None
+    fin = None
+    for subform in form:
+        if not isinstance(subform, IPersistentList):
+            raise CompilerException("try arguments must be lists", form)
+        if not len(subform):
+            raise CompilerException("try arguments must not be empty", form)
+        name = subform.first()
+        if name in (symbol("catch"), symbol("except")):
+            if len(subform) != 3:
+                raise CompilerException("try " + str(name) +
+                                        "blocks must be 4 items long")
+
+            # Exception is second, val is third
+            exception = subform.next().first()
+            if not isinstance(exception, Symbol):
+                raise CompilerException("exception passed to " + str(name) +
+                                        "block must be a symbol", form)
+            for ex, _, _, _ in catch:
+                if ex == exception:
+                    raise CompilerException("try cannot catch duplicate" +
+                                            " exceptions", form)
+
+            var = subform.next().next().first()
+            if not isinstance(var, Symbol):
+                raise CompilerException("variable name for " + str(name) +
+                                        "block must be a symbol", form)
+            val = subform.next().next().next().first()
+            catch.append(exception, var, val, Label("catch" + str(exception)))
+        elif name == symbol("else"):
+            if len(subform) != 2:
+                raise CompilerException("try else blocks must be 2 items",
+                                        form)
+            elif els:
+                raise CompilerException(
+                    "try cannot have multiple els blocks", form)
+            els = subform.next().first()
+        elif name == symbol("finally"):
+            if len(subform) != 2:
+                raise CompilerException("try finally blocks must be 2 items",
+                                        form)
+            elif fin:
+                raise CompilerException(
+                    "try cannot have multiple finally blocks", form)
+            fin = subform.next().first()
+        else:
+            raise CompilerException("try does not accept any symbols apart " +
+                                    "from catch/except/else/finally")
+
+    if fin and not catch and not els:
+        return compileTryFinally(comp.compile(body), comp.compile(fin))
+
+
+def compileTryFinally(body, fin):
+    """
+    Compiles the try/finally form. Takes the body of the try statement, and the
+    finally statement. They must be compiled bytecode (i.e. comp.compile(body)).
+    """
+    finallyLabel = Label("TryFinally")
+    if fin[-1][0] == RETURN_VALUE:
+        fin = fin[:-1]
+    code = [(SETUP_FINALLY, finallyLabel)] +\
+        body +\
+        [(RETURN_VALUE, None),
+         (POP_BLOCK, None),
+         (LOAD_CONST, None)] +\
+        emitLanding(finallyLabel) +\
+        fin +\
+        [(POP_TOP, None),
+         (END_FINALLY, None),
+         (LOAD_CONST, None)]
+    return code
+
+
 """
 We should mention a few words about aliases. Aliases are created when the
 user uses closures, fns, loop, let, or let-macro. For some forms like
