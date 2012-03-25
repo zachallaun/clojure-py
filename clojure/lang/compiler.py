@@ -216,6 +216,48 @@ def compileKWApply(comp, form):
     return code
 
 
+@register_builtin("try")
+def compileTry(comp, form):
+    # (try expr* catch-clause* finally-clause?)  
+    # catch-clause -> (catch classname name expr*)
+    # finally-clause -> (finally expr*)
+    form = form.next()
+    body = None
+    catches = []
+    finly = None    
+    while (form is not None): 
+        clause = form.first()    
+        form = form.next()    
+        if (len(clause.next()) != 0):    
+            local = clause.first()  
+            if (isinstance(local, Symbol)):      
+                if (local.name == "catch"):
+                    l = len(clause)
+                    if (l < 3 or l > 4):
+                        raise CompilerException("invalid catch clause")
+                    catchclassname = clause.next().first()
+                    catchname = clause.next().next().first()
+                    code = None
+                    if (l == 4):
+                      code = comp.compile(clause.next().next().next().first())
+                    catches.append([catchclassname, catchname, code])
+                    clause = None
+                else:
+                    if (local.name == "finally"):
+                        if (form is not None):
+                            raise CompilerException("no clause should be left after finally in try") 
+                        code = comp.compile(clause.next().first())       
+                        finly = code
+                        clause = None
+        if (clause != None):         
+            if (body != None):
+                raise CompilerException("invalid second expression in try")
+            body = comp.compile(clause)
+    if (body is None):
+        body = []
+        body.append((LOAD_CONST, None))
+    return body
+
 @register_builtin("loop*")
 def compileLoopStar(comp, form):
     if len(form) < 3:
