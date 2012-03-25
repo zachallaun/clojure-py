@@ -286,7 +286,7 @@ def characterReader(rdr, backslash):
     ch = rdr.read()
     if ch == "":
         raise ReaderException("EOF while reading character", rdr)
-    token = readToken(rdr, ch)
+    token = readToken(rdr, ch)  # .decode("utf-8")
     if len(token) == 1:
         return token
     elif token in namedChars:

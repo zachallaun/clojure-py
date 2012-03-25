@@ -266,8 +266,8 @@ def _extendIPrintableForManuals():
         lambda obj, writer: writer.write(obj.encode("utf-8")))
     protocols.writeAsReplString.extend(
         pyUnicodeType,
-        lambda obj, writer: writer.write((u'"{0}"'.format(stringEscape(obj))))
-                                       .encode("utf-8"))
+        lambda obj, writer: writer.write((u'"{0}"'.format(stringEscape(obj)))
+                                         .encode("utf-8")))
     # regex
     protocols.writeAsString.extend(
         pyRegexType,

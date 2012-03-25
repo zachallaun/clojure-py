@@ -22,11 +22,16 @@ from clojure.lang.persistenthashmap import PersistentHashMap
 from clojure.lang.persistenthashset import PersistentHashSet
 from clojure.lang.fileseq import StringReader
 from clojure.lang.cljexceptions import ReaderException
+from clojure.lang.pytypes import *
 
-regexType = type(re.compile(""))
-nilType = type(None)
-trueType = type(True)
-falseType= type(False)
+
+# reader returns this unique *value* if it's out of characters
+EOF = object()
+# A unique *type* to return at the EOF.
+# For use in testReturnedType_PASS().
+class Sentinal(object): pass
+sentinal = Sentinal()
+sentinalType = type(sentinal)
 
 class TestReader(unittest.TestCase):
     # literal integers
@@ -34,80 +39,80 @@ class TestReader(unittest.TestCase):
         # base 8
         for k, v in base8IntegerMap_PASS.items():
             r = StringReader(k)
-            self.assertEqual(read(r, False, None, False), v)
+            self.assertEqual(read(r, False, EOF, False), v)
         # base 10
         for k, v in base10IntegerMap_PASS.items():
             r = StringReader(k)
-            self.assertEqual(read(r, False, None, False), v)
+            self.assertEqual(read(r, False, EOF, False), v)
         # base 16
         for k, v in base16IntegerMap_PASS.items():
             r = StringReader(k)
-            self.assertEqual(read(r, False, None, False), v)
+            self.assertEqual(read(r, False, EOF, False), v)
         # base N
         for k, v in baseNIntegerMap_PASS.items():
             r = StringReader(k)
-            self.assertEqual(read(r, False, None, False), v)
+            self.assertEqual(read(r, False, EOF, False), v)
     def testIntegerReader_FAIL(self):
         for t in integer_FAIL:
             r = StringReader(t)
-            self.assertRaises(ReaderException, read, r, False, None, False)
+            self.assertRaises(ReaderException, read, r, False, EOF, False)
     # literal floating point
     def testFloatingPointReader_PASS(self):
         for k, v in floatingPointMap_PASS.items():
             r = StringReader(k)
-            self.assertEqual(read(r, False, None, False), v)
+            self.assertEqual(read(r, False, EOF, False), v)
     def testFloatingPointReader_FAIL(self):
         for t in floatingPoint_FAIL:
             r = StringReader(t)
-            self.assertRaises(ReaderException, read, r, False, None, False)
+            self.assertRaises(ReaderException, read, r, False, EOF, False)
     # literal ratios 
     def testRationalReader_PASS(self):
         for k, v in rationalMap_PASS.items():
             r = StringReader(k)
-            self.assertEqual(read(r, False, None, False), v)
+            self.assertEqual(read(r, False, EOF, False), v)
     def testRationalReader_FAIL(self):
         for t in rational_FAIL:
             r = StringReader(t)
-            self.assertRaises(ReaderException, read, r, False, None, False)
+            self.assertRaises(ReaderException, read, r, False, EOF, False)
     # literal characters
     def testCharacterReader_PASS(self):
         for k, v in literalCharacterMap_PASS.items():
             r = StringReader(k)
-            self.assertEqual(read(r, False, None, False), v)
+            self.assertEqual(read(r, False, EOF, False), v)
     def testCharacterReader_FAIL(self):
         for s in literalCharacter_FAIL:
             r = StringReader(s)
-            self.assertRaises(ReaderException, read, r, False, None, False)
+            self.assertRaises(ReaderException, read, r, False, EOF, False)
     # literal strings
     def testStringReader_PASS(self):
         for k, v in literalStringMap_PASS.items():
             r = StringReader('"' + k + '"')
-            self.assertEqual(read(r, False, None, False), v)
+            self.assertEqual(read(r, False, EOF, False), v)
     def testStringReader_FAIL(self):
         # special case, missing trailing "
         r = StringReader('"foo')
-        self.assertRaises(ReaderException, read, r, False, None, False)
+        self.assertRaises(ReaderException, read, r, False, EOF, False)
         for s in literalString_FAIL:
             r = StringReader('"' + s + '"')
-            self.assertRaises(ReaderException, read, r, False, None, False)
+            self.assertRaises(ReaderException, read, r, False, EOF, False)
     # literal regex pattern strings
     def testRegexPattern_PASS(self):
         for k, v in regexPatternMap_PASS.items():
             r = StringReader(k)
-            self.assertEqual(read(r, False, None, False).pattern, v.pattern)
+            self.assertEqual(read(r, False, EOF, False).pattern, v.pattern)
     def testRegexPattern_FAIL(self):
         for s in regexPattern_FAIL:
             r = StringReader(s)
-            self.assertRaises(ReaderException, read, r, False, None, False)
+            self.assertRaises(ReaderException, read, r, False, EOF, False)
     # literal raw regex pattern strings
     def testRawRegexPattern_PASS(self):
         for k, v in rawRegexPatternMap_PASS.items():
             r = StringReader(k)
-            self.assertEqual(read(r, False, None, False).pattern, v.pattern)
+            self.assertEqual(read(r, False, EOF, False).pattern, v.pattern)
     def testRawRegexPattern_FAIL(self):
         for s in rawRegexPattern_FAIL:
             r = StringReader(s)
-            self.assertRaises(ReaderException, read, r, False, None, False)
+            self.assertRaises(ReaderException, read, r, False, EOF, False)
     # delimited lists
     def testDelimitedLists_PASS(self):
         # length test
@@ -119,12 +124,12 @@ class TestReader(unittest.TestCase):
     def testReturnedType_PASS(self):
         for k, v in returnedType_PASS.items():
             r = StringReader(k)
-            self.assertEqual(type(read(r, False, None, False)), v)
+            self.assertEqual(type(read(r, False, sentinal, False)), v)
     # miscellaneous failures
     def testMiscellaneous_FAIL(self):
         for s in miscellaneous_FAIL:
             r = StringReader(s)
-            self.assertRaises(ReaderException, read, r, False, None, False)
+            self.assertRaises(ReaderException, read, r, False, EOF, False)
 
 
 # ======================================================================
@@ -553,28 +558,30 @@ delimitedListLength_PASS = {
 # Returned Type
 # ======================================================================
 returnedType_PASS = {
-    "" : nilType,
-    "," : nilType,
-    " " : nilType,
+    "" : sentinalType,
+    "," : sentinalType,
+    " " : sentinalType,
     """
-""" : nilType,
-    "\r" : nilType,
-    "\n" : nilType,
-    "\r\n" : nilType,
-    "\n\r" : nilType,
-    "\t" : nilType,
-    "\b" : nilType,
-    "\f" : nilType,
-    ", \n\r\n\t\n\b\r\f" : nilType,
+""" : sentinalType,
+    "\r" : sentinalType,
+    "\n" : sentinalType,
+    "\r\n" : sentinalType,
+    "\n\r" : sentinalType,
+    "\t" : sentinalType,
+    "\b" : sentinalType,
+    "\f" : sentinalType,
+    ", \n\r\n\t\n\b\r\f" : sentinalType,
     "\v" : Symbol,              # O_o
-    "\\x" : str,
+    # "\λ" : pyUnicodeType,
+    "\\x" : pyStrType,      # TODO: always return unicode, never str
     "%foo" : Symbol,            # not in an anonymous function #()
     "[]" : PersistentVector,
     "()" : EmptyList,
     "{}" : PersistentHashMap,
-    '"foo"' : str,              # TODO: always return unicode, never str
-    '#"foo"' : regexType,
-    '#r"foo"' : regexType,
+    '"foo"' : pyStrType,        # TODO: always return unicode, never str
+    # "λλλ" : Symbol,
+    '#"foo"' : pyRegexType,
+    '#r"foo"' : pyRegexType,
     "#()" : PersistentList,
     "#{}" : PersistentHashSet,
     "'foo" : PersistentList,
@@ -582,24 +589,24 @@ returnedType_PASS = {
     "~@(foo)" : PersistentList,
     "#^:foo()" : EmptyList,
     "^:foo()" : EmptyList,
-    "; comment" : nilType,
-    "#_ foo" : nilType,
-    "0" : int,
-    "0x0" : int,
-    "041" : int,
-    "2r10" : int,
-    "2.2" : float,
-    "2e-3" : float,
+    "; comment" : sentinalType,
+    "#_ foo" : sentinalType,
+    "0" : pyIntType,
+    "0x0" : pyIntType,
+    "041" : pyIntType,
+    "2r10" : pyIntType,
+    "2.2" : pyFloatType,
+    "2e-3" : pyFloatType,
     "1/2" : Fraction,
     "foo" : Symbol,
     ".3" : Symbol,
     "+.3" : Symbol,
     "-.3" : Symbol,
-    "true" : trueType,
+    "true" : pyBoolType,
     "True" : Symbol,
-    "false" : falseType,
+    "false" : pyBoolType,
     "False" : Symbol,
-    "nil" : nilType,
+    "nil" : pyNoneType,
     "None" : Symbol,
     }
 
