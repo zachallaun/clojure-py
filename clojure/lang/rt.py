@@ -254,61 +254,61 @@ def _extendIPrintableForManuals():
     # str
     protocols.writeAsString.extend(
         pyStrType,
-        lambda s, writer: writer.write(obj))
+        lambda obj, writer: writer.write(obj))
     protocols.writeAsReplString.extend(
         pyStrType,
         # XXX: Will not correctly escape Python strings because clojure-py
         #      will currently only read Clojure-compliant literal strings.
-        lambda s, writer: writer.write('"{0}"'.format(stringEscape(s))))
+        lambda obj, writer: writer.write('"{0}"'.format(stringEscape(obj))))
     # unicode
     protocols.writeAsString.extend(
         pyUnicodeType,
-        lambda s, writer: writer.write(s.encode("utf-8")))
+        lambda obj, writer: writer.write(obj.encode("utf-8")))
     protocols.writeAsReplString.extend(
         pyUnicodeType,
-        lambda s, writer: writer.write((u'"{0}"'.format(stringEscape(s)))
-                                       .encode("utf-8")))
+        lambda obj, writer: writer.write((u'"{0}"'.format(stringEscape(obj))))
+                                       .encode("utf-8"))
     # regex
     protocols.writeAsString.extend(
         pyRegexType,
-        lambda regex, writer:   # not sure about this one
-            writer.write('#"{0}"'.format(stringEscape(regex.pattern))))
+        lambda obj, writer:   # not sure about this one
+            writer.write('#"{0}"'.format(stringEscape(obj.pattern))))
     protocols.writeAsReplString.extend(
         pyRegexType,
-        lambda regex, writer:
-            writer.write('#"{0}"'.format(stringEscape(regex.pattern))))
+        lambda obj, writer:
+            writer.write('#"{0}"'.format(stringEscape(obj.pattern))))
     # tuple, list, dict, and set
     # This is the same as default below, but maybe these will be handled
     # specially at some point.
     protocols.writeAsString.extendForTypes(
         [pyTupleType, pyListType, pyDictType, pySetType],
-        lambda col, writer: writer.write(repr(col)))
+        lambda obj, writer: writer.write(repr(obj)))
     protocols.writeAsReplString.extendForTypes(
         [pyTupleType, pyListType, pyDictType, pySetType],
         # possibly print a preview of the collection:
         # #<__builtin__.dict obj at 0xdeadbeef {'one': 1, 'two': 2 ... >
-        lambda col, writer:
-            writer.write('#<{0}.{1} obj at 0x{2:08x}>'
-                         .format(type(col).__module__, type(col).__name__,
-                                 id(col))))
+        lambda obj, writer:
+            writer.write('#<{0}.{1} obj at 0x{2:x}>'
+                         .format(type(obj).__module__, type(obj).__name__,
+                                 id(obj))))
     # type
     # #<fully.qualified.name> or fully.qualified.name ?
     protocols.writeAsString.extend(
         pyTypeType,
-        lambda t, writer:
-            writer.write('#<{0}.{1}>'.format(t.__module__, t.__name__)))
+        lambda obj, writer:
+            writer.write('#<{0}.{1}>'.format(obj.__module__, obj.__name__)))
     protocols.writeAsReplString.extend(
         pyTypeType,
-        lambda t, writer:
-            writer.write('#<{0}.{1}>'.format(t.__module__, t.__name__)))
+        lambda obj, writer:
+            writer.write('#<{0}.{1}>'.format(obj.__module__, obj.__name__)))
     # function
     # #<function name at 0x21d20c8>
     protocols.writeAsString.extend(
         pyFuncType,
-        lambda fn, writer: writer.write('#{0}'.format(str(fn))))
+        lambda obj, writer: writer.write('#{0}'.format(str(obj))))
     protocols.writeAsReplString.extend(
         pyFuncType,
-        lambda fn, writer: writer.write('#{0}'.format(repr(fn))))
+        lambda obj, writer: writer.write('#{0}'.format(repr(obj))))
     # default
     # This *should* allow pr and family to handle anything not specified
     # above.
@@ -317,7 +317,7 @@ def _extendIPrintableForManuals():
         lambda obj, writer: writer.write(str(obj)))
     protocols.writeAsReplString.setDefault(
         lambda obj, writer:
-            writer.write('#<{0}.{1} obj at 0x{2:08x}>'
+            writer.write('#<{0}.{1} obj at 0x{2:x}>'
                          .format(type(obj).__module__, type(obj).__name__,
                                  id(obj))))
 
@@ -331,8 +331,9 @@ def _extendSeqableForManuals():
     from clojure.lang.indexableseq import create as createIndexableSeq
     from clojure.lang.persistentvector import PersistentVector
     
-    protocols.seq.extendForTypes([tuple, type([]), str, unicode],
-                                 lambda obj: createIndexableSeq(obj))
+    protocols.seq.extendForTypes(
+        [pyTupleType, pyListType, pyStrType, pyUnicodeType],
+        lambda obj: createIndexableSeq(obj))
     protocols.seq.extend(type(None), lambda x: None)
     
     #protocols.seq.setDefault(lambda x: NotSeq())

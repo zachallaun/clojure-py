@@ -757,9 +757,6 @@
                               nil
                               11)))
                (str "[" (.join " " c) "]")))
-               
-	                   
-	           
 	(first [self]
 	    (.seq self)
 	    (py/if (nil? s)
@@ -804,6 +801,8 @@
 
 
 (clojure.lang.protocol/extendForAllSubclasses clojure.lang.iseq/ISeq)
+(clojure.lang.protocol/extendForAllSubclasses
+ clojure.lang.iprintable/IPrintable)
 
 (defmacro lazy-seq
   "Takes a body of expressions that returns an ISeq or nil, and yields
