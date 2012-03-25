@@ -12,7 +12,6 @@
 
   ; If match is a regular expression then replacement can be either a string or a function.
   ; If replacement is a function, it is called for every non-overlapping occurrence of pattern.
-  ; The function takes a single match object argument, and returns the replacement string.
 
   ; See also replace-first.
   [s match replacement]
