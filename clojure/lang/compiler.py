@@ -836,7 +836,7 @@ def compileTry(comp, form):
                 raise CompilerException("variable name for " + str(name) +
                                         "block must be a symbol", form)
             val = subform.next().next().next().first()
-            catch.append(exception, var, val, Label("catch" + str(exception)))
+            catch.append((exception, var, val))
         elif name == symbol("else"):
             if len(subform) != 2:
                 raise CompilerException("try else blocks must be 2 items",
