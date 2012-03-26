@@ -826,7 +826,7 @@ def compileTry(comp, form):
             if not isinstance(exception, Symbol):
                 raise CompilerException("exception passed to " + str(name) +
                                         "block must be a symbol", form)
-            for ex, _, _, _ in catch:
+            for ex, _, _ in catch:
                 if ex == exception:
                     raise CompilerException("try cannot catch duplicate" +
                                             " exceptions", form)
