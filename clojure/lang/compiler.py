@@ -817,7 +817,7 @@ def compileTry(comp, form):
             raise CompilerException("try arguments must not be empty", form)
         name = subform.first()
         if name in (symbol("catch"), symbol("except")):
-            if len(subform) != 3:
+            if len(subform) != 4:
                 raise CompilerException("try " + str(name) +
                                         "blocks must be 4 items long")
 
