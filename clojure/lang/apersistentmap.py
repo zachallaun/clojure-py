@@ -1,11 +1,12 @@
+
+import clojure.lang.rt as RT
+from clojure.lang.aseq import ASeq
+from clojure.lang.mapentry import MapEntry
+from clojure.lang.iprintable import IPrintable
 from clojure.lang.ipersistentmap import IPersistentMap
 from clojure.lang.ipersistentvector import IPersistentVector
-from clojure.lang.mapentry import MapEntry
 from clojure.lang.cljexceptions import (ArityException,
-                                           InvalidArgumentException)
-from clojure.lang.aseq import ASeq
-from clojure.lang.iprintable import IPrintable
-import clojure.lang.rt as RT
+                                        InvalidArgumentException)
 
 
 class APersistentMap(IPersistentMap, IPrintable):
@@ -64,9 +65,9 @@ class APersistentMap(IPersistentMap, IPrintable):
         s = self.seq()
         while s is not None:
             e = s.first()
-            RT.protocols.writeAsString(e.key, writer)
+            RT.protocols.writeAsString(e.getKey(), writer)
             writer.write(" ")
-            RT.protocols.writeAsString(e.value, writer)
+            RT.protocols.writeAsString(e.getValue(), writer)
             if s.next() is not None:
                 writer.write(", ")
             s = s.next()
@@ -77,9 +78,9 @@ class APersistentMap(IPersistentMap, IPrintable):
         s = self.seq()
         while s is not None:
             e = s.first()
-            RT.protocols.writeAsReplString(e.key, writer)
+            RT.protocols.writeAsReplString(e.getKey(), writer)
             writer.write(" ")
-            RT.protocols.writeAsReplString(e.value, writer)
+            RT.protocols.writeAsReplString(e.getValue(), writer)
             if s.next() is not None:
                 writer.write(", ")
             s = s.next()

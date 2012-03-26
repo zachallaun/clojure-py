@@ -1,7 +1,4 @@
-#!/usr/bin/python -t
-
-"""atom.py
-
+"""
 Tuesday, March 20 2012
 """
 
@@ -47,10 +44,8 @@ class Atom(ARef):
             ifn, arg1, arg2 = args
             func = lambda v: ifn(v, arg1, arg2)
         elif len(args) == 4:
-            # I'm not sure how to handle the ISeq
-            raise NotImplementedError
-            # ifn, arg2, arg3, arg4 = args
-            # func = lambda v: ifn(v, arg2, arg3, arg4)
+            ifn, arg2, arg3, arg4 = args
+            func = lambda v: apply(ifn, v, arg2, arg3, list(arg4))
         else:
             raise ArityException("Atom.swap() expected 1 to 4 arguments,"
                                  " got: ({})".format(len(args)))

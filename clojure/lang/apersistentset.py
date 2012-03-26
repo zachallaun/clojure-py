@@ -1,33 +1,64 @@
-from clojure.lang.ifn import IFn
-from clojure.lang.cljexceptions import AbstractMethodCall, ArityException
-from clojure.lang.ipersistentset import IPersistentSet
-from clojure.lang.apersistentmap import createKeySeq
+"""
+March 25, 2012 -- documented
+"""
+
 import clojure.lang.rt as RT
+from clojure.lang.ifn import IFn
 from clojure.lang.iprintable import IPrintable
+from clojure.lang.apersistentmap import createKeySeq
+from clojure.lang.ipersistentset import IPersistentSet
+from clojure.lang.cljexceptions import AbstractMethodCall, ArityException
+
 
 class APersistentSet(IPersistentSet, IFn, IPrintable):
+    """An unordered collection of objects.
+
+    Ordered set implementation:
+    http://code.activestate.com/recipes/576694/
+
+    Duplicate items are not permitted."""
     def __init__(self, impl):
+        """Instantiate an APersistentSet
+
+        This should not be called directly. See: PersistentHashSet.
+
+        impl -- a PersistentHashMap"""
         self.impl = impl
         self._hash = -1
 
     def __getitem__(self, item):
+        """Return item if found in this set, else None.
+
+        item -- any object"""
         return self.impl[item]
 
     def __contains__(self, item):
+        """Return True if item is found in this set, else False"""
         return item in self.impl
 
     def __len__(self):
+        """Return the number of items in this APersistentSet."""
         return len(self.impl)
 
     def seq(self):
+        """Return an ISeq containing the items in this set."""
         return createKeySeq(self.impl.seq())
 
     def __call__(self, *args):
+        """Return the single item in args if found in this set, else None.
+
+        args -- must be one object"""
         if len(args) != 1:
             raise ArityException()
         return self.impl[args[0]]
 
+    # ???: different implementation
     def __eq__(self, other):
+        """Return True if:
+
+        * self is other
+        * other is an IPersistentSet and
+          * both sets contain the same items"""
         if self is other:
             return True
 
@@ -40,9 +71,14 @@ class APersistentSet(IPersistentSet, IFn, IPrintable):
         return True
 
     def __ne__(self, other):
+        "Return not self.__eq__(other)"
         return not self == other
 
     def __hash__(self):
+        """Return the hash of this set.
+
+        The hash is computed as the sum of the hash of all items. If the set
+        is empty, the hash is 0."""
         if self._hash == -1:
             hsh = 0
             s = self.seq()
@@ -54,6 +90,12 @@ class APersistentSet(IPersistentSet, IFn, IPrintable):
         return self._hash
 
     def writeAsString(self, writer):
+        """Write #{...} to writer.
+
+        writer -- a write-able object
+
+        Where ... is a single space delimited list of the objects in this
+        set."""
         writer.write("#{")
         s = self.seq()
         while s is not None:
@@ -64,6 +106,12 @@ class APersistentSet(IPersistentSet, IFn, IPrintable):
         writer.write("}")
 
     def writeAsReplString(self, writer):
+        """Write #{...} to writer.
+
+        writer -- a write-able object
+
+        Where ... is a single space delimited list of the objects in this
+        set. The string may be read by the clojure-py reader."""
         writer.write("#{")
         s = self.seq()
         while s is not None:

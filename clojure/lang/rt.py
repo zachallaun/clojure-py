@@ -329,7 +329,6 @@ def printTo(obj, writer=sys.stdout):
 
 def _extendSeqableForManuals():
     from clojure.lang.indexableseq import create as createIndexableSeq
-    from clojure.lang.persistentvector import PersistentVector
     
     protocols.seq.extendForTypes(
         [pyTupleType, pyListType, pyStrType, pyUnicodeType],
