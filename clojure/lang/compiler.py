@@ -1240,11 +1240,19 @@ class Compiler(object):
             return self.ns
 
     def executeCode(self, code):
+        
         if code == []:
             return None
         newcode = expandMetas(code, self)
         newcode.append((RETURN_VALUE, None))
         c = Code(newcode, [], [], False, False, False, str(symbol(self.getNS().__name__, "<string>")), self.filename, 0, None)
+        c = c.to_code()
+
+        # work on .cljs
+        #from clojure.util.freeze import write, read
+        #with open("foo.cljs", "wb") as fl:
+        #    f = write(c, fl)
+
         retval = eval(c.to_code(), self.getNS().__dict__)
         self.getNS().__file__ = self.filename
         return retval
