@@ -819,7 +819,7 @@ def compileTry(comp, form):
         if name in (symbol("catch"), symbol("except")):
             if len(subform) != 4:
                 raise CompilerException("try " + str(name) +
-                                        "blocks must be 4 items long")
+                                        "blocks must be 4 items long", form)
 
             # Exception is second, val is third
             exception = subform.next().first()
@@ -855,7 +855,7 @@ def compileTry(comp, form):
             fin = subform.next().first()
         else:
             raise CompilerException("try does not accept any symbols apart " +
-                                    "from catch/except/else/finally")
+                                    "from catch/except/else/finally", form)
 
     if fin and not catch and not els:
         return compileTryFinally(comp.compile(body), comp.compile(fin))
