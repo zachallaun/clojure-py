@@ -50,8 +50,9 @@ def requireClj(filename, stopafter=None):
     #o = open(filename+".cljc", "w")
     try:
         while True:
-            s = read(r, False, None, True)
-            if s is None:
+            EOF = object()
+            s = read(r, False, EOF, True)
+            if s is EOF:
                 break
             #cPickle.dump(s, o)
             try:
@@ -63,16 +64,6 @@ def requireClj(filename, stopafter=None):
             except Exception as exp:
                 print s, filename
                 raise
-
-            while True:
-                ch = r.read()
-
-                if ch == "":
-                    raise IOError()
-
-                if ch not in [" ", "\t", "\n", "\r"]:
-                    r.back()
-                    break
     except IOError as e:
         pass
 

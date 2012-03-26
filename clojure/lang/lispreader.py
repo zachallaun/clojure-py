@@ -22,6 +22,7 @@ from clojure.lang.persistenthashset import create as createSet
 import clojure.lang.rt as RT
 from clojure.lang.symbol import Symbol, symbol
 from clojure.lang.var import Var, pushThreadBindings, popThreadBindings, var
+import clojure.lang.namespace as namespace
 
 _AMP_ = symbol("&")
 _FN_ = symbol("fn")
@@ -285,7 +286,7 @@ def characterReader(rdr, backslash):
     ch = rdr.read()
     if ch == "":
         raise ReaderException("EOF while reading character", rdr)
-    token = readToken(rdr, ch)
+    token = readToken(rdr, ch)  # .decode("utf-8")
     if len(token) == 1:
         return token
     elif token in namedChars:
@@ -952,7 +953,12 @@ class SyntaxQuoteReader(object):
                 ns = comp.getNS()
                 if ns is None:
                     raise IllegalStateException("No ns in reader")
-                sym = symbol(ns.__name__, sym.name)
+                
+                item = namespace.findItem(ns, sym)
+                if item is None:
+                    sym = symbol(ns.__name__, sym.name)
+                else:
+                    sym = symbol(item.ns.__name__, sym.name)
             ret = RT.list(_QUOTE_, sym)
         else:
             if isUnquote(form):

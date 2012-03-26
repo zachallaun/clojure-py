@@ -757,9 +757,6 @@
                               nil
                               11)))
                (str "[" (.join " " c) "]")))
-               
-	                   
-	           
 	(first [self]
 	    (.seq self)
 	    (py/if (nil? s)
@@ -778,9 +775,34 @@
 	(cons [self o]
 	    (cons o (.seq self)))
 	(empty [self]
-	    (list)))
+	    (list))
+        ;; IPrintable protocol
+        ;; These methods realize the entire sequence as Clojure does. But
+        ;; __repr__ does not. Is the intent to prevent spamming the repl?
+        clojure.lang.iprintable/IPrintable
+        (writeAsString [self writer]
+          (.write writer "(")
+          (loop [s (.seq self)]
+            (when s
+              (clojure.protocols/writeAsString (.first s) writer)
+              (when (.next s)
+                (.write writer " "))
+              (recur (.next s))))
+          (.write writer ")"))
+        (writeAsReplString [self writer]
+          (.write writer "(")
+          (loop [s (.seq self)]
+            (when s
+              (clojure.protocols/writeAsReplString (.first s) writer)
+              (when (.next s)
+                (.write writer " "))
+              (recur (.next s))))
+          (.write writer ")")))
+
 
 (clojure.lang.protocol/extendForAllSubclasses clojure.lang.iseq/ISeq)
+(clojure.lang.protocol/extendForAllSubclasses
+ clojure.lang.iprintable/IPrintable)
 
 (defmacro lazy-seq
   "Takes a body of expressions that returns an ISeq or nil, and yields
@@ -2940,6 +2962,14 @@
   "Ignores body, yields nil"
   {:added "1.0"}
   [& body])
+
+(defn aclone
+  "Returns a clone of the Python list. Works on any type implementing slices and lists."
+  [l] (.__getitem__ l (py/slice 0 (py/len l))))
+
+(defn aset [l i item]
+  "Equivalent to l[i] = item in Pytyon"
+  (.__setitem__ l i item))
 
 (require 'clojure.core-deftype :only ['deftype 'reify 'definterface 'defprotocol])
 

@@ -14,6 +14,7 @@ from clojure.lang.var import Var, intern as internVar
 from clojure.lang.lispreader import read
 from clojure.lang.fileseq import StringReader
 from clojure.main import VERSION
+import clojure.lang.rt as RT    # for printTo
 
 
 def enable_readline():
@@ -119,7 +120,7 @@ def run_repl(comp=None):
         else:
             last3.pop()
             last3.insert(0, out)
-            print out
+            RT.printTo(out)
 
 def unbalanced(line):
     """

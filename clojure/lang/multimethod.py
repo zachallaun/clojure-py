@@ -25,7 +25,8 @@ class MultiMethod(object):
             
     def __call__(self, *args):
         dval = self.selector(*args)
-        type:
+        
+        try:
             fn = self.fns[dval]
         except KeyError:
             if not self.default:
