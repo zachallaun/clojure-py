@@ -859,6 +859,8 @@ def compileTry(comp, form):
 
     if fin and not catch and not els:
         return compileTryFinally(comp.compile(body), comp.compile(fin))
+    elif catch and not fin and not els:
+        return compileTryCatch(comp, comp.compile(body), catch)
 
 
 def compileTryFinally(body, fin):
@@ -881,6 +883,59 @@ def compileTryFinally(body, fin):
          (LOAD_CONST, None)]
     return code
 
+
+def compileTryCatch(comp, body, catches):
+    """
+    Compiles the try/catch/catch... form. Takes the body of the try statement,
+    and a list of (exception, exception_var, except_body) tuples for each
+    exception. The order of the list is important.
+    """
+    assert len(catches), "Calling compileTryCatch with empty catches list"
+
+    catch_labels = [Label("TryCatch_" + str(ex)) for ex, _, _ in catches]
+    endLabel = Label("TryCatchEnd")
+    endFinallyLabel = Label("TryCatchEndFinally")
+
+    code = [(SETUP_EXCEPT, catch_labels[0])] # First catch label
+    code.extend(body)
+    code.append((STORE_FAST, "___ret_val_")) # Because I give up with
+    # keeping track of what's in the stack
+    code.append((POP_BLOCK, None))
+    code.append((JUMP_FORWARD, endLabel)) # if all went fine, goto end
+
+    n = len(catches)
+    for i, (exception, var, val) in enumerate(catches):
+
+        comp.pushAlias(var, FnArgument(var)) # FnArgument will do
+
+        last = i == n - 1
+
+        # except Exception
+        code.extend(emitLanding(catch_labels[i]))
+        code.append((DUP_TOP, None))
+        code.extend(comp.compile(exception))
+        code.append((COMPARE_OP, "exception match"))
+        code.extend(emitJump(catch_labels[i + 1] if not last else
+                             endFinallyLabel))
+
+        # as e
+        code.append((POP_TOP, None))
+        code.append((STORE_FAST, var.name))
+        code.append((POP_TOP, None))
+
+        # body
+        code.extend(comp.compile(val))
+        code.append((STORE_FAST, "___ret_val_"))
+        code.append((JUMP_FORWARD, endLabel))
+
+        comp.popAlias(var)
+
+    code.extend(emitLanding(endFinallyLabel))
+    code.append((END_FINALLY, None))
+    code.extend(emitLanding(endLabel))
+    code.append((LOAD_FAST, "___ret_val_"))
+
+    return code
 
 """
 We should mention a few words about aliases. Aliases are created when the
