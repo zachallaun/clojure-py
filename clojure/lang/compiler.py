@@ -1253,7 +1253,7 @@ class Compiler(object):
         #with open("foo.cljs", "wb") as fl:
         #    f = write(c, fl)
 
-        retval = eval(c.to_code(), self.getNS().__dict__)
+        retval = eval(c, self.getNS().__dict__)
         self.getNS().__file__ = self.filename
         return retval
 
