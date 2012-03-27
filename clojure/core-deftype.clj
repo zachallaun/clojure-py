@@ -73,14 +73,14 @@
                                                  ~@'([self & args] 
                                                  (throw (AbstractMethodCall self))))) sigs))
           methods (assoc methods "__doc__" docstr)]
-         (debug `(do (def ~name (py/type ~(clojure.core/name name)
+         `(do (def ~name (py/type ~(clojure.core/name name)
                                       (py/tuple [py/object])
                                       (.toDict ~methods)))
                      (clojure.lang.protocol/protocolFromType ~'__name__ ~name)
                 ~@(for [s sigs :when (string? (last s))]
                     `(py/setattr (resolve ~(list 'quote (first s)))
                                  "__doc__"
-                                 ~(last s)))))))
+                                 ~(last s))))))
 
 
 (defmacro reify 
@@ -236,8 +236,8 @@
                       (assoc methods "__init__" (clojure.core/make-init fields)))
           methods (merge recordfns methods)
           methods (assoc methods "__methods__" methods)]
-      (debug    `(~'do (def ~name (py/type ~(.-name name)
+         `(~'do (def ~name (py/type ~(.-name name)
                                       (py/tuple ~(vec interfaces))
                                       (.toDict ~methods)))
                 ~@(map (fn [x] `(clojure.lang.protocol/extendForType ~x ~name))
-                               interfaces)))))
+                               interfaces))))

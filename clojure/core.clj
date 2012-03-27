@@ -24,6 +24,9 @@
    :added "1.0"}
   vector clojure.lang.rt/vector)
 
+(def 
+  ^{:static true}
+  extend clojure.lang.protocol/extend)
 
 (def
  ^{:arglists '([& items])

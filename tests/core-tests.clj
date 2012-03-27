@@ -701,5 +701,9 @@
          (assertions/assert-equal (vec (keys foo)) ["x" "y"])         
          (assertions/assert-equal (count foo) 2)
          (assertions/assert-equal (:x (.without foo "x")) nil)
-         (assertions/assert-equal (deref foo) 42)))         
+         (assertions/assert-equal (deref foo) 42)))    
+
+(deftest extend-tests
+    (extend py/int ISeq {:seq (fn [self] 42)})
+    (assertions/assert-equal (seq 1) 42))
          

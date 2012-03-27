@@ -99,10 +99,11 @@ class Protocol(object):
            mp should be a map of methodnames: functions"""
        
         for x in mp:
-            if RT.name(x) not in self.protofns:
+            name =  x.sym.name
+            if name not in self.protofns:
                 raise ProtocolException("No Method found for name " + x)
             
-            fn = self.protofns[x]
+            fn = self.protofns[name]
             fn.extend(tp, mp[x])
                 
        
@@ -126,7 +127,27 @@ def registerFns(ns, fns):
         protofns[fn] = proto
         
     return protofns
+    
+def extend(np, *args):
+    for x in range(0, len(args), 2):
+        tp = args[x]
+        proto = getExactProtocol(tp)
+        if not proto:
+            raise ProtocolExeception("Expected protocol, got " + str(x))
+        if x + 1 >= len(args):
+            raise ProtocolExeception("Expected even number of forms to extend")
         
+        proto.extendForType(np, args[x + 1])
+        
+                
+        
+        
+def getExactProtocol(tp):
+    if hasattr(tp, "__exactprotocol__") \
+       and hasattr(tp, "__exactprotocolclass__") \
+       and tp.__exactprotocolclass__ is tp:
+           return tp.__exactprotocol__
+    return None
         
 def protocolFromType(ns, tp):
     """Considers the input type to be a prototype for a protocol. Useful for
