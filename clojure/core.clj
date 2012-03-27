@@ -5,7 +5,6 @@
 ;   By using this software in any fashion, you are agreeing to be bound by
 ;   the terms of this license.
 ;   You must not remove this notice, or any other, from this software.
-
 (ns* ^{:doc "The core Clojure language."
        :author "Rich Hickey"}
   clojure.core)
@@ -2971,7 +2970,7 @@
   "Equivalent to l[i] = item in Pytyon"
   (.__setitem__ l i item))
 
-(require 'clojure.core-deftype :only ['deftype 'reify 'definterface 'defprotocol])
+(require 'clojure.core-deftype :only ['deftype 'reify 'definterface 'defprotocol 'defrecord])
 
 ; FIXME: Am I polluting the namespace by requiring those?!
 (require 'numbers :only ['Number])

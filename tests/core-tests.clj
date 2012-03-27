@@ -689,3 +689,17 @@
     (assertions/assert-true (if :spam true false))
     (assertions/assert-false (if false true false))
     (assertions/assert-false (if nil true false)))
+
+
+(deftest defrecord-tests
+    (defrecord FooRecord [x y] IDeref (deref [self] 42))
+    (let [foo (FooRecord 1 2)]
+         (assertions/assert-equal (:x foo) 1)
+         (assertions/assert-equal (:y foo) 2)
+         (assertions/assert-equal (get foo "x") 1)         
+         (assertions/assert-equal (get foo 'x) 1)
+         (assertions/assert-equal (vec (keys foo)) ["x" "y"])         
+         (assertions/assert-equal (count foo) 2)
+         (assertions/assert-equal (:x (.without foo "x")) nil)
+         (assertions/assert-equal (deref foo) 42)))         
+         
