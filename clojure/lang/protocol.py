@@ -38,7 +38,8 @@ class ProtocolFn(object):
         if hasattr(tp, self.attrname) or tp in self.dispatchTable:
             return True
         return False
-            
+        
+           
     def __call__(self, *args):
         x = type(args[0])
         if hasattr(x, self.attrname):
@@ -93,6 +94,19 @@ class Protocol(object):
             
         self.implementors[tp.__name__] = tp
         
+    def extendForType(self, tp, mp):
+        """Extends this protocol for the given type and the given map of methods
+           mp should be a map of methodnames: functions"""
+       
+        for x in mp:
+            if RT.name(x) not in self.protofns:
+                raise ProtocolException("No Method found for name " + x)
+            
+            fn = self.protofns[x]
+            fn.extend(tp, mp[x])
+                
+       
+        
     def __repr__(self):
         return "Protocol<" + self.name + ">"
         
@@ -126,6 +140,9 @@ def protocolFromType(ns, tp):
         
     thens = findNamespace(ns)
     proto = Protocol(ns, tp.__name__, fns)
+    
+    tp.__exactprotocol__ = proto
+    tp.__exactprotocolclass__ = tp
     
     if not hasattr(tp, "__protocols__"):
         tp.__protocols__ = []
