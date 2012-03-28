@@ -6,7 +6,7 @@ from clojure.lang.cljexceptions import (InvalidArgumentException,
                                         ArityException,
                                         IllegalArgumentException)
 import clojure.lang.rt as RT
-from clojure.lang.symbol import Symbol
+from clojure.lang.symbol import Symbol, symbol
 import sys, new
 
 namespaces = AtomicReference(EMPTY_MAP)
@@ -128,6 +128,10 @@ def findModule(sym, module = None):
 
 def intern(ns, sym):
     from clojure.lang.var import Var
+
+
+    if isinstance(sym, str):
+        sym = symbol(str)
 
     if sym.ns is not None:
         raise InvalidArgumentException("Can't intern namespace-qualified symbol")

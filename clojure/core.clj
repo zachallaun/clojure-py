@@ -3090,3 +3090,20 @@
          ~@body
          (~'finally
            (clojure.lang.var/popThreadBindings)))))))
+
+(defmacro var
+    [itm]
+    `(clojure.lang.var/find (symbol ~'__name__ ~(name itm))))
+
+
+(defmacro doc
+    [itm]
+   `(let [itm# (clojure.core/var ~itm)]
+         (cond (and (meta itm#) (:doc (meta itm#)))
+                (py/print (:doc (meta itm#)))
+               (py/hasattr itm# "__doc__")
+                (py/print (py/getattr itm# "__doc__")))))
+
+
+
+

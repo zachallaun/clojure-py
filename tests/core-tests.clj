@@ -631,8 +631,8 @@
     (assertions/assert-equal (for [x [1 2 3]] x) [1 2 3]))
 
 (deftest destructure-tests
-    (assertions/assert-equal (map (fn [[k v]] k) {:1 1 :2 2}) [:1 :2])
-    (assertions/assert-equal (map (fn [[k v]] v) {:1 1 :2 2}) [1 2]))
+    (assertions/assert-equal (map (fn [[k v]] k) {:1 1}) [:1])
+    (assertions/assert-equal (map (fn [[k v]] v) {:1 1}) [1]))
 
 (deftest map-entry-tests
     (assertions/assert-equal (-> {:1 :2} first first) :1)
@@ -713,3 +713,10 @@
     (binding [x 1 y 2]
         (assertions/assert-equal (+ x y) 3))
     (assertions/assert-equal (+ x y) 0))
+
+(deftest var-tests
+    (assertions/assert-true (py/hasattr #'cons "deref")))
+
+(deftest doc-tests
+    (defn baz "This is a test" [] nil)
+    (doc baz))
