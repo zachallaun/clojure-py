@@ -806,6 +806,9 @@
 (clojure.lang.protocol/extendForAllSubclasses
  clojure.lang.iprintable/IPrintable)
 
+
+                        
+
 (defmacro lazy-seq
   "Takes a body of expressions that returns an ISeq or nil, and yields
   a Seqable object that will invoke the body only the first time seq
@@ -814,6 +817,13 @@
   {:added "1.0"}
   [& body]
   (list 'clojure.core/LazySeq (list* '^{:once true} fn* [] body) nil nil nil))    
+
+(extend clojure.lang.pytypes/pyTypeGenerator
+    Seqable
+    {:seq (fn generator-seq [self]
+               (lazy-seq
+                   (let [result (.next self)]
+                       (cons result (generator-seq self)))))})
 
 
 (definterface IChunkedSeq [] 
