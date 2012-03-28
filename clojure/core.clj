@@ -2983,6 +2983,11 @@
   "Equivalent to l[i] = item in Pytyon"
   (.__setitem__ l i item))
 
+(defn hash-combine
+  "Creates a new hash value from two other hashes"
+  [seed hash]
+  (bit-and 0xFFFFFFFF (bit-xor seed (+ hash 0x9e3779b9 (bit-shift-left seed 6) (bit-shift-left seed 2)))))
+
 (require 'clojure.core-deftype :only ['deftype 'reify 'definterface 'defprotocol 'defrecord])
 
 ; FIXME: Am I polluting the namespace by requiring those?!

@@ -212,6 +212,26 @@
                                [self]
                                (throw (clojure.core-deftype/AbstractMethodCall self)))
                                
+                 ;; this may not be the fastest, but hey! it works. 
+                 "__eq__" '(fn __eq__
+                 	       [self other]
+                 	       (if (py.bytecode/COMPARE_OP "is" self other)
+                 	       	   true
+                 	       	   (and (py.bytecode/COMPARE_OP "is"
+                 	       	   	   (py/type self)
+                 	       	   	   (py/type other))
+                 	       	   	(every? identity (map = self other)) 
+                 	       	   	(= (count self) (count other)))))
+                 
+                 "__hash__" '(fn __hash__
+                 		[self]
+                 		(if (py/hasattr self "_hash")
+                 		     (py.bytecode/LOAD_ATTR "_hash" self)
+                 		    (let [hash (reduce hash-combine 
+                 		    		       (map #(py/getattr %2 %1) (keys self) (repeat self)))]
+                 		    	 (py/setattr self "_hash" hash)
+                 		    	 hash)))
+                               
                  "seq" '(fn seq
                             [self]
                             (clojure.core-deftype/map #(.entryAt self %)

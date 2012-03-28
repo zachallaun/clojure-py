@@ -701,7 +701,14 @@
          (assertions/assert-equal (vec (keys foo)) ["x" "y"])         
          (assertions/assert-equal (count foo) 2)
          (assertions/assert-equal (:x (.without foo "x")) nil)
-         (assertions/assert-equal (deref foo) 42)))    
+         (assertions/assert-equal (deref foo) 42)
+         (assertions/assert-true  (= (FooRecord 1 2) foo))
+         (assertions/assert-false (= (FooRecord 2 2) foo))
+         (assertions/assert-true  (= (py/hash (FooRecord 1 2)) 
+         	 	             (py/hash foo)))
+         (assertions/assert-false (= (py/hash (FooRecord 2 2)) 
+         	 	             (py/hash foo)))))
+         
 
 (deftest extend-tests
     (extend py/int ISeq {:seq (fn [self] 42)})
