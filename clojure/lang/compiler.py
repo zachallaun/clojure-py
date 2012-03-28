@@ -810,8 +810,9 @@ def compileTry(comp, form):
     els = None
     fin = None
     for subform in form:
-        if not isinstance(subform, IPersistentList):
-            raise CompilerException("try arguments must be lists", form)
+        # FIXME, could also be a Cons, LazySeq, etc.
+        #if not isinstance(subform, IPersistentList): 
+        #    raise CompilerException("try arguments must be lists", form)
         if not len(subform):
             raise CompilerException("try arguments must not be empty", form)
         name = subform.first()

@@ -707,3 +707,9 @@
     (extend py/int ISeq {:seq (fn [self] 42)})
     (assertions/assert-equal (seq 1) 42))
          
+(deftest binding-tests
+    (def x 0)
+    (def y 0)
+    (binding [x 1 y 2]
+        (assertions/assert-equal (+ x y) 3))
+    (assertions/assert-equal (+ x y) 0))

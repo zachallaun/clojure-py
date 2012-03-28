@@ -13,7 +13,6 @@ import clojure.core
 
 
 def mapTest(ns, var):
-    print "mapping ", ns, var
     class Test(unittest.TestCase):
         def testVar(self):
             var()
@@ -34,7 +33,6 @@ for x in os.listdir(os.path.dirname(__file__)):
         
         for idx in dir(module):
             var = getattr(module, idx)
-            print type(var), var
             if isinstance(var, Var) and str(var).endswith("tests"):
                 meta = var.meta()
                 if meta is not None and meta[keyword("test")]:
