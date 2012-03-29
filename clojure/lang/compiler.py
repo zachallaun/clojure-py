@@ -932,7 +932,7 @@ def compileTryCatch(comp, body, catches):
 
     code.extend(emitLanding(endFinallyLabel))
     code.append((END_FINALLY, None))
-    code.extend(emitLanding(endLabel))
+    code.append((endLabel, None))
     code.append((LOAD_FAST, "___ret_val_"))
 
     return code
