@@ -266,17 +266,19 @@ def _extendIPrintableForManuals():
         lambda obj, writer: writer.write(obj.encode("utf-8")))
     protocols.writeAsReplString.extend(
         pyUnicodeType,
-        lambda obj, writer: writer.write((u'"{0}"'.format(stringEscape(obj)))
+        lambda obj, writer: writer.write(u'"{0}"'.format(stringEscape(obj))
                                          .encode("utf-8")))
     # regex
     protocols.writeAsString.extend(
         pyRegexType,
         lambda obj, writer:   # not sure about this one
-            writer.write('#"{0}"'.format(stringEscape(obj.pattern))))
+            writer.write(u'#"{0}"'.format(stringEscape(obj.pattern))
+                         .encode("utf-8")))
     protocols.writeAsReplString.extend(
         pyRegexType,
         lambda obj, writer:
-            writer.write('#"{0}"'.format(stringEscape(obj.pattern))))
+            writer.write(u'#"{0}"'.format(stringEscape(obj.pattern))
+                         .encode("utf-8")))
     # tuple, list, dict, and set
     # This is the same as default below, but maybe these will be handled
     # specially at some point.

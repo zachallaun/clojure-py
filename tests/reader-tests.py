@@ -125,6 +125,11 @@ class TestReader(unittest.TestCase):
         for k, v in returnedType_PASS.items():
             r = StringReader(k)
             self.assertEqual(type(read(r, False, sentinal, False)), v)
+    # raise on EOF
+    def testEOFRaisesReaderException(self):
+        r = StringReader("")
+        self.assertRaises(ReaderException, read, r, True, # <- True
+                          EOF, False)
     # miscellaneous failures
     def testMiscellaneous_FAIL(self):
         for s in miscellaneous_FAIL:
