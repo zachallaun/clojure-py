@@ -23,7 +23,7 @@ One note: clojure-py implements the new "property vs calling method" design used
 
 ## How can I help?
 
-Check out the Wiki for more information about the roadmap for this project. Then check out the issues list for any items marked "isolated change". These are changes that should be somewhat easy for a newcomer to pick up and will not involve messing around with the internals of the implementation much. Also feel free to join our [mailing list](http://groups.google.com/group/clojure-py-dev)
+At this point, find a need and fill it! Play around with clojure-py, start porting your favorite clojure lib, and see what is missing. Also feel free to join our [mailing list](http://groups.google.com/group/clojure-py-dev). We (the clojure-py devs) normally just send out a message either we plan on working on a certain aspect of clojure-py (either through a issue report or through the mailing list). Currently there are quite a few functions in clojure.core that need porting. Drop by the mailing list and let us know what your interests are, and we'll be glad to offer suggestions and help however we can. 
 
 ## Blog
    From time to time, we'll post status updates, ideas and plans to this blog http://clojure-py.blogspot.com/
