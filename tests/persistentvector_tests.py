@@ -3,16 +3,29 @@
 Wednesday, March 28 2012
 """
 
+import re
 import unittest
+from cStringIO import StringIO
 
 import clojure.lang.persistentvector as pv
+from clojure.lang.indexableseq import IndexableSeq
 from clojure.lang.cljexceptions import (IndexOutOfBoundsException,
                                         IllegalStateException)
 
 uobj = object()
 pseudoMetaData = object()
 
+def vecHash(v):
+    """Duplicates APersistentVector.__hash__"""
+    h = 1
+    for e in v:
+        h = 31 * h + hash(e)
+    return h
+
 class TestPersistentVector(unittest.TestCase):
+    def setUp(self):
+        self.printV = pv.create(pv.EMPTY, pv.EMPTY)
+        self.v3 = pv.vec(["x", "y", "z"])
     # vec(), create()
     def testCreation_PASS(self):
         for k, v in testCreationMap_PASS.items():
@@ -63,6 +76,49 @@ class TestPersistentVector(unittest.TestCase):
     def testPop_FAIL(self):
         v = pv.vec([])
         self.assertRaises(IllegalStateException, v.pop)
+
+    # APersistentVector methods (__eq__ needs debugging)
+
+    # peek()
+    def testPeek_PASS(self):
+        self.assertEqual(self.v3.peek(), "z")
+    # seq()
+    def testSeq_PASS(self):
+        s = self.v3.seq()
+        self.assertTrue(isinstance(s, IndexableSeq))
+        self.assertEqual(len(s), 3)
+        self.assertEqual(s.first(), "x")
+    # very basic tests here, do the rest .clj tests
+    # better (= v q)
+    def test__eq___PASS(self):
+        v = pv.vec(["x", "y", "z"])
+        self.assertTrue(self.v3 == v)
+        self.assertTrue(self.v3 == self.v3)
+    # just tests the basic computation and result on []
+    # hash(v)
+    def test__hash___PASS(self):
+        v = pv.vec([1, 2, 3])
+        self.assertEqual(v.__hash__(), vecHash(v))
+        self.assertEqual(pv.EMPTY.__hash__(), 1)
+    # (print v)
+    def testWriteAsString_PASS(self):
+        csio = StringIO()
+        self.printV.writeAsString(csio)
+        self.assertEqual(csio.getvalue(), "[[] []]")
+    # (pr v)
+    def testWriteAsReplString_PASS(self):
+        csio = StringIO()
+        self.printV.writeAsReplString(csio)
+        self.assertEqual(csio.getvalue(), "[[] []]")
+    # str(v)
+    def test__str___PASS(self):
+        self.assertEqual(self.printV.__str__(), "[[], []]")
+    # repr(v)
+    def test__repr___PASS(self):
+        regex = r"<clojure\.lang\.persistentvector\.PersistentVector" \
+                r" at 0x[a-fA-F0-9]+ \[\[\] \[\]\]>$"
+        self.assertTrue(re.match(regex, self.printV.__repr__()))
+
 
 testCreationMap_PASS = {
     # vec

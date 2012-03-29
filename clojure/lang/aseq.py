@@ -117,15 +117,7 @@ class ASeq(Obj, Sequential, ISeq, IHashEq, Iterable, IPrintable):
             s = s.next()
 
     def hasheq(self):
-        """Return the hash of this sequence.
-
-          n
-        +----,
-         \
-          >    i = 31 * i + hash(self_i)
-         /
-        +----'
-         i=1"""
+        """Return the hash of this sequence."""
         ret = 1
         for s in self:
             ret = 31 * ret + hash(s)

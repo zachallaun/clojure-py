@@ -359,6 +359,8 @@
     (assertions/assert-true (contains? #{1 2 3 4} 4))
     (assertions/assert-true (contains? #{[] nil 0 {} #{}} {}))
     (assertions/assert-true (contains? #{[1 2 3]} [1 2 3]))
+    ;; FIXME
+    ;; (assertions/assert-false (= [] {}))
     (assertions/assert-false (= () #{}))
     (assertions/assert-true (= () []))
     (assertions/assert-true (= [] ()))
@@ -591,8 +593,6 @@
     (assertions/assert-equal (let [f (memfn join ch)]
                        (f "," ["1" "2"])) 
                   "1,2"))
-(deftest set-tests
-    (set [1 2 3 4 5]))
 
 (deftest find-ns-tests
     (assertions/assert-true (not (nil? (find-ns 'clojure.core)))))
