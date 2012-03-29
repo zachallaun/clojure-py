@@ -896,9 +896,11 @@ def compileTryCatch(comp, body, catches):
     endLabel = Label("TryCatchEnd")
     endFinallyLabel = Label("TryCatchEndFinally")
 
+    ret_val = "__ret_val_" + str(RT.nextID())
+
     code = [(SETUP_EXCEPT, catch_labels[0])] # First catch label
     code.extend(body)
-    code.append((STORE_FAST, "___ret_val_")) # Because I give up with
+    code.append((STORE_FAST, ret_val)) # Because I give up with
     # keeping track of what's in the stack
     code.append((POP_BLOCK, None))
     code.append((JUMP_FORWARD, endLabel)) # if all went fine, goto end
@@ -925,7 +927,7 @@ def compileTryCatch(comp, body, catches):
 
         # body
         code.extend(comp.compile(val))
-        code.append((STORE_FAST, "___ret_val_"))
+        code.append((STORE_FAST, ret_val))
         code.append((JUMP_FORWARD, endLabel))
 
         comp.popAlias(var)
@@ -933,7 +935,7 @@ def compileTryCatch(comp, body, catches):
     code.extend(emitLanding(endFinallyLabel))
     code.append((END_FINALLY, None))
     code.append((endLabel, None))
-    code.append((LOAD_FAST, "___ret_val_"))
+    code.append((LOAD_FAST, ret_val))
 
     return code
 
