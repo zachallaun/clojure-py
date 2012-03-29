@@ -800,7 +800,8 @@ def compileTry(comp, form):
     form = form.next()
 
     if not form:
-        raise CompilerException("try requires at least one argument", form)
+        # I don't like this, but (try) == nil
+        return [(LOAD_CONST, None)]
 
     # Extract the thing that may raise exceptions
     body = form.first()
