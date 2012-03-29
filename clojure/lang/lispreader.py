@@ -18,7 +18,7 @@ from clojure.lang.iseq import ISeq
 from clojure.lang.persistenthashmap import EMPTY as EMPTY_MAP
 from clojure.lang.persistentvector import EMPTY as EMPTY_VECTOR
 import clojure.lang.persistenthashset
-from clojure.lang.persistenthashset import create as createSet
+from clojure.lang.persistenthashset import createWithCheck
 import clojure.lang.rt as RT
 from clojure.lang.symbol import Symbol, symbol
 from clojure.lang.var import Var, pushThreadBindings, popThreadBindings, var
@@ -547,7 +547,7 @@ def setReader(rdr, leftbrace):
 
     rdr -- a read/unread-able object
     leftbrace -- ignored"""
-    return createSet(readDelimitedList("}", rdr, True))
+    return createWithCheck(readDelimitedList("}", rdr, True))
 
 
 def unmatchedClosingDelimiterReader(rdr, un):

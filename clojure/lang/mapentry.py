@@ -1,12 +1,26 @@
+"""
+March 26, 2012 -- documented
+"""
+
 from clojure.lang.amapentry import AMapEntry
 
 class MapEntry(AMapEntry):
+    """Concrete implementation of an AMapEntry.
+
+    Contains the attributes _key and _value with associated getKey() and
+    getValue() methods."""
     def __init__(self, key, value):
-        self.key = key
-        self.value = value
+        """Instantiate a MapEntry.
+
+        key -- any object       # ???: any hashable object
+        value -- any object"""
+        self._key = key
+        self._value = value
 
     def getKey(self):
-        return self.key
+        """Return the key of this MapEntry."""
+        return self._key
 
     def getValue(self):
-        return self.value
+        """Return the value of this MapEntry."""
+        return self._value
