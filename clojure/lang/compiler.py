@@ -215,7 +215,6 @@ def compileKWApply(comp, form):
     code.append((CALL_FUNCTION_KW, 0 if args is None else len(args)))
     return code
 
-
 @register_builtin("loop*")
 def compileLoopStar(comp, form):
     if len(form) < 3:
@@ -792,6 +791,152 @@ def compileCompiler(comp, form):
     return [(LOAD_CONST, comp)]
 
 
+@register_builtin("try")
+def compileTry(comp, form):
+    """
+    Compiles the try macro.
+    """
+    assert form.first() == symbol("try")
+    form = form.next()
+
+    if not form:
+        raise CompilerException("try requires at least one argument", form)
+
+    # Extract the thing that may raise exceptions
+    body = form.first()
+    form = form.next()
+
+    catch = []
+    els = None
+    fin = None
+    for subform in form:
+        # FIXME, could also be a Cons, LazySeq, etc.
+        #if not isinstance(subform, IPersistentList): 
+        #    raise CompilerException("try arguments must be lists", form)
+        if not len(subform):
+            raise CompilerException("try arguments must not be empty", form)
+        name = subform.first()
+        if name in (symbol("catch"), symbol("except")):
+            if len(subform) != 4:
+                raise CompilerException("try " + str(name) +
+                                        "blocks must be 4 items long", form)
+
+            # Exception is second, val is third
+            exception = subform.next().first()
+            if not isinstance(exception, Symbol):
+                raise CompilerException("exception passed to " + str(name) +
+                                        "block must be a symbol", form)
+            for ex, _, _ in catch:
+                if ex == exception:
+                    raise CompilerException("try cannot catch duplicate" +
+                                            " exceptions", form)
+
+            var = subform.next().next().first()
+            if not isinstance(var, Symbol):
+                raise CompilerException("variable name for " + str(name) +
+                                        "block must be a symbol", form)
+            val = subform.next().next().next().first()
+            catch.append((exception, var, val))
+        elif name == symbol("else"):
+            if len(subform) != 2:
+                raise CompilerException("try else blocks must be 2 items",
+                                        form)
+            elif els:
+                raise CompilerException(
+                    "try cannot have multiple els blocks", form)
+            els = subform.next().first()
+        elif name == symbol("finally"):
+            if len(subform) != 2:
+                raise CompilerException("try finally blocks must be 2 items",
+                                        form)
+            elif fin:
+                raise CompilerException(
+                    "try cannot have multiple finally blocks", form)
+            fin = subform.next().first()
+        else:
+            raise CompilerException("try does not accept any symbols apart " +
+                                    "from catch/except/else/finally", form)
+
+    if fin and not catch and not els:
+        return compileTryFinally(comp.compile(body), comp.compile(fin))
+    elif catch and not fin and not els:
+        return compileTryCatch(comp, comp.compile(body), catch)
+
+
+def compileTryFinally(body, fin):
+    """
+    Compiles the try/finally form. Takes the body of the try statement, and the
+    finally statement. They must be compiled bytecode (i.e. comp.compile(body)).
+    """
+    finallyLabel = Label("TryFinally")
+    if fin[-1][0] == RETURN_VALUE:
+        fin = fin[:-1]
+    code = [(SETUP_FINALLY, finallyLabel)] +\
+        body +\
+        [(RETURN_VALUE, None),
+         (POP_BLOCK, None),
+         (LOAD_CONST, None)] +\
+        emitLanding(finallyLabel) +\
+        fin +\
+        [(POP_TOP, None),
+         (END_FINALLY, None),
+         (LOAD_CONST, None)]
+    return code
+
+
+def compileTryCatch(comp, body, catches):
+    """
+    Compiles the try/catch/catch... form. Takes the body of the try statement,
+    and a list of (exception, exception_var, except_body) tuples for each
+    exception. The order of the list is important.
+    """
+    assert len(catches), "Calling compileTryCatch with empty catches list"
+
+    catch_labels = [Label("TryCatch_" + str(ex)) for ex, _, _ in catches]
+    endLabel = Label("TryCatchEnd")
+    endFinallyLabel = Label("TryCatchEndFinally")
+
+    code = [(SETUP_EXCEPT, catch_labels[0])] # First catch label
+    code.extend(body)
+    code.append((STORE_FAST, "___ret_val_")) # Because I give up with
+    # keeping track of what's in the stack
+    code.append((POP_BLOCK, None))
+    code.append((JUMP_FORWARD, endLabel)) # if all went fine, goto end
+
+    n = len(catches)
+    for i, (exception, var, val) in enumerate(catches):
+
+        comp.pushAlias(var, FnArgument(var)) # FnArgument will do
+
+        last = i == n - 1
+
+        # except Exception
+        code.extend(emitLanding(catch_labels[i]))
+        code.append((DUP_TOP, None))
+        code.extend(comp.compile(exception))
+        code.append((COMPARE_OP, "exception match"))
+        code.extend(emitJump(catch_labels[i + 1] if not last else
+                             endFinallyLabel))
+
+        # as e
+        code.append((POP_TOP, None))
+        code.append((STORE_FAST, var.name))
+        code.append((POP_TOP, None))
+
+        # body
+        code.extend(comp.compile(val))
+        code.append((STORE_FAST, "___ret_val_"))
+        code.append((JUMP_FORWARD, endLabel))
+
+        comp.popAlias(var)
+
+    code.extend(emitLanding(endFinallyLabel))
+    code.append((END_FINALLY, None))
+    code.extend(emitLanding(endLabel))
+    code.append((LOAD_FAST, "___ret_val_"))
+
+    return code
+
 """
 We should mention a few words about aliases. Aliases are created when the
 user uses closures, fns, loop, let, or let-macro. For some forms like
@@ -1198,12 +1343,20 @@ class Compiler(object):
             return self.ns
 
     def executeCode(self, code):
+
         if code == []:
             return None
         newcode = expandMetas(code, self)
         newcode.append((RETURN_VALUE, None))
         c = Code(newcode, [], [], False, False, False, str(symbol(self.getNS().__name__, "<string>")), self.filename, 0, None)
-        retval = eval(c.to_code(), self.getNS().__dict__)
+        c = c.to_code()
+
+        # work on .cljs
+        #from clojure.util.freeze import write, read
+        #with open("foo.cljs", "wb") as fl:
+        #    f = write(c, fl)
+
+        retval = eval(c, self.getNS().__dict__)
         self.getNS().__file__ = self.filename
         return retval
 

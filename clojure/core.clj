@@ -5,7 +5,6 @@
 ;   By using this software in any fashion, you are agreeing to be bound by
 ;   the terms of this license.
 ;   You must not remove this notice, or any other, from this software.
-
 (ns* ^{:doc "The core Clojure language."
        :author "Rich Hickey"}
   clojure.core)
@@ -25,6 +24,9 @@
    :added "1.0"}
   vector clojure.lang.rt/vector)
 
+(def 
+  ^{:static true}
+  extend clojure.lang.protocol/extend)
 
 (def
  ^{:arglists '([& items])
@@ -804,6 +806,9 @@
 (clojure.lang.protocol/extendForAllSubclasses
  clojure.lang.iprintable/IPrintable)
 
+
+                        
+
 (defmacro lazy-seq
   "Takes a body of expressions that returns an ISeq or nil, and yields
   a Seqable object that will invoke the body only the first time seq
@@ -812,6 +817,13 @@
   {:added "1.0"}
   [& body]
   (list 'clojure.core/LazySeq (list* '^{:once true} fn* [] body) nil nil nil))    
+
+(extend clojure.lang.pytypes/pyTypeGenerator
+    Seqable
+    {:seq (fn generator-seq [self]
+               (lazy-seq
+                   (let [result (.next self)]
+                       (cons result (generator-seq self)))))})
 
 
 (definterface IChunkedSeq [] 
@@ -2971,7 +2983,7 @@
   "Equivalent to l[i] = item in Pytyon"
   (.__setitem__ l i item))
 
-(require 'clojure.core-deftype :only ['deftype 'reify 'definterface 'defprotocol])
+(require 'clojure.core-deftype :only ['deftype 'reify 'definterface 'defprotocol 'defrecord])
 
 ; FIXME: Am I polluting the namespace by requiring those?!
 (require 'numbers :only ['Number])
@@ -3044,7 +3056,37 @@
   (apply print-pr more)
   (newline))
 
+(defn debug [x]
+    (py/print x)
+    x)
+
 (defn println
   "unreadable-ishishly, newline follows"
   [& more]
   (apply print-prn more))
+
+(defmacro binding
+  "binding => var-symbol init-expr
+
+  Creates new bindings for the (already-existing) vars, with the
+  supplied initial values, executes the exprs in an implicit do, then
+  re-establishes the bindings that existed before.  The new bindings
+  are made in parallel (unlike let); all init-exprs are evaluated
+  before the vars are bound to their new values."
+  {:added "1.0"}
+  [bindings & body]
+  (assert-args binding
+    (vector? bindings) "a vector for its binding"
+    (even? (count bindings)) "an even number of forms in binding vector")
+  (let [var-ize (fn [var-vals]
+                  (loop [ret [] vvs (seq var-vals)]
+                    (if vvs
+                      (recur  (conj (conj ret `(resolve (symbol ~(name (first vvs))))) (second vvs))
+                             (next (next vvs)))
+                      (seq ret))))]
+   (debug `(let []
+       (clojure.lang.var/pushThreadBindings (hash-map ~@(var-ize bindings)))
+       (~'try
+         ~@body
+         (~'finally
+           (clojure.lang.var/popThreadBindings)))))))

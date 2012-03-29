@@ -2,6 +2,26 @@
     (:require [tests.assertions :as assertions])
     (:require [tests.utils :only [deftest]]))
 
+(deftest try-tests
+;  (assertions/assert-true (= nil (try)))
+
+;  (assertions/assert-true (= 20 (try (py.bytecode/BINARY_ADD 10 10 ))))
+
+  (assertions/assert-true (= 20
+    (try (py.bytecode/BINARY_ADD 10 10)
+      (finally (py/print "finally")))))
+
+  (assertions/assert-true (= 20
+          (try
+            (py.bytecode/BINARY_ADD 10 10)
+            (catch IllegalStateException e "py/print exception"))))
+
+  (assertions/assert-true (= 20
+    (try
+      (py.bytecode/BINARY_ADD 10 10)
+            (catch IllegalArgumentException iae "py/print illegalargument")
+            (catch IllegalStateException e "py/print exception"))))
+  )
 
 (deftest if-not-tests
     (assertions/assert-true (if-not false true))
@@ -669,3 +689,27 @@
     (assertions/assert-true (if :spam true false))
     (assertions/assert-false (if false true false))
     (assertions/assert-false (if nil true false)))
+
+
+(deftest defrecord-tests
+    (defrecord FooRecord [x y] IDeref (deref [self] 42))
+    (let [foo (FooRecord 1 2)]
+         (assertions/assert-equal (:x foo) 1)
+         (assertions/assert-equal (:y foo) 2)
+         (assertions/assert-equal (get foo "x") 1)         
+         (assertions/assert-equal (get foo 'x) 1)
+         (assertions/assert-equal (vec (keys foo)) ["x" "y"])         
+         (assertions/assert-equal (count foo) 2)
+         (assertions/assert-equal (:x (.without foo "x")) nil)
+         (assertions/assert-equal (deref foo) 42)))    
+
+(deftest extend-tests
+    (extend py/int ISeq {:seq (fn [self] 42)})
+    (assertions/assert-equal (seq 1) 42))
+         
+(deftest binding-tests
+    (def x 0)
+    (def y 0)
+    (binding [x 1 y 2]
+        (assertions/assert-equal (+ x y) 3))
+    (assertions/assert-equal (+ x y) 0))
