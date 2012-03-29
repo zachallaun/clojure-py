@@ -150,25 +150,26 @@ class SubVec(APersistentVector):
     def nth(self, i):
         """Return the i'th item.
 
-        May raise IndexOutOfBoundsException"""
-        if self.start + i >= self.end:
+        i -- integer >= 0
+
+        May raise an IndexOutOfBoundsException"""
+        if i < 0 or self.start + i >= self.end:
             raise IndexOutOfBoundsException()
         return self.v.nth(self.start + i)
 
     def assocN(self, i, val):
-        """Set the item at index i to val.
+        """Return a PersistentVector or SubVec.
 
-        i -- integer, [0, |self1|+1]
+        i -- integer >= 0
         val -- any object
 
-        If i is < length of this vec, return a SubVec with this vec's contents
-        and the item at i set to val.
-
-        If i indexes one past the end of this SubVec, return a new
-        SubVec with this vec's contents, and val appended.
-
-        Else raise IndexOutOfBoundsException."""
-        if self.start + i > self.end:
+        If i is within bounds of this SubVec, return a SubVec that shares data
+        with this vec but with the item at i set to val. If i is equal to the
+        length of this SubVec, return a PersistentVector that shares data with
+        this SubVec and has val appended. Else, raise
+        IndexOutOfBoundsException.  The returned vector will have this
+        vector's meta data attached."""
+        if i < 0 or self.start + i > self.end:
             raise IndexOutOfBoundsException()
         elif self.start + i == self.end:
             return self.cons(val)
@@ -211,7 +212,7 @@ class SubVec(APersistentVector):
         meta -- an IPersistentMap
 
         The new vec will have the same contents as this vector."""
-        if self.meta == meta:
+        if self._meta == meta:
             return self
         return SubVec(self._meta, self.v, self.start, self.end)
 
