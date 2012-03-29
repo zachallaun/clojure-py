@@ -175,7 +175,7 @@ def find(sym):
     ns = findNamespace(symbol(sym.ns))
     if ns is None:
         raise InvalidArgumentException("No such namespace " + str(sym.ns))
-    return ns.findInternedVar(symbol(sym.name))
+    return getattr(ns, sym.name)
 
 
 def intern(ns, name):

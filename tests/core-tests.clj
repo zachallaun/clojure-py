@@ -631,8 +631,8 @@
     (assertions/assert-equal (for [x [1 2 3]] x) [1 2 3]))
 
 (deftest destructure-tests
-    (assertions/assert-equal (map (fn [[k v]] k) {:1 1 :2 2}) [:1 :2])
-    (assertions/assert-equal (map (fn [[k v]] v) {:1 1 :2 2}) [1 2]))
+    (assertions/assert-equal (map (fn [[k v]] k) {:1 1}) [:1])
+    (assertions/assert-equal (map (fn [[k v]] v) {:1 1}) [1]))
 
 (deftest map-entry-tests
     (assertions/assert-equal (-> {:1 :2} first first) :1)
@@ -701,7 +701,14 @@
          (assertions/assert-equal (vec (keys foo)) ["x" "y"])         
          (assertions/assert-equal (count foo) 2)
          (assertions/assert-equal (:x (.without foo "x")) nil)
-         (assertions/assert-equal (deref foo) 42)))    
+         (assertions/assert-equal (deref foo) 42)
+         (assertions/assert-true  (= (FooRecord 1 2) foo))
+         (assertions/assert-false (= (FooRecord 2 2) foo))
+         (assertions/assert-true  (= (py/hash (FooRecord 1 2)) 
+         	 	             (py/hash foo)))
+         (assertions/assert-false (= (py/hash (FooRecord 2 2)) 
+         	 	             (py/hash foo)))))
+         
 
 (deftest extend-tests
     (extend py/int ISeq {:seq (fn [self] 42)})
@@ -713,3 +720,10 @@
     (binding [x 1 y 2]
         (assertions/assert-equal (+ x y) 3))
     (assertions/assert-equal (+ x y) 0))
+
+(deftest var-tests
+    (assertions/assert-true (py/hasattr #'cons "deref")))
+
+(deftest doc-tests
+    (defn baz "This is a test" [] nil)
+    (doc baz))
