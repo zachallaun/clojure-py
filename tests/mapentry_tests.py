@@ -24,6 +24,8 @@ class TestMapEntry(unittest.TestCase):
         self.assertEqual(self.mapEntry[1], "value")
     def test__getitem___FAIL(self):
         self.assertRaises(IndexOutOfBoundsException,
+                          self.mapEntry.__getitem__, -1)
+        self.assertRaises(IndexOutOfBoundsException,
                           self.mapEntry.__getitem__, 2)
     def testAsVector_PASS(self):
         v = self.mapEntry.asVector()

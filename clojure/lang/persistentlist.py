@@ -251,12 +251,16 @@ class EmptyList(Obj, IPersistentList, ISeq, Counted, IPrintable):
         return None
 
     def writeAsString(self, writer):
-        """See: EmptyList.__repr__"""
-        writer.write(repr(self))
+        """See: EmptyList.__str__"""
+        writer.write(str(self))
 
     def writeAsReplString(self, writer):
         """See: EmptyList.__repr__"""
         writer.write(repr(self))
+
+    def __str__(self):
+        """Return the string "()"."""
+        return "()"
 
     def __repr__(self):
         """Return the Python readable string "()"."""
