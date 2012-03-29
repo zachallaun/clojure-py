@@ -31,7 +31,7 @@ class AMapEntry(APersistentVector):
         return createVector(self.getKey(), self.getValue())
 
     def assocN(self, i, val):
-        """Return a SubVec on this MapEntry with index i set to val.
+        """Return a PersistentVector with index i set to val.
 
         i -- int, 0 or 1
         val -- any object"""
@@ -52,9 +52,12 @@ class AMapEntry(APersistentVector):
         return self.asVector().seq()
 
     def cons(self, o):
-        """Return a SubVec on this MapEntry with o appended.
+        """Return a PersistentVector.
 
-        o -- any object"""
+        o -- any object
+
+        The returned vector will contain this AMapEntry's key and value with o
+        appended."""
         return self.asVector().cons(o)
 
     def empty(self):
@@ -62,5 +65,5 @@ class AMapEntry(APersistentVector):
         return None
 
     def pop(self):
-        """Return an IPersistentStack with one item, this MapEntry's key."""
+        """Return a PersistentVector with one item, this AMapEntry's key."""
         return createVector(self.getKey())
