@@ -895,10 +895,11 @@ def compileTryCatch(comp, body, catches):
     catch_labels = [Label("TryCatch_" + str(ex)) for ex, _, _ in catches]
     endLabel = Label("TryCatchEnd")
     endFinallyLabel = Label("TryCatchEndFinally")
+    firstExceptLabel = Label("TryFirstExcept")
 
     ret_val = "__ret_val_" + str(RT.nextID())
 
-    code = [(SETUP_EXCEPT, catch_labels[0])] # First catch label
+    code = [(SETUP_EXCEPT, firstExceptLabel)] # First catch label
     code.extend(body)
     code.append((STORE_FAST, ret_val)) # Because I give up with
     # keeping track of what's in the stack
@@ -914,6 +915,7 @@ def compileTryCatch(comp, body, catches):
 
         # except Exception
         code.extend(emitLanding(catch_labels[i]))
+        code.append((firstExceptLabel, None))
         code.append((DUP_TOP, None))
         code.extend(comp.compile(exception))
         code.append((COMPARE_OP, "exception match"))
