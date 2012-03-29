@@ -174,7 +174,7 @@ class SubVec(APersistentVector):
         elif self.start + i == self.end:
             return self.cons(val)
         return SubVec(self._meta,
-                      self.v.assocN(self.start + self.i, val),
+                      self.v.assocN(self.start + i, val),
                       self.start,
                       self.end)
 

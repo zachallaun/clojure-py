@@ -33,6 +33,20 @@ class TestSubVec(unittest.TestCase):
         self.assertRaises(IndexOutOfBoundsException, self.sv.nth, -1)
         # beyond upper bound
         self.assertRaises(IndexOutOfBoundsException, self.sv.nth, 3)
+    def testAssocN_PASS(self):
+        # mod
+        v1 = self.sv.assocN(1, "foo")
+        self.assertTrue(isinstance(v1, SubVec))
+        self.assertEqual(len(v1), 3)
+        self.assertEqual(v1.nth(1), "foo")
+        # append
+        v2 = self.sv.assocN(3, "foo")
+        self.assertTrue(isinstance(v2, SubVec))
+        self.assertEqual(len(v2), 4)
+        self.assertEqual(v2.nth(3), "foo")
+    def testAssocN_FAIL(self):
+        self.assertRaises(IndexOutOfBoundsException, self.sv.assocN, -1, "foo")
+        self.assertRaises(IndexOutOfBoundsException, self.sv.assocN, 4, "foo")
     # __len__()
     def test__len___PASS(self):
         self.assertEqual(len(self.sv), 3)
