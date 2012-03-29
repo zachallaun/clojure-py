@@ -81,7 +81,7 @@ class ASeq(Obj, Sequential, ISeq, IHashEq, Iterable, IPrintable):
         return None
 
     def seq(self):
-        """Return this sequence."""
+        """Return this sequence (self)."""
         return self
 
     # ???: is this ever called
@@ -116,7 +116,6 @@ class ASeq(Obj, Sequential, ISeq, IHashEq, Iterable, IPrintable):
             yield s.first()
             s = s.next()
 
-    # ???: why no cache
     def hasheq(self):
         """Return the hash of this sequence.
 

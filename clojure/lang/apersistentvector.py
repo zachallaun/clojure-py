@@ -2,6 +2,8 @@
 March 25, 2012 -- documented
 """
 
+import cStringIO
+
 import clojure.lang.rt as RT
 from clojure.lang.iobj import IObj
 from clojure.lang.iprintable import IPrintable
@@ -14,7 +16,7 @@ from clojure.lang.cljexceptions import IndexOutOfBoundsException
 class APersistentVector(IPersistentVector, IPrintable):
     """Pseudo-Abstract class to define a persistent vector.
 
-    See: PersistentVector, MapEntry, and SubVec."""
+    For concrete classes see: PersistentVector, MapEntry, and SubVec."""
     def __iter__(self):
         """Return an iterator on this vector."""
         for x in range(len(self)):
@@ -41,24 +43,26 @@ class APersistentVector(IPersistentVector, IPrintable):
     def __eq__(self, other):
         """Equality test.
 
-        other -- ISeq or IPersistentVector
+        other -- ISeq or something that implements the seq protocol
 
         ASeq.__eq__ is actually used."""
-        s = self.seq()
+        if self is other:
+            return True
         if not RT.isSeqable(other) or isinstance(other, IPersistentSet):
             return False
+        s = self.seq()
         o = RT.seq(other)
         return s == o
 
     def __hash__(self):
-        """Return the hash on this vector or 0 if the vector is empty.
+        """Return the hash on this vector or 1 if the vector is empty.
 
-        See: ASeq.hashseq()"""
+        See: ASeq.hasheq()"""
         s = self.seq()
         if not s is None:
             return s.hasheq();
         else:
-            return 0
+            return 1            # EmptyList.__hash__() => 1
 
     def __ne__(self, other):
         """Return not self.__eq__(other)"""
@@ -66,6 +70,7 @@ class APersistentVector(IPersistentVector, IPrintable):
 
     # Placing these print methods here will cover:
     # MapEntry, PersistentVector, and SubVec
+    
     def writeAsString(self, writer):
         """Write [...] to writer.
 
@@ -97,6 +102,28 @@ class APersistentVector(IPersistentVector, IPrintable):
                 writer.write(" ")
             s = s.next()
         writer.write("]")
+
+    def __str__(self):
+        """Return a string representation of this vector.
+
+        The vector will be formatted as a Python list.
+        """
+        s = []
+        for x in self:
+            s.append(str(x))
+        return "[" + ", ".join(s) + "]"
+
+    def __repr__(self):
+        """Return a string representation of this vector.
+
+        A persistent vector has no Python readable representation. The
+        *semantic* validity of the resulting list is unknown."""
+        sio = cStringIO.StringIO()
+        self.writeAsReplString(sio)
+        return "<{0}.{1} at 0x{2:x} {3}>".format(self.__module__,
+                                                 type(self).__name__,
+                                                 id(self),
+                                                 sio.getvalue())
 
 # ======================================================================
 # SubVec

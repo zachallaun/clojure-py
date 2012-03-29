@@ -2,92 +2,125 @@
 March 25, 2012 -- documented
 """
 
-import cStringIO
-
 import clojure.lang.rt as RT
 from clojure.lang.atomicreference import AtomicReference
 from clojure.lang.apersistentvector import APersistentVector
 from clojure.lang.cljexceptions import (ArityException,
-                                        IndexOutOfBoundsException,
-                                        IllegalStateException)
+                                        IllegalStateException,
+                                        IndexOutOfBoundsException)
+
+
+# Acts sort-of-like supplied-p in Common Lisp.
+# Allows one to ascertain if a parameter foo=None was actually given specified
+# in the call.
+_notSupplied = object()
 
 
 class PersistentVector(APersistentVector):
+    """An indexable array where each operation such as cons and assocN return
+    a *new* PersistentVector. The two vectors share old state, but the new
+    state is only present in the newly returned vector. This preserves the
+    state of the old vector prior to the operation.
+
+    _cnt -- integer, the total number of items in the vector
+    _shift -- integer, the depth of the tree, a multiple of 5, >=0
+    _root -- Node, the root tree node
+    _tail -- list of size 0 to 32
+    _meta -- IPersistentHashMap, meta data attached to the vector"""
     def __init__(self, *args):
         """Instantiate a PersistentVector
 
-        cnt -- integer
-        shift -- integer
-        tail -- list
-        root -- Node, holds a list of size 32
-        _meta -- IPersistentHashMap, meta data"""
+        args must be one of:
+
+        * int, int, Node, list
+        * IPersistentHashMap, int, int, Node, list
+
+        Else an ArityException will be raised.
+        """
         if len(args) == 4:
             cnt, shift, root, tail = args
-            _meta = None
+            meta = None
         elif len(args) == 5:
-            _meta, cnt, shift, root, tail = args
+            meta, cnt, shift, root, tail = args
         else:
             raise ArityException()
-        self._meta = _meta
-        self.cnt = cnt
-        self.shift = shift
-        self.root = root
-        self.tail = tail
+        self._meta = meta
+        self._cnt = cnt
+        self._shift = shift
+        self._root = root
+        self._tail = tail
 
-    def __call__(self, idx):
-        """Return the item at idx.
+    def __call__(self, i):
+        """Return the item at i.
 
-        idx -- integer >= 0
+        i -- integer >= 0
 
         May raise IndexOutOfBoundsException."""
-        return self.nth(idx)
+        return self.nth(i)
 
-    def tailoff(self):
-        if self.cnt < 32:
-            return 0
-        return ((self.cnt - 1) >> 5) << 5
+    def _arrayFor(self, i):
+        """Return the _tail list or a Node._array list.
 
-    def arrayFor(self, i):
-        if 0 <= i < self.cnt:
-            if i >= self.tailoff():
-                return self.tail
-            node = self.root
-            for level in range(self.shift, 0, -5):
-                node = node.array[(i >> level) & 0x01f]
-            return node.array
+        i -- integer, vector index >= 0
+
+        The list will be a sublist of this vector where the index of its first
+        element is i - i % 32. May raise IndexOutOfBoundsException."""
+        if 0 <= i < self._cnt:
+            if i >= self._tailoff():
+                return self._tail
+            node = self._root
+            for level in range(self._shift, 0, -5):
+                node = node._array[(i >> level) & 0x01f]
+            return node._array
         raise IndexOutOfBoundsException()
 
-    def nth(self, i, notFound=None):
-        """Return the item at index i or notFound."""
-        if 0 <= i < self.cnt:
-            node = self.arrayFor(i)
+    def nth(self, i, notFound=_notSupplied):
+        """Return the item at index i.
+
+        If i is out of bounds and notFound is supplied, return notFound, else
+        raise IndexOutOfBoundsException."""
+        if 0 <= i < self._cnt:
+            node = self._arrayFor(i)
             return node[i & 0x01f]
-        return notFound
+        elif notFound is _notSupplied:
+            raise IndexOutOfBoundsException()
+        else:
+            return notFound
 
     def meta(self):
         """Return this vector's meta data as an IPersistentHashMap."""
         return self._meta
 
     def assocN(self, i, val):
-        if 0 <= i < self.cnt:
-            if i >= self.tailoff():
-                newTail = self.tail[:]
+        """Return a PersistentVector with the item at index i set to val.
+
+        i -- integer >= 0
+        val -- any object
+
+        The returned vector will contain all the items in this vector except
+        for the newly *changed* value. This function will *append* val if i is
+        the length of this vector. If i is > the length, raise
+        IndexOutOfBoundsException. The returned vector will have this vector's
+        meta data attached."""
+        if 0 <= i < self._cnt:
+            if i >= self._tailoff():
+                newTail = self._tail[:]
                 newTail[i & 0x01f] = val
 
-                return PersistentVector(self.meta(), self.cnt, self.shift,
-                                        self.root, newTail)
+                return PersistentVector(self.meta(), self._cnt, self._shift,
+                                        self._root, newTail)
 
-            n = doAssoc(self.shift, self.root, i, val)
-            return PersistentVector(self.meta(), self.cnt, self.shift, n,
-                                    self.tail)
-        if i == self.cnt:
+            n = _doAssoc(self._shift, self._root, i, val)
+            return PersistentVector(self.meta(), self._cnt, self._shift, n,
+                                    self._tail)
+        if i == self._cnt:
             return self.cons(val)
 
         raise IndexOutOfBoundsException()
 
     def __len__(self):
         """Return the number of items in this vector."""
-        return self.cnt
+        return self._cnt
 
     def withMeta(self, meta):
         """Return a PersistentVector.
@@ -96,160 +129,193 @@ class PersistentVector(APersistentVector):
 
         The returned vector will contain this vectors contents and have meta
         attached."""
-        return PersistentVector(meta, self.cnt, self.shift, self.root,
-                                self.tail)
+        return PersistentVector(meta, self._cnt, self._shift, self._root,
+                                self._tail)
+
+    def _tailoff(self):
+        """Return the beginning index of the tail.
+
+        This will be a multiple of 32, >= 0."""
+        if self._cnt < 32:
+            return 0
+        return ((self._cnt - 1) >> 5) << 5
 
     def cons(self, val):
-        if self.cnt - self.tailoff() < 32:
-            newTail = self.tail[:]
+        """Return a new PersistentVector.
+
+        val -- any object
+
+        The returned vector contains all the items in this vector with val
+        *appended*. It will also have this vector's meta data attached."""
+        # there's room in the _tail for var
+        if self._cnt - self._tailoff() < 32:
+            newTail = self._tail[:]
             newTail.append(val)
-            return PersistentVector(self.meta(), self.cnt + 1, self.shift,
-                                    self.root, newTail)
-
-        tailnode = Node(self.root.edit, self.tail)
-        newshift = self.shift
-        if (self.cnt >> 5) > (1 << self.shift):
-            newroot = Node(self.root.edit)
-            newroot.array[0] = self.root
-            newroot.array[1] = newPath(self.root.edit, self.shift, tailnode)
+            return PersistentVector(self.meta(), self._cnt + 1, self._shift,
+                                    self._root, newTail)
+        # _tail is full, have to create a new Node
+        tailnode = Node(self._root._edit, self._tail)
+        newshift = self._shift
+        # no room at this level for the Node, add a new level
+        if (self._cnt >> 5) > (1 << self._shift):
+            newroot = Node(self._root._edit)
+            newroot._array[0] = self._root
+            newroot._array[1] = _newPath(self._root._edit, self._shift,
+                                         tailnode)
             newshift += 5
+        # room at this level for the new Node
         else:
-            newroot = self.pushTail(self.shift, self.root, tailnode)
+            newroot = self._pushTail(self._shift, self._root, tailnode)
 
-        return PersistentVector(self.meta(), self.cnt + 1, newshift, newroot,
+        return PersistentVector(self.meta(), self._cnt + 1, newshift, newroot,
                                 [val])
 
-    def pushTail(self, level, parent, tailnode):
-        subidx = ((self.cnt - 1) >> level) & 0x01f
-        ret = Node(parent.edit, parent.array[:])
+    def _pushTail(self, level, parent, tailnode):
+        """Add tailnode to the tree at the given level.
+
+        level -- what level to push to, a multiple of 5, >= 5
+        parent -- Node, the old root
+        tailnode -- Node to push containing a full _array of the last 32 items
+                    in the vector.
+
+        Return the new root Node."""
+        # the index of the next empty _array @ the given level
+        subidx = ((self._cnt - 1) >> level) & 0x01f
+        ret = Node(parent._edit, parent._array[:])
 
         if level == 5:
             nodeToInsert = tailnode
         else:
-            child = parent.array[subidx]
-            nodeToInsert = (self.pushTail(level - 5, child, tailnode)
+            child = parent._array[subidx]
+            nodeToInsert = (self._pushTail(level - 5, child, tailnode)
                             if child is not None
-                            else newPath(self.root.edit, level - 5, tailnode))
-        ret.array[subidx] = nodeToInsert
+                            else _newPath(self._root._edit, level - 5,
+                                          tailnode))
+        ret._array[subidx] = nodeToInsert
         return ret
 
     def empty(self):
-        """Return an empty PersistentVector."""
+        """Return an empty PersistentVector.
+
+        The returned vector will have this vector's meta data attached."""
         return EMPTY.withMeta(self.meta())
 
     def pop(self):
-        if not self.cnt:
+        """Return a new PersistentVector.
+
+        The returned vector will contain all the items it this vector except
+        the *last* item. It will have this vector's meta data attached.
+
+        Will raise IllegalStateException if this vector is empty."""
+        if not self._cnt:
             raise IllegalStateException("Can't pop empty vector")
-        if self.cnt == 1:
+        if self._cnt == 1:
             return EMPTY.withMeta(self.meta())
-        if self.cnt - self.tailoff() > 1:
-            newTail = self.tail[:]
+        # pop from the _tail, done
+        if self._cnt - self._tailoff() > 1:
+            newTail = self._tail[:]
             newTail.pop()
-            return PersistentVector(self.meta(), self.cnt - 1, self.shift,
-                                    self.root, newTail)
-
-        newtail = self.arrayFor(self.cnt - 2)
-
-        newroot = self.popTail(self.shift, self.root)
-        newshift = self.shift
+            return PersistentVector(self.meta(), self._cnt - 1, self._shift,
+                                    self._root, newTail)
+        # the last sublist, post-pop
+        newtail = self._arrayFor(self._cnt - 2)
+        # pop from the last Node, done
+        newroot = self._popTail(self._shift, self._root)
+        newshift = self._shift
         if newroot is None:
             newroot = EMPTY_NODE
-        if self.shift > 5 and newroot.array[1] is None:
-            newroot = newroot.array[0]
+        if self._shift > 5 and newroot._array[1] is None:
+            newroot = newroot._array[0]
             newshift -= 5
-        if newroot is None:
-            pass
-        return PersistentVector(self.meta(), self.cnt - 1, newshift, newroot,
+        return PersistentVector(self.meta(), self._cnt - 1, newshift, newroot,
                                 newtail)
 
-    def popTail(self, level, node):
-        subidx = ((self.cnt - 2) >> level) & 0x01f
+    def _popTail(self, level, node):
+        """Return a new root Node or None if the last value was popped.
+
+        level -- integer, 0 or a multiple of 5
+        node -- Node to pop from
+
+        Recursively descend the tree, starting at node and remove the value at
+        _cnt - 1."""
+        subidx = ((self._cnt - 2) >> level) & 0x01f
         if level > 5:
-            newchild = self.popTail(level - 5, node.array[subidx])
+            newchild = self._popTail(level - 5, node._array[subidx])
             if newchild is None and not subidx:
                 return None
             else:
-                ret = Node(self.root.edit, node.array[:])
-                ret.array[subidx] = newchild
+                ret = Node(self._root._edit, node._array[:])
+                ret._array[subidx] = newchild
                 return ret
         elif not subidx:
             return None
         else:
-            ret = Node(self.root.edit, node.array[:])
-            ret.array[subidx] = None
+            ret = Node(self._root._edit, node._array[:])
+            ret._array[subidx] = None
             return ret
-        
-    def __str__(self):
-        """Return a string representation of this vector.
-
-        The vector will be formatted as a Python list.
-        """
-        s = []
-        for x in self:
-            s.append(str(x))
-        return "[" + ", ".join(s) + "]"
-
-    def __repr__(self):
-        """Return a string representation of this vector.
-
-        A persistent vector has no Python readable representation. The
-        *semantic* validity of the vector is unknown."""
-        sio = cStringIO.StringIO()
-        self.writeAsReplString(sio)
-        return "<{0}.{1} at 0x{2:x} {3}>".format(self.__module__,
-                                                 type(self).__name__,
-                                                 id(self),
-                                                 sio.getvalue())
-
-#    def __eq__(self, other):
-#        if other is self:
-#            return True
-#        if not hasattr(other, "__len__"):
-#            return False
-#        if not hasattr(other, "__getitem__"):
-#            return False
-#
-#        if not len(self) == len(other):
-#            return False
-#
-#        for x in range(len(self)):
-#            if self[x] != other[x]:
-#                return False
-#
-#        return True
 
 # ======================================================================
-# Node
+# PersistentVector Helpers
 # ======================================================================
 
-class Node(object):
-    def __init__(self, edit, array=None):
-        self.edit = edit
-        self.array = array if array is not None else [None] * 32
+def _newPath(edit, level, node):
+    """Return a Node.
 
+    edit -- currently unused (for Clojure's transient data structures)
+    level -- integer, multiple of 5, >= 5, stop recurring when 0
+    node -- Node, the new path will lead *to* this node
 
-def newPath(edit, level, node):
+    Called by PersistentVector.cons() (and indirectly by
+    PersistentVector._pushTail()) when the leaves in the tree are full (a new
+    level is required)."""
     if not level:
         return node
     ret = Node(edit)
-    ret.array[0] = newPath(edit, level - 5, node)
+    ret._array[0] = _newPath(edit, level - 5, node)
     return ret
 
 
-def doAssoc(level, node, i, val):
-    ret = Node(node.edit, node.array[:])
+def _doAssoc(level, node, i, val):
+    """Return a new root Node with the item at index i set to val.
+
+    level -- integer, multiple of 5, >== 5, stop recurring when 0
+    node -- Node, the old root
+    i -- integer >= 0, index of item to set
+    val -- any object, the item to place at i"""
+    ret = Node(node._edit, node._array[:])
     if not level:
-        ret.array[i & 0x01f] = val
+        ret._array[i & 0x01f] = val
     else:
         subidx = (i >> level) & 0x01f
-        ret.array[subidx] = doAssoc(level - 5, node.array[subidx], i, val)
+        ret._array[subidx] = _doAssoc(level - 5, node._array[subidx], i, val)
     return ret
 
 # ======================================================================
-# Creation
+# PersistentVector Tree Node
+# ======================================================================
+
+class Node(object):
+    """A tree node in a PersistentVector."""
+    def __init__(self, edit, array=None):
+        """Instantiate a Node.
+
+        edit -- currently unused (for Clojure's transient data structures)
+        array -- An optional list of size 32. It will be initialized to [None]
+                 * 32 if not supplied."""
+        self._edit = edit
+        self._array = array if array is not None else [None] * 32
+
+# ======================================================================
+# PersistentVector Creation
 # ======================================================================
 
 def vec(seq):
+    """Return a PersistentVector.
+
+    seq -- ISeq
+
+    If seq is an APersistentVector return seq. Else the returned vector will
+    contain the items in seq."""
     if isinstance(seq, APersistentVector):
         return seq
     s = RT.seq(seq)
@@ -259,7 +325,13 @@ def vec(seq):
         s = RT.next(s)
     return v
 
+
 def create(*args):
+    """Return a PersistentVector.
+
+    args -- zero or more objects
+
+    The returned vector will contain all objects found in args."""
     x = EMPTY
     for z in args:
         x = x.cons(z)
@@ -269,6 +341,9 @@ def create(*args):
 # Pseudo-Singletons
 # ======================================================================
 
+# currently unused (for Clojure's transient data structures)
 NOEDIT = AtomicReference()
+# A Node holding no children or vector values
 EMPTY_NODE = Node(NOEDIT)
+# A PersistentVector containing 0 items
 EMPTY = PersistentVector(0, 5, EMPTY_NODE, [])
