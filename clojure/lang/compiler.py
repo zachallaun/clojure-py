@@ -804,7 +804,12 @@ def compileTry(comp, form):
 
     # Extract the thing that may raise exceptions
     body = form.first()
+
     form = form.next()
+    if not form:
+        # If there are no catch/finally/else etc statements, just
+        # compile the budy
+        return comp.compile(body)
 
     catch = []
     els = None
