@@ -867,7 +867,9 @@ def compileTry(comp, form):
         return compileTryFinally(comp.compile(body), comp.compile(fin))
     elif catch and not fin and not els:
         return compileTryCatch(comp, comp.compile(body), catch)
-
+    elif not fin and not catch and els:
+        raise CompilerException("Try does not accept else statements on " +\
+                                    "their own", form)
 
 def compileTryFinally(body, fin):
     """
