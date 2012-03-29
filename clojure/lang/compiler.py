@@ -869,18 +869,19 @@ def compileTryFinally(body, fin):
     finally statement. They must be compiled bytecode (i.e. comp.compile(body)).
     """
     finallyLabel = Label("TryFinally")
-    if fin[-1][0] == RETURN_VALUE:
-        fin = fin[:-1]
-    code = [(SETUP_FINALLY, finallyLabel)] +\
-        body +\
-        [(RETURN_VALUE, None),
-         (POP_BLOCK, None),
-         (LOAD_CONST, None)] +\
-        emitLanding(finallyLabel) +\
-        fin +\
-        [(POP_TOP, None),
-         (END_FINALLY, None),
-         (LOAD_CONST, None)]
+
+    ret_val = "__ret_val_" + str(RT.nextID())
+
+    code = [(SETUP_FINALLY, finallyLabel)]
+    code.extend(body)
+    code.append((STORE_FAST, ret_val))
+    code.append((POP_BLOCK, None))
+    code.append((LOAD_CONST, None))
+    code.append((finallyLabel, None))
+    code.extend(fin)
+    code.extend([(POP_TOP, None),
+                 (END_FINALLY, None),
+                 (LOAD_FAST, ret_val)])
     return code
 
 
