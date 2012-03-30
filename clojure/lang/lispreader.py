@@ -947,7 +947,7 @@ class SyntaxQuoteReader(object):
                 ret = sym
 
             else:
-                comp = currentCompiler.get(lambda: None)
+                comp = currentCompiler.deref()
                 if comp is None:
                     raise IllegalStateException("No Compiler found in syntax quote!")
                 ns = comp.getNS()

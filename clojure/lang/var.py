@@ -23,18 +23,15 @@ UKNOWN = symbol("UNKNOWN")
 def pushThreadBindings(bindings):
     f = dvals.get(lambda: Frame())
     bmap = f.bindings
-    bs = bindings.seq()
-    while bs is not None:
-        e = bs.first()
-        v = e.getKey()
+    for v in bindings:
+        value = bindings[v]
         if not v.dynamic:
             raise IllegalStateException("Can't dynamically bind non-dynamic "
                                         "var: " + str(v.ns) + "/"
                                         + str(v.sym))
-        v.validate(v.getValidator(), e.getValue())
+        v.validate(v.getValidator(), value)
         v.threadBound = True
-        bmap = bmap.assoc(v, TBox(currentThread(), e.getValue()))
-        bs = bs.next()
+        bmap = bmap.assoc(v, TBox(currentThread(), value))
     dvals.set(Frame(bmap, f))
 
 

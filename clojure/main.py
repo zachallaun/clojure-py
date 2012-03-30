@@ -32,6 +32,7 @@ from clojure.lang.globals import currentCompiler
 import clojure.lang.rt as RT
 from clojure.lang.compiler import Compiler
 from clojure.lang.symbol import Symbol, symbol
+from clojure.lang.var import pushThreadBindings, popThreadBindings
 import cPickle
 
 VERSION = "0.1.0h"
@@ -45,7 +46,8 @@ def requireClj(filename, stopafter=None):
     RT.init()
     comp = Compiler()
     comp.setFile(filename)
-    currentCompiler.set(comp)
+    
+    pushThreadBindings({currentCompiler: comp})
 
     #o = open(filename+".cljc", "w")
     try:
@@ -66,6 +68,8 @@ def requireClj(filename, stopafter=None):
                 raise
     except IOError as e:
         pass
+    finally:
+        popThreadBindings()
 
     #o.close()
 

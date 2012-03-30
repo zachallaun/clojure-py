@@ -1,3 +1,6 @@
-from clojure.lang.threadutil import ThreadLocal
+from clojure.lang.var import var as defineVar
 
-currentCompiler = ThreadLocal()
+currentCompiler = defineVar()
+currentCompiler.setDynamic()
+
+
