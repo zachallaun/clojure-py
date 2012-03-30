@@ -2,6 +2,8 @@
 March 25, 2012 -- documented
 """
 
+import cStringIO
+
 import clojure.lang.rt as RT
 from clojure.lang.obj import Obj
 from clojure.lang.iseq import ISeq
@@ -15,48 +17,16 @@ from clojure.lang.cljexceptions import AbstractMethodCall
 
 
 class ASeq(Obj, Sequential, ISeq, IHashEq, Iterable, IPrintable):
-    """An ordered collection.
-
-    By ordered I mean the items will stay in the order in which they were
-    added to the sequence.
-
-    Accessing/Adding
-    ----------------
-    See: iseq.py
-    __getitem__ -- s[i]
-    __iter__ -- for x in s
-
-    Meta Data
-    ---------
-    See: obj.py
-
-    Equality
-    --------
-    __eq__, __ne__
-    Can be compared with another ASeq, Sequential, tuple, or list. The
-    sequences are compared recursively. Each item has its own test for
-    equality. An ASeq will never be equal to a set or map, but may be equal to
-    a seq on a set or map.
-
-    Printed Representation
-    ----------------------
-    There are 4 printed representations. All print the contents of the
-    sequence surrounded by ().
-    * __repr__ -- readable by the Python reader
-    * __str__ -- as Python print would display it
-    * writeAsString -- clojure-py print and println, no "", \\x as x, etc.
-    * writeAsReplString -- readable by the clojure-py reader
-    """
     def __eq__(self, other):
-        """Return True if this sequence is = to other, False otherwise."""
         if self is other:
             return True
         if not RT.isSeqable(other) or (isinstance(other,IPersistentSet)):
             return False
         se = RT.seq(other)
-        if isinstance(se, RT.NotSeq):
-            print other, type(other)
-            return False
+        # XXX: don't think this is used
+        # if isinstance(se, RT.NotSeq):
+        #     print other, type(other)
+        #     return False
         ms = self.seq()
         while se is not None:
             if ms is None or not se.first() == ms.first():
@@ -69,6 +39,9 @@ class ASeq(Obj, Sequential, ISeq, IHashEq, Iterable, IPrintable):
         """Return not self.__eq__(other)"""
         return not self == other
 
+    # XXX: This is broken, it should raise IndexOutOfBoundsException.
+    #      If the nth protocol is going to be used for clojure-py, this should
+    #      act like (0, 1)[42] when called from the Python side.
     def __getitem__(self, idx):
         """Return the item at idx or None if idx >= length self."""
         s = self.seq()
@@ -84,15 +57,15 @@ class ASeq(Obj, Sequential, ISeq, IHashEq, Iterable, IPrintable):
         """Return this sequence (self)."""
         return self
 
-    # ???: is this ever called
-    def count(self):
-        """Return the number of items in this sequence."""
-        i = 1
-        for s in self.interator():
-            if isinstance(s, Counted):
-                return i + s.count()
-            i += 1
-        return i
+    # XXX: don't think this is used
+    # def count(self):
+    #     """Return the number of items in this sequence."""
+    #     i = 1
+    #     for s in self.interator():
+    #         if isinstance(s, Counted):
+    #             return i + s.count()
+    #         i += 1
+    #     return i
 
     def more(self):
         """Return an ISeq.
@@ -133,16 +106,27 @@ class ASeq(Obj, Sequential, ISeq, IHashEq, Iterable, IPrintable):
         from clojure.lang.cons import Cons
         return Cons(other, self)
 
+    def __str__(self):
+        """Return a string representation of this sequence.
+
+        The vector will be formatted as a Python tuple.
+        """
+        s = []
+        for x in self:
+            s.append(str(x))
+        return "(" + ", ".join(s) + ")"
+
     def __repr__(self):
         """Return a string representation of this sequence.
 
-        The string will be readable by the Python interpreter as a tuple. If
-        this seq is empty the string "()" will be returned. The *semantic*
-        validity of the list is unknown."""
-        s = []
-        for x in self:
-            s.append(repr(x))
-        return "(" + ", ".join(s) + ")"
+        An ASeq has no Python readable representation. The
+        *semantic* validity of the resulting list is unknown."""
+        sio = cStringIO.StringIO()
+        self.writeAsReplString(sio)
+        return "<{0}.{1} at 0x{2:x} {3}>".format(self.__module__,
+                                                 type(self).__name__,
+                                                 id(self),
+                                                 sio.getvalue())
 
     def writeAsString(self, writer):
         """Write (...) to writer.

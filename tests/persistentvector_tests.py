@@ -1,4 +1,4 @@
-"""pvector-test.py
+"""persistentvector_tests.py
 
 Wednesday, March 28 2012
 """

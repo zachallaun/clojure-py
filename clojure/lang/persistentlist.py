@@ -16,12 +16,6 @@ from clojure.lang.cljexceptions import ArityException, IllegalStateException
 
 
 class PersistentList(ASeq, IPersistentList, IReduce, Counted):
-    """Basically, a singly linked list.
-
-    *Private* attributes:
-      * _first -- any object, the head
-      * _rest -- a PersistentList, the tail
-      * _count -- number of items total, incremented by cons"""
     def __init__(self, *args):
         """Instantiate a PersistentList.
 
@@ -126,6 +120,7 @@ class PersistentList(ASeq, IPersistentList, IReduce, Counted):
         s = self.next()
         while s is not None:
             ret = fn(ret, s.first())
+            s = s.next()
         return ret
 
     def withMeta(self, meta):
@@ -143,20 +138,22 @@ class PersistentList(ASeq, IPersistentList, IReduce, Counted):
 # Creation
 # ======================================================================
 
-def create(lst):
-    """Return a PersistentList with the contents of lst.
+# XXX: don't think this is required
+# def create(lst):
+#     """Return a PersistentList with the contents of lst.
 
-    lst -- a Python list or tuple"""
-    ret = EMPTY
-    for x in range(len(lst) - 1, -1, -1):
-        c = lst[x]
-        ret = ret.cons(c)
-    return ret
+#     lst -- any object that implements __len__ and __getitem__"""
+#     ret = EMPTY
+#     for x in range(len(lst) - 1, -1, -1):
+#         # c = lst[x]
+#         ret = ret.cons(lst[x])
+#     return ret
+
 
 def creator(*args):
     """Return a PersistentList.
 
-    Called by the compiler. Move along citizen."""
+    args -- zero or more objectS"""
     ret = EMPTY
     for x in range(len(args) - 1, -1, -1):
         ret = ret.cons(args[x])
