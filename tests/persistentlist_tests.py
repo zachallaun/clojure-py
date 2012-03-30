@@ -174,5 +174,4 @@ class TestPersistentList(unittest.TestCase):
     def test__repr___PASS(self):
         regex = r"<clojure\.lang\.persistentlist\.PersistentList" \
                 r" at 0x[a-fA-F0-9]+ \(\(1 2\) \(3 4\)\)>$"
-        print repr(self.printS)
         self.assertTrue(re.match(regex, self.printS.__repr__()))

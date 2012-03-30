@@ -109,7 +109,7 @@ class ASeq(Obj, Sequential, ISeq, IHashEq, Iterable, IPrintable):
     def __str__(self):
         """Return a string representation of this sequence.
 
-        The vector will be formatted as a Python tuple.
+        The list will be formatted as a Python tuple.
         """
         s = []
         for x in self:

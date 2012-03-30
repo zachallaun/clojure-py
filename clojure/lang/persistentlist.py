@@ -57,11 +57,11 @@ class PersistentList(ASeq, IPersistentList, IReduce, Counted):
         return self._rest
 
     def first(self):
-        """Return the first item in this list or None if empty."""
+        """Return the first item in this list."""
         return self._first
 
     def peek(self):
-        """Return the first item in this list or None if empty."""
+        """Return the first item in this list."""
         return self.first()
 
     def pop(self):
