@@ -727,3 +727,22 @@
 (deftest doc-tests
     (defn baz "This is a test" [] nil)
     (doc baz))
+
+(definterface IClosable
+        (__enter__ [self])
+        (__exit__ [self]))
+
+(deftype MutatableCloser [state]
+        IClosable
+        (__enter__ [self] 
+            (py/setattr self "state" :enter))
+        (__exit__ [self]
+            (py/setattr self "state" :exit)))
+    
+(deftest with-open-tests
+    (let [mc (MutatableCloser :unknown)]
+        (assertions/assert-equal (.-state mc) :unknown)
+        (with-open [obj mc]
+             (assertions/assert-equal (.-state obj) :enter))
+        (assertions/assert-equal (.-state mc) :exit)))
+        

@@ -266,7 +266,7 @@ def compileLetStar(comp, form):
     if len(form) < 3:
         raise CompilerException("let* takes at least two args")
     form = form.next()
-    if not isinstance(form.first(), PersistentVector):
+    if not isinstance(form.first(), IPersistentVector):
         raise CompilerException("let* takes a vector as it's first argument")
     s = form.first()
     args = []

@@ -79,16 +79,21 @@ import clojure.core
 def main():
     RT.init()
     comp = Compiler()
-    currentCompiler.set(comp)
-
-    if not sys.argv[1:]:
-        import clojure.repl
-        clojure.repl.enable_readline()
-        clojure.repl.run_repl(comp)
-    else:
-        for x in sys.argv[1:]:
-            if x.endswith('.clj'):
-                requireClj(x)
+    
+    pushThreadBindings({currentCompiler: comp})
+    
+    try:
+    
+        if not sys.argv[1:]:
+            import clojure.repl
+            clojure.repl.enable_readline()
+            clojure.repl.run_repl(comp)
+        else:
+            for x in sys.argv[1:]:
+                if x.endswith('.clj'):
+                    requireClj(x)
+    finally:
+        popThreadBindings()
 
 if __name__ == "__main__":
     main()

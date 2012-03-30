@@ -3089,12 +3089,12 @@
                       (recur  (conj (conj ret `(resolve (symbol ~(name (first vvs))))) (second vvs))
                              (next (next vvs)))
                       (seq ret))))]
-   (debug `(let []
+   `(let []
        (clojure.lang.var/pushThreadBindings (hash-map ~@(var-ize bindings)))
        (~'try
          ~@body
          (~'finally
-           (clojure.lang.var/popThreadBindings)))))))
+           (clojure.lang.var/popThreadBindings))))))
 
 (defmacro var
     [itm]
@@ -3109,6 +3109,38 @@
                (py/hasattr itm# "__doc__")
                 (py/print (py/getattr itm# "__doc__")))))
 
+(defn when-attr
+    "If attr exists on obj, it calls (apply (py/getattr obj attr) args) otherwise
+     nil is returned"
+    [obj attr & args]
+    (when (py/hasattr obj attr)
+          (apply (py/getattr obj attr) args)))
+    
+
+(defmacro with-open
+  "bindings => [name init ...]
+
+  First, with-open calls (.__enter__ name) on all bindings if the attribute
+  exists. Next it evaluates body in a try expression with names bound to the 
+  values of the inits, and a finally clause that calls (.__exit__ name) and/or 
+  (.close name) on each name in reverse order."
+  {:added "1.0"}
+  [bindings & body]
+  (assert-args with-open
+     (vector? bindings) "a vector for its binding"
+     (even? (count bindings)) "an even number of forms in binding vector")
+  (cond
+    (= (count bindings) 0) `(do ~@body)
+    (symbol? (bindings 0)) `(let ~(subvec bindings 0 2)
+                              (when-attr ~(bindings 0) "__enter__")
+                              (~'try
+                                (with-open ~(subvec bindings 2) ~@body)
+                                (~'finally
+                                  (do
+                                   (when-attr ~(bindings 0) "__exit__")
+                                   (when-attr ~(bindings 0) "close")))))
+    :else (throw (IllegalArgumentException.
+                   "with-open only allows Symbols in bindings"))))
 
 
 
