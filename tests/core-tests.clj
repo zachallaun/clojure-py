@@ -745,4 +745,10 @@
         (with-open [obj mc]
              (assertions/assert-equal (.-state obj) :enter))
         (assertions/assert-equal (.-state mc) :exit)))
+
+(deftest generator-seq-tests
+    (let [gen (fn [times]
+                (dotimes [x times]
+                    (py.bytecode/YIELD_VALUE x)))]
+         (assertions/assert-equal (seq (gen 3)) [0 1 2])))
         

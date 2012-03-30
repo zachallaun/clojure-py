@@ -822,8 +822,10 @@
     Seqable
     {:seq (fn generator-seq [self]
                (lazy-seq
-                   (let [result (.next self)]
-                       (cons result (generator-seq self)))))})
+                   (try
+                       (let [result (.next self)]
+                           (cons result (generator-seq self)))
+                       (catch py/StopIteration e nil))))})
 
 
 (definterface IChunkedSeq [] 
