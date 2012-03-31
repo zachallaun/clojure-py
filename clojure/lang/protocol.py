@@ -99,7 +99,7 @@ class Protocol(object):
            mp should be a map of methodnames: functions"""
        
         for x in mp:
-            name =  x.sym.name
+            name =  RT.name(x.sym)
             if name not in self.protofns:
                 raise ProtocolException("No Method found for name " + x)
             
@@ -204,9 +204,8 @@ def extendProtocolForClass(proto, tp):
     proto.markImplementor(tp)
     
         
-    
-    
-    
+# Fixup globals
+import clojure.lang.rt as RT
     
     
     
