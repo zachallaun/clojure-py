@@ -359,6 +359,18 @@ def _bootstrap_protocols():
     seq = protocols.seq
     _extendSeqableForManuals()
     _extendIPrintableForManuals()
+    
+    from clojure.lang.named import Named
+    protocolFromType("clojure.protocols", Named)
+    extendForAllSubclasses(Named)
+    global name, namespace
+    
+    name = protocols.getName
+    namespace = protocols.getNamespace
+    _extendNamedForManuals()
+    
+def _extendNamedForManuals():
+	protocols.getName.extendForTypes([pyStrType, pyUnicodeType], lambda x: x)
 
 # init is being called each time a .clj is loaded
 initialized = False

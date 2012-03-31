@@ -3,9 +3,10 @@ import types
 from clojure.lang.iprintable import IPrintable
 from clojure.lang.iobj import IObj
 from clojure.lang.cljexceptions import ArityException
+from clojure.lang.named import Named
 
 
-class Symbol(IObj, IPrintable):
+class Symbol(IObj, IPrintable, Named):
     def __init__(self, *args):
         if len(args) == 2:
             self.ns = args[0].name if isinstance(args[0], Symbol) else args[0]
