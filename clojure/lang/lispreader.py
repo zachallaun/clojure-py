@@ -637,7 +637,7 @@ def readNamedUnicodeChar(rdr):
 
 
 def rawRegexReader(rdr, r):
-    """Read a regex pattern string ignoring most escape sequences.
+    r"""Read a regex pattern string ignoring most escape sequences.
 
     rdr -- a read/unread-able object
     r -- ignored

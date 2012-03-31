@@ -116,7 +116,7 @@ class TestPersistentVector(unittest.TestCase):
     # repr(v)
     def test__repr___PASS(self):
         regex = r"<clojure\.lang\.persistentvector\.PersistentVector" \
-                r" at 0x[a-fA-F0-9]+ \[\[\] \[\]\]>$"
+                r" object at 0x[a-fA-F0-9]+ \[\[\] \[\]\]>$"
         self.assertTrue(re.match(regex, self.printV.__repr__()))
 
 

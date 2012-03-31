@@ -123,10 +123,10 @@ class ASeq(Obj, Sequential, ISeq, IHashEq, Iterable, IPrintable):
         *semantic* validity of the resulting list is unknown."""
         sio = cStringIO.StringIO()
         self.writeAsReplString(sio)
-        return "<{0}.{1} at 0x{2:x} {3}>".format(self.__module__,
-                                                 type(self).__name__,
-                                                 id(self),
-                                                 sio.getvalue())
+        return "<{0}.{1} object at 0x{2:x} {3}>".format(self.__module__,
+                                                        type(self).__name__,
+                                                        id(self),
+                                                        sio.getvalue())
 
     def writeAsString(self, writer):
         """Write (...) to writer.

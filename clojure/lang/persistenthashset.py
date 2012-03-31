@@ -53,21 +53,6 @@ class PersistentHashSet(APersistentSet, IObj):
             return self
         return PersistentHashSet(self._meta, self.impl.without(key))
 
-    def __repr__(self):
-        """Return a string representation of this PersistentHashSet.
-
-        The string will be readable by the Python interpreter as a set. If
-        this set is empty the string "set()" will be returned. The *symantic*
-        validity of the set is unknown."""
-        if len(self) == 0:
-            return "set()"
-        x = self.seq()
-        j = []
-        while x is not None:
-            j.append(repr(x.first()))
-            x = x.next()
-        return "{" + ", ".join(j) + "}"
-
 
 def create(*args):
     """Return a new PersistentHashSet.

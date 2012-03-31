@@ -69,5 +69,5 @@ class TestCons(unittest.TestCase):
     # repr(s)
     def test__repr___PASS(self):
         regex = r"<clojure\.lang\.cons\.Cons" \
-                r" at 0x[a-fA-F0-9]+ \(\(1 2\) \(3 4\)\)>$"
+                r" object at 0x[a-fA-F0-9]+ \(\(1 2\) \(3 4\)\)>$"
         self.assertTrue(re.match(regex, self.printS.__repr__()))

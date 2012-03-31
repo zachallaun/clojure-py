@@ -2,6 +2,8 @@
 March 25, 2012 -- documented
 """
 
+import cStringIO
+
 import clojure.lang.rt as RT
 from clojure.lang.ifn import IFn
 from clojure.lang.iprintable import IPrintable
@@ -41,7 +43,7 @@ class APersistentSet(IPersistentSet, IFn, IPrintable):
         return len(self.impl)
 
     def seq(self):
-        """Return an ISeq containing the items in this set."""
+        """Return a KeySeq containing the items in this set."""
         return createKeySeq(self.impl.seq())
 
     def __call__(self, *args):
@@ -52,7 +54,6 @@ class APersistentSet(IPersistentSet, IFn, IPrintable):
             raise ArityException()
         return self.impl[args[0]]
 
-    # ???: different implementation
     def __eq__(self, other):
         """Return True if:
 
@@ -120,3 +121,31 @@ class APersistentSet(IPersistentSet, IFn, IPrintable):
                 writer.write(" ")
             s = s.next()
         writer.write("}")
+
+    def __str__(self):
+        """Return a string representation of this set.
+
+        The set will be formatted as a Python set would be:
+
+        set([contents])"""
+        s = []
+        sq = self.seq()
+        while sq is not None:
+            s.append(str(sq.first()))
+            sq = sq.next()
+        if not s:
+            return "set()"
+        else:
+            return "set([" + ", ".join(s) + "])"
+
+    def __repr__(self):
+        """Return a string representation of this set.
+
+        An APersistentSet has no Python readable representation. The
+        *semantic* validity of the resulting set is unknown."""
+        sio = cStringIO.StringIO()
+        self.writeAsReplString(sio)
+        return "<{0}.{1} object at 0x{2:x} {3}>".format(self.__module__,
+                                                        type(self).__name__,
+                                                        id(self),
+                                                        sio.getvalue())

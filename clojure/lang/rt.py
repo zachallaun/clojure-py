@@ -290,7 +290,7 @@ def _extendIPrintableForManuals():
         # possibly print a preview of the collection:
         # #<__builtin__.dict obj at 0xdeadbeef {'one': 1, 'two': 2 ... >
         lambda obj, writer:
-            writer.write('#<{0}.{1} obj at 0x{2:x}>'
+            writer.write('#<{0}.{1} object at 0x{2:x}>'
                          .format(type(obj).__module__, type(obj).__name__,
                                  id(obj))))
     # type
@@ -319,7 +319,7 @@ def _extendIPrintableForManuals():
         lambda obj, writer: writer.write(str(obj)))
     protocols.writeAsReplString.setDefault(
         lambda obj, writer:
-            writer.write('#<{0}.{1} obj at 0x{2:x}>'
+            writer.write('#<{0}.{1} object at 0x{2:x}>'
                          .format(type(obj).__module__, type(obj).__name__,
                                  id(obj))))
 
