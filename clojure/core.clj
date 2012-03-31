@@ -2338,7 +2338,9 @@
   "Returns a set of the distinct elements of coll."
   {:added "1.0"
    :static true}
-  [coll] (clojure.lang.persistenthashset/create (seq coll)))
+  [coll] (if-let [s (seq coll)]
+           (clojure.lang.persistenthashset/create s)
+           #{}))
 
 (defn find-ns
   "Returns the namespace named by the symbol or nil if it doesn't exist."
