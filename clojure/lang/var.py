@@ -11,6 +11,7 @@ from clojure.lang.symbol import symbol
 from clojure.lang.cljkeyword import keyword
 from clojure.lang.iprintable import IPrintable
 import persistentarraymap
+import types
 
 privateKey = keyword(symbol("private"))
 macrokey = keyword(symbol("macro"))
@@ -177,9 +178,8 @@ def find(sym):
 
 def intern(ns, name):
     from namespace import findOrCreate, intern as nsintern
-    import new 
     
-    if isinstance(ns, new.module):
+    if isinstance(ns, types.ModuleType):
         return nsintern(ns, name)
     ns = findOrCreate(symbol(ns))
     return nsintern(ns, name)
