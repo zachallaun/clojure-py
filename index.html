@@ -1,0 +1,109 @@
+<!doctype html>
+<link rel=stylesheet href=/css/bootstrap.css />
+<link rel=stylesheet href=/css/highlight.css />
+<style>
+  body {
+    padding-top: 60px;
+  }
+
+  pre {
+    padding: 0;
+  }
+</style>
+
+<div class="navbar navbar-fixed-top">
+  <div class=navbar-inner>
+    <div class=container>
+      <a class=brand href=#>Clojure-Py</a>
+      <p class="navbar-text pull-left">An implementation of Clojure in pure Python</p>
+      <ul class="nav pull-right">
+        <li class=active><a href=#>Home</a></li>
+        <li><a href=https://github.com/halgari/clojure-py>Code</a></li>
+        <li><a href=http://groups.google.com/group/clojure-py-dev?pli=1>Mailing List</a></li>
+        <li><a href=http://clojure-py.blogspot.com/>Blog</a></li>
+        <li><a class=href="http://travis-ci.org/halgari/clojure-py"><img src="https://secure.travis-ci.org/halgari/clojure-py.png?branch=master" alt="Build Status"></a></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class=container>
+  <h2>Why Python?</h2>
+  <p>Static virtual machines make poor runtimes for dynamically-typed languages.
+  They constrain the language to their view of the world and limit the options
+  available to language implementors. We're writing an implementation of
+  <a href=http://clojure.org/>Clojure</a> that runs on the Python VM to prove
+  it. With a proper dynamic
+  <a href=http://en.wikipedia.org/wiki/Just-in-time_compilation>JIT</a> (like
+  <a href=http://pypy.org/>PyPy</a>), a version of Clojure running on a dynamic
+  VM can outperform its JVM and CLR counterparts.</p>
+
+  <p>Also, there are many Python libraries like PySide (Qt GUI), numpy, scipy,
+  and stackless that do not have JVM counterparts, or the Python implementations
+  are easier to use and learn. Clojure-Py integrates tightly with the Python VM
+  and is able to use all these libraries.</p>
+
+  <h2>Installation</h2>
+  <p>To install version 0.1.0 from <a href=http://pypi.python.org/pypi>PyPI</a>:</p>
+  <pre><code>pip install clojure-py</code></pre>
+
+  <p>Or from source:</p>
+  <pre><code>git clone http://github.com/halgari/clojure-py.git
+cd clojure-py
+python setup.py install</code></pre>
+
+  <p>Run with</p>
+  <pre><code>clojurepy</code></pre>
+
+  <p>Or, if the source is available</p>
+  <pre><code>python clojure.py</code></pre>
+
+  <p>Run tests with <a href=http://readthedocs.org/docs/nose/en/latest/>nose</a>:</p>
+  <pre><code>nosetests</code></pre>
+
+  <h2>Basic concepts</h2>
+  <p>Viewing Clojure-Py's <a href="https://github.com/halgari/clojure-py/blob/master/clojure/core.clj">core.clj</a>
+  is probably the best way to get a feeling of what is possible and how
+  Clojure-Py works.</p>
+
+  <p>Specifically, you might notice...</p>
+  <ul>
+    <li>Python builtins are available under the <code>py/</code> namespace. Actual
+    Python bytecodes can be injected with <code>py.bytecodes/OP</code>.</li>
+    <li>
+      Clojure-Py implements <a href=https://github.com/clojure/clojurescript>ClojureScript</a>'s
+      property vs. calling method design:
+      <pre><code class=lisp>(.__name__ module) ; same as module.__name__() in Python
+(.-__name__ module) ; same as module.__name__ in Python</code></pre>
+    </li>
+  </ul>
+
+  <h2>How can I help?</h2>
+  <p>Find a need and fill it! Play around with Clojure-Py, start
+  porting your favorite Clojure lib, and see what's missing. Feel free to
+  join our <a href=http://groups.google.com/group/clojure-py-dev?pli=1>mailing
+  list</a>. We normally send out a message when we plan to work on something
+  from the <a href=https://github.com/halgari/clojure-py/issues?sort=created&direction=desc&state=open>issues
+  list</a> or something that came up in the mailing list. There are quite a
+  few functions from <a href=https://github.com/clojure/clojure/blob/master/src/clj/clojure/core.clj>clojure.core</a>
+  that need porting. Drop by and let us know what your're interested in. We'll
+  be glad to help!</p>
+
+  <h2>License</h2>
+
+  <p>Not endorsed by Rich Hickey, but this project contains code based on his
+  work.</p>
+
+  <p>Clojure-Py &copy; Rich Hickey. All rights reserved.  The use
+  and distribution terms for this software are covered by the
+  <a href=http://opensource.org/licenses/eclipse-1.0.php>Eclipse Public License 1.0</a>.
+  By using this software in any fashion, you are agreeing to be bound by the
+  terms of this license. You must not remove this notice, or any other, from
+  this software.</p>
+</div>
+
+<script src=/js/highlight.js></script>
+<script src=/js/lisp.js></script>
+<script>
+  hljs.initHighlightingOnLoad();
+</script>
