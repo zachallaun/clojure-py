@@ -2374,7 +2374,7 @@
   found."
   {:added "1.0"}
   [x]
-  (if (instance? new/module x)
+  (if (instance? types/ModuleType x)
     x
     (or (find-ns x) (throw (py/Exception (str "No namespace: " x " found"))))))
 
