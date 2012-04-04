@@ -757,28 +757,6 @@
    :static true}
   [coll] (when (seq coll) coll))
 
-(defn bases
-  "Returns the immediate superclass and direct interfaces of c, if any"
-  {:added "1.0"
-   :static true}
-  [^Class c]
-  (when c
-    (let [i (.getInterfaces c)
-          s (.getSuperclass c)]
-      (not-empty
-       (if s (cons s i) i)))))
-
-(defn supers
-  "Returns the immediate and indirect superclasses and interfaces of c, if any"
-  {:added "1.0"
-   :static true}
-  [^Class class]
-  (loop [ret (set (bases class)) cs ret]
-    (if (seq cs)
-      (let [c (first cs) bs (bases c)]
-        (recur (into1 ret bs) (into1 (disj cs c) bs)))
-      (not-empty ret))))
-
 (defn isa?
   "Returns true if (= child parent), or child is directly or indirectly derived from
   parent, either via a Java type inheritance relationship or a
