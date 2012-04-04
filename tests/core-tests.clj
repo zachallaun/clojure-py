@@ -750,4 +750,12 @@
                 (dotimes [x times]
                     (py.bytecode/YIELD_VALUE x)))]
          (assertions/assert-equal (seq (gen 3)) [0 1 2])))
+
+(deftest bases-tests
+    (assertions/assert-equal (bases ISeq) 
+                             [IPersistentCollection]))
+
+(deftest supers-tests
+    (assertions/assert-equal (supers ISeq)
+                             [IPersistentCollection Seqable py/object]))
         
