@@ -751,11 +751,6 @@
 (def ^{:private true}
      global-hierarchy (make-hierarchy))
 
-(defn not-empty
-  "If coll is empty, returns nil, else coll"
-  {:added "1.0"
-   :static true}
-  [coll] (when (seq coll) coll))
 
 (defn isa?
   "Returns true if (= child parent), or child is directly or indirectly derived from

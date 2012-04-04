@@ -758,4 +758,8 @@
 (deftest supers-tests
     (assertions/assert-equal (supers ISeq)
                              [IPersistentCollection Seqable py/object]))
+
+(deftest not-empty-tests
+    (assertions/assert-equal (not-empty []) nil)
+    (assertions/assert-equal (not-empty [1]) [1]))
         
