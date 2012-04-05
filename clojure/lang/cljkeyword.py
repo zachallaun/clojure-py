@@ -11,7 +11,7 @@ interned = AtomicReference(EMPTY_MAP)
 
 class Keyword(IFn, Named, IPrintable):
     def getNamespace(self):
-        return self.sym.getNameSpace()
+        return self.sym.getNamespace()
 
     def getName(self):
         return self.sym.getName()

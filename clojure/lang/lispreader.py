@@ -804,6 +804,14 @@ def metaReader(rdr, caret):
                               " .withMeta")
     return o.withMeta(meta)
 
+def currentNSName():
+    comp = currentCompiler.deref()
+    if comp is None:
+        raise IllegalStateException("No Compiler found in syntax quote!")
+    ns = comp.getNS()
+    if ns is None:
+        raise IllegalStateException("No ns in reader")
+    return ns.__name__
 
 def matchSymbol(s):
     """Return a symbol or keyword.
@@ -813,14 +821,18 @@ def matchSymbol(s):
     if m is not None:
         ns = m.group(1)
         name = m.group(2)
+
         if name.endswith(".") and not name.startswith("."):
             name = name[:-1]
-        if ns is not None and ns.endswith(":/") or name.endswith(":")\
-            or s.find("::") != -1:
+        if ns is not None and (ns.endswith(":/") or name.endswith(":")\
+            or s.find("::") != -1):
                 return None
-        if s.startswith("::"):
-            return "FIX"
         ns = ns if ns is None else ns[:-1]
+        
+        if s.startswith("::"):
+            return keyword(currentNSName(), s[2:])
+
+
         iskeyword = s.startswith(':')
         if iskeyword:
             return keyword(s[1:])

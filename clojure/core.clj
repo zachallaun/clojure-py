@@ -3189,3 +3189,125 @@
   (every? #(.getThreadBinding %) vars))
 
 
+
+(defn make-hierarchy
+  "Creates a hierarchy object for use with derive, isa? etc."
+  {:added "1.0"
+   :static true}
+  [] {:parents {} :descendants {} :ancestors {}})
+
+(def ^{:private true}
+     global-hierarchy (make-hierarchy))
+
+(defn class?
+  "Returns true if cls is an instance of ClassType"
+  [cls]
+  (py/isinstance cls types/TypeType))
+
+(defn assert
+  "Throws an error if val is not true"
+  [val]
+  (when val
+  	    (throw (py/AssertionError))))
+
+
+(defn isa?
+  "Returns true if (= child parent), or child is directly or indirectly derived from
+  parent, either via a Java type inheritance relationship or a
+  relationship established via derive. h must be a hierarchy obtained
+  from make-hierarchy, if not supplied defaults to the global
+  hierarchy"
+  {:added "1.0"}
+  ([child parent] (isa? global-hierarchy child parent))
+  ([h child parent]
+   (or (= child parent)
+       (and (class? parent) (class? child)
+            (py/issubclass child parent))
+       (contains? ((:ancestors h) child) parent)
+       (and (class? child) (some #(contains? ((:ancestors h) %) parent) (supers child)))
+       (and (vector? parent) (vector? child)
+            (= (count parent) (count child))
+            (loop [ret true i 0]
+              (if (or (not ret) (= i (count parent)))
+                ret
+                (recur (isa? h (child i) (parent i)) (inc i))))))))
+
+(defn parents
+  "Returns the immediate parents of tag, either via a Java type
+  inheritance relationship or a relationship established via derive. h
+  must be a hierarchy obtained from make-hierarchy, if not supplied
+  defaults to the global hierarchy"
+  {:added "1.0"}
+  ([tag] (parents global-hierarchy tag))
+  ([h tag] (not-empty
+            (let [tp (get (:parents h) tag)]
+              (if (class? tag)
+              	(if tp
+              		(seq (.union (py/set (bases tag)) (py/set tp)))
+              		(bases tag))
+                tp)))))
+
+(defn ancestors
+  "Returns the immediate and indirect parents of tag, either via a Java type
+  inheritance relationship or a relationship established via derive. h
+  must be a hierarchy obtained from make-hierarchy, if not supplied
+  defaults to the global hierarchy"
+  {:added "1.0"}
+  ([tag] (ancestors global-hierarchy tag))
+  ([h tag] (not-empty
+            (let [ta (get (:ancestors h) tag)]
+              (if (class? tag)
+                (let [superclasses (set (supers tag))]
+                  (reduce1 into1 superclasses
+                    (cons ta
+                          (map #(get (:ancestors h) %) superclasses))))
+                ta)))))
+
+(defn descendants
+  "Returns the immediate and indirect children of tag, through a
+  relationship established via derive. h must be a hierarchy obtained
+  from make-hierarchy, if not supplied defaults to the global
+  hierarchy. Note: does not work on Java type inheritance
+  relationships."
+  {:added "1.0"}
+  ([tag] (descendants global-hierarchy tag))
+  ([h tag] (if (class? tag)
+             (seq (.__subclasses__ tag))
+             (not-empty (get (:descendants h) tag)))))
+
+(defn derive
+  "Establishes a parent/child relationship between parent and
+  tag. Parent must be a namespace-qualified symbol or keyword and
+  child can be either a namespace-qualified symbol or keyword or a
+  class. h must be a hierarchy obtained from make-hierarchy, if not
+  supplied defaults to, and modifies, the global hierarchy."
+  {:added "1.0"}
+  ([tag parent]
+   (assert (namespace parent))
+   (assert (namespace tag))
+
+   (alter-var-root #'global-hierarchy derive tag parent) nil)
+  ([h tag parent]
+   (assert (not= tag parent))
+   (assert (namespace tag))
+   (assert (instance? clojure.lang.named/Named parent))
+
+   (let [tp (:parents h)
+         td (:descendants h)
+         ta (:ancestors h)
+         tf (fn [m source sources target targets]
+              (reduce1 (fn [ret k]
+                        (assoc ret k
+                               (reduce1 conj (get targets k #{}) (cons target (targets target)))))
+                      m (cons source (sources source))))]
+     (or
+      (when-not (contains? (tp tag) parent)
+        (when (contains? (ta tag) parent)
+          (throw (py/Exception. (str tag "already has" parent "as ancestor"))))
+        (when (contains? (ta parent) tag)
+          (throw (py/Exception. (str "Cyclic derivation:" parent "has" tag "as ancestor"))))
+        {:parents (assoc (:parents h) tag (conj (get tp tag #{}) parent))
+         :ancestors (tf (:ancestors h) tag td parent ta)
+         :descendants (tf (:descendants h) parent ta tag td)})
+      h))))
+

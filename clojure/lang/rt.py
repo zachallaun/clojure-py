@@ -371,6 +371,9 @@ def _bootstrap_protocols():
     
 def _extendNamedForManuals():
 	protocols.getName.extendForTypes([pyStrType, pyUnicodeType], lambda x: x)
+	protocols.getName.extend(pyTypeType, lambda x: x.__name__)
+	
+	protocols.getNamespace.extend(pyTypeType, lambda x: x.__module__)
 
 # init is being called each time a .clj is loaded
 initialized = False

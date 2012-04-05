@@ -25,5 +25,6 @@ pyFileType = type(sys.stdin)
 pyTypeType = type
 pyTypeCode = types.CodeType
 pyTypeGenerator = types.GeneratorType
+pyClassType = types.ClassType
 
 # add more if needed

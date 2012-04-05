@@ -135,7 +135,7 @@ class TestReader(unittest.TestCase):
         for s in miscellaneous_FAIL:
             r = StringReader(s)
             self.assertRaises(ReaderException, read, r, False, EOF, False)
-
+            
 
 # ======================================================================
 # Literal Integer Cases
