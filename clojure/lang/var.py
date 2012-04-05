@@ -48,19 +48,23 @@ def popThreadBindings():
 
 class Var(ARef, Settable, IFn, IPrintable):
     def __init__(self, ns, sym, root=UKNOWN):
-        if root == UKNOWN:
-            self.root = Unbound(self)
+
         self.ns = ns
         self.sym = sym
         self.threadBound = False
-        self.root = AtomicReference(root)
+        
+        if root == UKNOWN:
+            self.root = AtomicReference(Unbound(self))
+        else:
+            self.root = AtomicReference(root)
+            
         self._meta = EMPTY
         self.rev = 0
         self.dynamic = False
         self.public = True
 
         
-        if isinstance(self.root, Unbound):
+        if isinstance(self.root.get(), Unbound):
             self.rev += 1
 
     def setDynamic(self, val=True):
@@ -77,7 +81,7 @@ class Var(ARef, Settable, IFn, IPrintable):
         return self.public
         
     def isBound(self):
-        return not isinstance(self.root, Unbound)
+        return not isinstance(self.root.get(), Unbound)
 
     def set(self, val):
         self.validate(self.getValidator(), val)
@@ -96,11 +100,11 @@ class Var(ARef, Settable, IFn, IPrintable):
         return self.root.mutate(lambda old: fn(old, *(args if args else ())))
 
     def hasRoot(self):
-        return not isinstance(self.root, Unbound)
+        return not isinstance(self.root.get(), Unbound)
 
     def bindRoot(self, root):
         self.validate(self.getValidator(), root)
-        oldroot = self.root
+        oldroot = self.root.get()
         self.root.set(root)
         self.rev += 1
         return self

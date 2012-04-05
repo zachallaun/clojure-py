@@ -142,19 +142,21 @@ def compileDef(comp, form):
     comp.pushName(RT.name(sym))
     code = []
     v = internVar(comp.getNS(), sym)
+    
     v.setDynamic(True)
-    code.append((LOAD_CONST, v))
-    code.append((LOAD_ATTR, "bindRoot"))
-    compiledValue = comp.compile(value)
-    if isinstance(value, ISeq) \
-       and value.first().getName() == 'fn' \
-       and sym.meta() is not None:
-        try:
-            compiledValue[0][1].__doc__ = sym.meta()[keyword('doc')]
-        except AttributeError:
-            pass
-    code.extend(compiledValue)
-    code.append((CALL_FUNCTION, 1))
+    if len(form) == 3:
+        code.append((LOAD_CONST, v))
+        code.append((LOAD_ATTR, "bindRoot"))
+        compiledValue = comp.compile(value)
+        if isinstance(value, ISeq) \
+           and value.first().getName() == 'fn' \
+           and sym.meta() is not None:
+            try:
+                compiledValue[0][1].__doc__ = sym.meta()[keyword('doc')]
+            except AttributeError:
+                pass
+        code.extend(compiledValue)
+        code.append((CALL_FUNCTION, 1))
     v.setMeta(sym.meta())
     comp.popName()
     return code
@@ -861,7 +863,7 @@ def compileTry(comp, form):
             fin = subform.next().first()
         else:
             raise CompilerException("try does not accept any symbols apart " +
-                                    "from catch/except/else/finally", form)
+                                    "from catch/except/else/finally, got" + str(form), form)
 
     if fin and not catch and not els:
         return compileTryFinally(comp.compile(body), comp.compile(fin))

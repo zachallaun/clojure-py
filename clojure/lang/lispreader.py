@@ -547,7 +547,8 @@ def setReader(rdr, leftbrace):
 
     rdr -- a read/unread-able object
     leftbrace -- ignored"""
-    return createWithCheck(readDelimitedList("}", rdr, True))
+    s = readDelimitedList("}", rdr, True)
+    return createWithCheck(s)
 
 
 def unmatchedClosingDelimiterReader(rdr, un):

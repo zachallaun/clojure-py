@@ -3093,7 +3093,7 @@
    `(let []
        (clojure.lang.var/pushThreadBindings (hash-map ~@(var-ize bindings)))
        (~'try
-         ~@body
+         (~'do ~@body)
          (~'finally
            (clojure.lang.var/popThreadBindings))))))
 
@@ -3171,5 +3171,21 @@
   {:added "1.0"
    :static true}
   [v f & args] (.alterRoot v f args))
+
+(defn bound?
+  "Returns true if all of the vars provided as arguments have any bound value, root or thread-local.
+   Implies that deref'ing the provided vars will succeed. Returns true if no vars are provided."
+  {:added "1.2"
+   :static true}
+  [& vars]
+  (every? #(.isBound %) vars))
+
+(defn thread-bound?
+  "Returns true if all of the vars provided as arguments have thread-local bindings.
+   Implies that set!'ing the provided vars will succeed.  Returns true if no vars are provided."
+  {:added "1.2"
+   :static true}
+  [& vars]
+  (every? #(.getThreadBinding %) vars))
 
 
