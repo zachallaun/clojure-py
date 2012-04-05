@@ -762,4 +762,12 @@
 (deftest not-empty-tests
     (assertions/assert-equal (not-empty []) nil)
     (assertions/assert-equal (not-empty [1]) [1]))
+
+(def AlterVarInt 0)
+
+(deftest alter-var-root-tests
+	(assertions/assert-equal AlterVarInt 0)
+	(alter-var-root #'AlterVarInt inc)
+	(assertions/assert-equal AlterVarInt 1))
+	
         

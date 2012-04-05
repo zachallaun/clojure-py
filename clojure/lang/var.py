@@ -10,6 +10,9 @@ from clojure.lang.threadutil import ThreadLocal, currentThread
 from clojure.lang.symbol import symbol
 from clojure.lang.cljkeyword import keyword
 from clojure.lang.iprintable import IPrintable
+
+from clojure.lang.atomicreference import AtomicReference
+
 import persistentarraymap
 import types
 
@@ -50,11 +53,13 @@ class Var(ARef, Settable, IFn, IPrintable):
         self.ns = ns
         self.sym = sym
         self.threadBound = False
-        self.root = root
+        self.root = AtomicReference(root)
         self._meta = EMPTY
         self.rev = 0
         self.dynamic = False
         self.public = True
+
+        
         if isinstance(self.root, Unbound):
             self.rev += 1
 
@@ -86,6 +91,9 @@ class Var(ARef, Settable, IFn, IPrintable):
 
         raise IllegalStateException("Can't change/establish root binding "
                                     "of: %s with set" % str(self.sym))
+        
+    def alterRoot(self, fn, args):
+        return self.root.mutate(lambda old: fn(old, *(args if args else ())))
 
     def hasRoot(self):
         return not isinstance(self.root, Unbound)
@@ -93,7 +101,7 @@ class Var(ARef, Settable, IFn, IPrintable):
     def bindRoot(self, root):
         self.validate(self.getValidator(), root)
         oldroot = self.root
-        self.root = root
+        self.root.set(root)
         self.rev += 1
         return self
 
@@ -105,7 +113,7 @@ class Var(ARef, Settable, IFn, IPrintable):
         b = self.getThreadBinding()
         if b is not None:
             return b.val
-        return self.root
+        return self.root.get()
 
     def getThreadBinding(self):
         if self.threadBound:
