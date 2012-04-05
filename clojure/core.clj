@@ -3207,7 +3207,7 @@
 (defn assert
   "Throws an error if val is not true"
   [val]
-  (when val
+  (when-not val
   	    (throw (py/AssertionError))))
 
 
