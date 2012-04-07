@@ -1,3 +1,4 @@
+(ns clojure.core-multimethod)
 
 (definterface IInitable
     (_init [self]))
@@ -50,23 +51,23 @@
     
     (preferMethod [self x y]
         (if (.prefers x y)
-            (raise (Exception (str "Preference conflict in multimethod "
+            (throw (py/Exception (str "Preference conflict in multimethod "
                                    methodName
                                    " "
-                                   X
+                                   x
                                    " is already prefered to "
-                                   Y))))
+                                   y))))
         (py/setattr self
                     "preferTable"
                     (assoc (.getPreferTable self)
-                           X
-                           (conj (get (.getPreferTable self) X #{}) Y)))
+                           x
+                           (conj (get (.getPreferTable self) x #{}) y)))
         (.resetCache self))
 
-    (prefers [x y]
+    (prefers [self x y]
         (let [xprefs (get (.getPreferTable self) x)]
-             (cond (and (not (nil? xperfs)) 
-                        (contains? xperfs y))
+             (cond (and (not (nil? xprefs)) 
+                        (contains? xprefs y))
                     true
                    (some #(.prefers self x (first %)) (parents y))
                     true
@@ -74,19 +75,20 @@
                     true
                    :default
                     false)))
-    (isA [x y]
+    
+    (isA [self x y]
         (isa? hierarchy x y))
     
-    (dominates [x y]
+    (dominates [self x y]
         (or (.prefers self x y)
             (.isA self x y)))
     
-    (resetCache []
+    (resetCache [self]
         (py/setattr self "methodCache" (.getMethodTable self))
         (py/setattr self "cachedHierarchy" @hierarchy)
         methodCache)
     
-    (getMethod [dispatchVal]
+    (getMethod [self dispatchVal]
         (if (not (= cachedHierarchy @hierarchy))
             (.resetCache self))
         (let [targetFn (get methodCache dispatchVal)]
@@ -95,21 +97,54 @@
                  (let [targetFn (.findAndCacheBestMethod self dispatchVal)]
                       (if (not (nil? targetFn))
                           targetFn
-                          targetFn (get (.getMethodTable)
-                                        defaultDispatchVal))))))
-    (getFn [dispatchVal]
+                          (get (.getMethodTable self)
+                               defaultDispatchVal))))))
+    
+    (getFn [self dispatchVal]
         (let [targetFn (.getMethod self dispatchVal)]
              (if (nil? targetFn)
-                 (throw (Exception (str "No method in multimethod " 
+                 (throw (py/Exception (str "No method in multimethod " 
                                         methodName
                                         " for dispatch value "
                                         dispatchVal)))
                  targetFn)))
     
+    (findAndCacheBestMethod [self dispatchVal]
+      (let [be (reduce (fn [bestEntry e]
+                      (if (.isA self dispatchVal (first e))
+                          (if (or (nil? bestEntry) 
+                                  (.dominates self (first e)
+                                                   (first bestEntry)))
+                              e
+                              (if (not (.dominates self (first bestEntry)
+                                                        (first e)))
+                                  (throw (py/Exception (str "Multimple methods in multimethod "
+                                                         methodName
+                                                         " match dispatch value "
+                                                         dispatchVal
+                                                         " -> "
+                                                         (first bestEntry)
+                                                         " and "
+                                                         (first e)
+                                                         ", and neither is prefered")))))))
+                    nil
+                    (.getMethodTable self))]
+           (cond (nil? be)
+                  nil
+                 (is? cachedHierarchy @hierarchy)
+                  (do (py/setattr self 
+                                  "methodCache"
+                                  (assoc methodCache
+                                         dispatchVal
+                                         (second be)))
+                      (second be))
+                  :default
+                   (do (.resetCache self)
+                       (.findAndCacheBestMethod self dispatchVal)))))
     
-    (__call__ [& args]
+    (__call__ [self & args]
         (apply (.getFn self (apply dispatchFn args))
-               args))
+               args)))
                                
                    
                  
