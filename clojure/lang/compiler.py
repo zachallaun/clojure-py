@@ -157,6 +157,8 @@ def compileDef(comp, form):
                 pass
         code.extend(compiledValue)
         code.append((CALL_FUNCTION, 1))
+    else:
+        code.append((LOAD_CONST, v))
     v.setMeta(sym.meta())
     comp.popName()
     return code
@@ -1313,7 +1315,7 @@ class Compiler(object):
                 c.extend(self.compileForm(itm))
             elif itm is None:
                 c.extend(self.compileNone(itm))
-            elif type(itm) in [str, int, types.ClassType, type]:
+            elif type(itm) in [str, int, types.ClassType, type, Var]:
                 c.extend([(LOAD_CONST, itm)])
             elif isinstance(itm, IPersistentVector):
                 c.extend(compileVector(self, itm))
@@ -1364,7 +1366,12 @@ class Compiler(object):
         newcode = expandMetas(code, self)
         newcode.append((RETURN_VALUE, None))
         c = Code(newcode, [], [], False, False, False, str(symbol(self.getNS().__name__, "<string>")), self.filename, 0, None)
-        c = c.to_code()
+        try:
+            c = c.to_code()
+        except:
+            for x in newcode:
+                print x
+            raise
 
         # work on .cljs
         #from clojure.util.freeze import write, read

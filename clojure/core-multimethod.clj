@@ -77,7 +77,7 @@
                     false)))
     
     (isA [self x y]
-        (isa? hierarchy x y))
+        (isa? @hierarchy x y))
     
     (dominates [self x y]
         (or (.prefers self x y)

@@ -1027,7 +1027,9 @@
   "Returns the number of items in the collection. (count nil) returns
   0.  Also works on strings, arrays, and Java Collections and Maps"
   {:added "1.0"}
-  [coll] (py/len coll))
+  [coll] (if (nil? coll)
+             0
+             (py/len coll)))
 
 
 (defn int
@@ -2334,13 +2336,18 @@
 ;     (py/print (str "Elapsed time: " (* (- (pytime) start#) 1000) " msecs"))
 ;     ret#))
 
-(defn hash-set
+(defn set
   "Returns a set of the distinct elements of coll."
   {:added "1.0"
    :static true}
   [coll] (if-let [s (seq coll)]
            (clojure.lang.persistenthashset/create s)
            #{}))
+
+(defn hash-set
+  "Creates a hash set for the arguments"
+  [& args]
+   (set args))
 
 (defn find-ns
   "Returns the namespace named by the symbol or nil if it doesn't exist."
@@ -2638,7 +2645,7 @@
           fs (apply hash-map filters)
           nspublics (ns-publics ns)
           rename (or (:rename fs) {})
-          exclude (hash-set (:exclude fs))
+          exclude (set (:exclude fs))
           to-do (or (:only fs) (keys nspublics))]
       (doseq [sym to-do]
         (when-not (exclude sym)
@@ -2838,8 +2845,8 @@
 (defn map-ns-vals [from to opts]
     (let [from-ns (the-ns from)
           to-ns (the-ns to)
-          only (if (:only opts) (hash-set (map name (:only opts))))
-          exclude (if (:exclude opts) (hash-set (map name (:exclude opts))))
+          only (if (:only opts) (set (map name (:only opts))))
+          exclude (if (:exclude opts) (set (map name (:exclude opts))))
           filterfn (fn filterfn [s]
                        (cond (.startswith (name s) "_")
                              false
@@ -3257,7 +3264,7 @@
   ([h tag] (not-empty
             (let [ta (get (:ancestors h) tag)]
               (if (class? tag)
-                (let [superclasses (hash-set (supers tag))]
+                (let [superclasses (set (supers tag))]
                   (reduce1 into1 superclasses
                     (cons ta
                           (map #(get (:ancestors h) %) superclasses))))
@@ -3362,15 +3369,15 @@
           hierarchy (get options :hierarchy #'global-hierarchy)]
       (check-valid-options options :default :hierarchy)
       `(let [v# (def ~mm-name)]
-         (when-not (and (.hasRoot v#) (instance? clojure.lang.MultiFn (deref v#)))
+         (when-not (and (.hasRoot v#) (instance? clojure.core-multimethod/MultiFn (deref v#)))
            (def ~(with-meta mm-name m)
-                (new clojure.lang.MultiFn ~(name mm-name) ~dispatch-fn ~default ~hierarchy)))))))
+                (make-multi ~(name mm-name) ~dispatch-fn ~default ~hierarchy)))))))
 
 (defmacro defmethod
   "Creates and installs a new method of multimethod associated with dispatch-value. "
   {:added "1.0"}
   [multifn dispatch-val & fn-tail]
-  `(. ~(with-meta multifn {:tag 'clojure.lang.MultiFn}) addMethod ~dispatch-val (fn ~@fn-tail)))
+  `(.addMethod ~(with-meta multifn {:tag 'clojure.lang.MultiFn}) ~dispatch-val (fn ~@fn-tail)))
 
 (defn remove-all-methods
   "Removes all of the methods of multimethod."
