@@ -344,8 +344,8 @@
     (a/assert-equal (disj #{:a :b :c} :a) #{:b :c}))
 
 (deftest set-tests
-    (a/assert-true (= #{} (set [])))
-    (a/assert-true (= #{"foo"} (set ["foo"])))
+    (a/assert-true (= #{} (hash-set [])))
+    (a/assert-true (= #{"foo"} (hash-set ["foo"])))
     (a/assert-true (= #{1 2 3} #{1 3 2}))
 ; FIXME vector/map find (a/assert-true (= #{#{1 2 3} [4 5 6] {7 8} 9 10} #{10 9 [4 5 6] {7 8} #{1 2 3}}))
     (a/assert-true (= #{#{1 2 3} 9 10} #{10 9 #{1 2 3}}))
@@ -786,5 +786,5 @@
 (deftest isa?-tests
 	(a/assert-true (isa? ISeq Seqable))
 	(a/assert-false (isa? Seqable ISeq)))
-	
+
         

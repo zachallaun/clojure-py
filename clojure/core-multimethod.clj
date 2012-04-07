@@ -142,9 +142,21 @@
                    (do (.resetCache self)
                        (.findAndCacheBestMethod self dispatchVal)))))
     
+    (getMethodTable [self]
+        (.-methodTable self))
+    
+    (getPreferTable [self]
+        (.-preferTable self))
+    
     (__call__ [self & args]
         (apply (.getFn self (apply dispatchFn args))
                args)))
                                
-                   
-                 
+                
+(defn make-multi [name dispatchFn defaultDispatchVal hierarchy]
+    (MultiFn name dispatchFn defaultDispatchVal hierarchy
+             {} {} {} nil))
+
+
+
+
