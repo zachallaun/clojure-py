@@ -3,16 +3,14 @@
     (:require [tests.utils :only [deftest]])
     (:require [re]))
 
-(def PatternType (py/type (re/compile "")))
-
 (deftest re-pattern-tests
+    (def PatternType (py/type (re/compile "")))
     (assertions/assert-equal PatternType (py/type (re-pattern "foo")))
     (assertions/assert-true (instance?  PatternType (re-pattern "foo")))
     (assertions/assert-true (instance?  PatternType (re-pattern "^(.*)(foo)(bar)+$"))))
 
-(def MatchObjectType (py/type (.match (re-pattern "^.*$") "foo")))
-
 (deftest re-matcher-tests
+    (def MatchObjectType (py/type (.match (re-pattern "^.*$") "foo")))
     (def testPattern "^(foo).(bar)$")
     (def inputString "foo-bar")
     (def get-matcher (re-matcher (re-pattern testPattern) inputString)) 
