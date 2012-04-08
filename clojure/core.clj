@@ -3421,13 +3421,21 @@
   [multifn] (.getPreferTable multifn))
 
 (require 're)
-(def pattern-type (py/type (re/compile "")))
+(def PatternType (py/type (re/compile "")))
 (defn re-pattern
   "Returns a compiled Python Pattern object, for use, e.g. in
   re-matcher."
   {:added "1.0"
    :static true}
-  [s] (if (instance? pattern-type s)
+  [s] (if (instance? PatternType s)
         s
         (re/compile s)))
+
+(defn re-matcher
+  "Returns a Python Pattern object, for use, e.g. in
+  re-find."
+  { :added "1.0"
+   :static true}
+  [^PatternType s]
+   s) 
 
