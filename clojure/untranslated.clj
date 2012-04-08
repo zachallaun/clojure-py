@@ -160,31 +160,6 @@
         (do (f) :ok)
         :no-test)))
 
-(defn re-matcher
-  "Returns an instance of java.util.regex.Matcher, for use, e.g. in
-  re-find."
-  {:tag java.util.regex.Matcher
-   :added "1.0"
-   :static true}
-  [^java.util.regex.Pattern re s]
-    (. re (matcher s)))
-
-(defn re-groups
-  "Returns the groups from the most recent match/find. If there are no
-  nested groups, returns a string of the entire match. If there are
-  nested groups, returns a vector of the groups, the first element
-  being the entire match."
-  {:added "1.0"
-   :static true}
-  [^java.util.regex.Matcher m]
-    (let [gc  (. m (groupCount))]
-      (if (zero? gc)
-        (. m (group))
-        (loop [ret [] c 0]
-          (if (<= c gc)
-            (recur (conj ret (. m (group c))) (inc c))
-            ret)))))
-
 (defn re-seq
   "Returns a lazy sequence of successive matches of pattern in string,
   using java.util.regex.Matcher.find(), each such match processed with
@@ -1311,13 +1286,6 @@
   {:added "1.0"
    :static true}
   [x] (instance? clojure.lang.IFn x))
-
-(defn fn?
-  "Returns true if x implements Fn, i.e. is an object created via fn."
-  {:added "1.0"
-   :static true}
-  [x] (instance? clojure.lang.Fn x))
-
 
 (defn associative?
  "Returns true if coll implements Associative"
