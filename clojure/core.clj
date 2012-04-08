@@ -3438,9 +3438,10 @@
         s
         (re/compile s)))
 
+(comment
 (defn re-matcher
   "Returns a Python MatchObject, for use, e.g. in
-  re-find. If no match, returns the string itself."
+  re-find. If no match, returns a function that returns the string itself."
   {:added "1.0"
    :static true}
   [^PatternType re s]
@@ -3448,6 +3449,14 @@
         (if (nil? result)
            (fn [] s)
            result)))
+)
+(defn re-matcher
+  "Returns a Python MatchObject, for use, e.g. in
+  re-find. If no match, returns a function that returns the string itself."
+  {:added "1.0"
+   :static true}
+  [^PatternType re s]
+    (.search re s))
 
 (def MatchObjectType (py/type (.match (re-pattern "^.*$") "foo")))
 (defn re-groups
@@ -3458,14 +3467,12 @@
   {:added "1.0"
    :static true}
   [^MatchObjectType m]
-    (if (fn? m)
-      (m)
+    (if (nil? m)
+      []
       (let [gc (count (.groups m))]
-        (if (zero? gc)
-          (.group m 0)
-            (loop [ret [] c 0]
-              (if (<= c gc)
-                (recur (conj ret (.group m c)) (inc c))
-                ret))))))
+         (loop [ret [] c 0]
+            (if (<= c gc)
+               (recur (conj ret (.group m c)) (inc c))
+               ret)))))
 
 
