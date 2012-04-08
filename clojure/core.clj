@@ -3432,10 +3432,9 @@
         (re/compile s)))
 
 (defn re-matcher
-  "Returns a Python Pattern object, for use, e.g. in
+  "Returns a Python MatchObject, for use, e.g. in
   re-find."
-  { :added "1.0"
+  {:added "1.0"
    :static true}
-  [^PatternType s]
-   s) 
-
+  [^PatternType re s]
+    (.match re s))
