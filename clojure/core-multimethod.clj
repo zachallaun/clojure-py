@@ -50,7 +50,7 @@
         (.resetCache self))
     
     (preferMethod [self x y]
-        (if (.prefers x y)
+        (if (.prefers self x y)
             (throw (py/Exception (str "Preference conflict in multimethod "
                                    methodName
                                    " "
