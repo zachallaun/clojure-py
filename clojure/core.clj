@@ -3420,6 +3420,13 @@
    :static true}
   [multifn] (.getPreferTable multifn))
 
+(def FunctionType (py/type (fn x [] "")))
+(defn fn?
+  "Returns true if x s a builtin function, i.e. is an object created via fn."
+  {:added "1.0"
+   :static true}
+  [x] (instance? FunctionType x))
+
 (require 're)
 (def PatternType (py/type (re/compile "")))
 (defn re-pattern
@@ -3433,11 +3440,14 @@
 
 (defn re-matcher
   "Returns a Python MatchObject, for use, e.g. in
-  re-find."
+  re-find. If no match, returns the string itself."
   {:added "1.0"
    :static true}
   [^PatternType re s]
-    (.match re s))
+    (let [result (.search re s)]
+        (if (nil? result)
+           (fn [] s)
+           result)))
 
 (def MatchObjectType (py/type (.match (re-pattern "^.*$") "foo")))
 (defn re-groups
@@ -3448,12 +3458,14 @@
   {:added "1.0"
    :static true}
   [^MatchObjectType m]
-    (let [gc (count (.groups m))]
-      (if (zero? gc)
-        (.group m 0)
-        (loop [ret [] c 0]
-          (if (<= c gc)
-            (recur (conj ret (.group m c)) (inc c))
-            ret)))))
+    (if (fn? m)
+      (m)
+      (let [gc (count (.groups m))]
+        (if (zero? gc)
+          (.group m 0)
+            (loop [ret [] c 0]
+              (if (<= c gc)
+                (recur (conj ret (.group m c)) (inc c))
+                ret))))))
 
 

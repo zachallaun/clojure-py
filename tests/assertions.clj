@@ -27,3 +27,12 @@
     (if (py.bytecode/COMPARE_OP "==" x y)
         true
         (fail x " does not equal " y)))
+
+(defn assert-nil [val]
+    (if (not= nil val) (fail val " is not nil")
+            false))
+
+(defn assert-not-nil [val]
+    (if (= nil val) (fail val " is nil")
+            false))
+
