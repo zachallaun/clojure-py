@@ -7,8 +7,9 @@
     (def PatternType (py/type (re/compile "")))
     (assertions/assert-equal PatternType (py/type (re-pattern "")))
     (assertions/assert-equal PatternType (py/type (re-pattern "foo")))
-    (assertions/assert-true (instance?  PatternType (re-pattern "foo")))
-    (assertions/assert-true (instance?  PatternType (re-pattern "^(.*)(foo)(bar)+$"))))
+    (assertions/assert-true (instance? PatternType (re-pattern "foo")))
+    (assertions/assert-true (instance? PatternType (re-pattern (re-pattern "foo"))))
+    (assertions/assert-true (instance? PatternType (re-pattern "^(.*)(foo)(bar)+$"))))
 
 (deftest re-matcher-tests
     (def MatchObjectType (py/type (.search (re-pattern "^.*$") "foo")))
@@ -23,8 +24,7 @@
     (assertions/assert-equal "foo" (.group get-matcher 1))
     (assertions/assert-equal "bar" (.group get-matcher 2))
     (assertions/assert-not-nil (re-matcher "foo" "foobar"))
-    (assertions/assert-equal "foo" (.group get-matcher 1))
-)
+    (assertions/assert-equal "foo" (.group get-matcher 1)))
 
 (deftest re-groups-tests
    (assertions/assert-equal [""] (re-groups (re-matcher (re-pattern "") "")))
@@ -37,6 +37,7 @@
    (assertions/assert-equal ["foobarbaz" "foo" "barbaz" "baz"] (re-groups (re-matcher (re-pattern "(foo)(bar(baz))") "foobarbaz"))))
 
 (deftest re-seq-tests
-   ;(assertions/assert-equal ["123" "1" "2" "3"] (first (re-seq (re-pattern "(1)(2)(3)") "123")))
-   ;(assertions/assert-equal 1 (count (re-seq (re-pattern "(1)(2)(3)") "123")))
+   (assertions/assert-equal ["1" "1" "1"] (re-seq (re-pattern "(1)") "111"))
+   (assertions/assert-equal [["111" "222"]] (re-seq (re-pattern "(1+)(2+)") "111222"))
+   (assertions/assert-equal ["121" "343" "565"] (re-seq (re-pattern "(\\d+)") "121baz343foo-565bar"))
 )

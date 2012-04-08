@@ -3429,14 +3429,16 @@
 
 (require 're)
 (defn re-pattern
-  "Returns a compiled Python Pattern object, for use, e.g. in
+  "Accepts a compiled regex or a string containing a regex pattern.
+  Returns a compiled Python Pattern object, for use, e.g. in
   re-matcher."
   {:added "1.0"
    :static true}
   [s] (re/compile s))
 
 (defn re-matcher
-  "Returns a Python MatchObject, for use, e.g. in
+  "Accepts a compiled regex or a string containing a regex pattern.
+   Returns a Python MatchObject, for use, e.g. in
   re-find. If no match, returns nil."
   {:added "1.0"
    :static true}
@@ -3460,17 +3462,9 @@
           ret)))))
 
 (defn re-seq
-  "Returns a lazy sequence of successive matches of pattern in string,
-  using re.finditer and re.MatchObject
-  re-groups."
+  "Returns a sequence of successive matches of pattern in string,
+  using re.findall()."
   {:added "1.0"
    :static true}
-  [^PatternType re s]
-  (let [m (re-matcher re s)
-        i (.finditer re s)]
-    ((fn step []
-       (let [item (.next i)]
-       (when (.has_next i))
-         (cons (re-groups item) (lazy-seq (step))))))))
-
+  [re s] (re/findall re s))
 
