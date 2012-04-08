@@ -23,6 +23,7 @@
 (deftest re-groups-tests
    (assertions/assert-equal "foo" (re-groups (re-matcher (re-pattern "foo") "foo")))
    (assertions/assert-equal ["foo" "foo"] (re-groups (re-matcher (re-pattern "(foo)") "foo")))
-   (assertions/assert-equal ["foobar" "foo", "bar"] (re-groups (re-matcher (re-pattern "(foo)(bar)") "foobar")))
+   (assertions/assert-equal ["foobar" "foo" "bar"] (re-groups (re-matcher (re-pattern "(foo)(bar)") "foobar")))
+   (assertions/assert-equal ["foobbbbbarrrbbbaaazzz" "foo" "bbbbbarrr" "bbbaaazzz"] (re-groups (re-matcher (re-pattern "(fo+)(b+.r*)(b*a*z*)") "foobbbbbarrrbbbaaazzz")))
 )
 
