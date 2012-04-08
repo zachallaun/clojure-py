@@ -3438,21 +3438,9 @@
         s
         (re/compile s)))
 
-(comment
 (defn re-matcher
   "Returns a Python MatchObject, for use, e.g. in
-  re-find. If no match, returns a function that returns the string itself."
-  {:added "1.0"
-   :static true}
-  [^PatternType re s]
-    (let [result (.search re s)]
-        (if (nil? result)
-           (fn [] s)
-           result)))
-)
-(defn re-matcher
-  "Returns a Python MatchObject, for use, e.g. in
-  re-find. If no match, returns a function that returns the string itself."
+  re-find. If no match, returns nil."
   {:added "1.0"
    :static true}
   [^PatternType re s]
