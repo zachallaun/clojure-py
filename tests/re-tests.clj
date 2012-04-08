@@ -15,12 +15,12 @@
 (deftest re-matcher-tests
     (def testPattern "^(foo).(bar)$")
     (def inputString "foo-bar")
+    (def get-matcher (re-matcher (re-pattern testPattern) inputString)) 
     (assertions/assert-true (instance? MatchObjectType (re-matcher (re-pattern "^.*$") "foo")))
-    (assertions/assert-true (instance? MatchObjectType (re-matcher (re-pattern testPattern) inputString)))
-    (assertions/assert-equal "foo-bar" (.group (re-matcher (re-pattern testPattern) inputString) 0))
-    (assertions/assert-equal "foo" (.group (re-matcher (re-pattern testPattern) inputString) 1))
-    (assertions/assert-equal "bar" (.group (re-matcher (re-pattern testPattern) inputString) 2))
-)
+    (assertions/assert-true (instance? MatchObjectType get-matcher))
+    (assertions/assert-equal "foo-bar" (.group get-matcher 0))
+    (assertions/assert-equal "foo" (.group get-matcher 1))
+    (assertions/assert-equal "bar" (.group get-matcher 2)))
 
 ;(deftest re-groups-tests
 ;   (assertions/assert-equal "foo" (re-groups (re-pattern "foo" "foo"))))
