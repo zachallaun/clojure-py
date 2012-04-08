@@ -3428,39 +3428,49 @@
   [x] (instance? FunctionType x))
 
 (require 're)
-(def PatternType (py/type (re/compile "")))
 (defn re-pattern
   "Returns a compiled Python Pattern object, for use, e.g. in
   re-matcher."
   {:added "1.0"
    :static true}
-  [s] (if (instance? PatternType s)
-        s
-        (re/compile s)))
+  [s] (re/compile s))
 
 (defn re-matcher
   "Returns a Python MatchObject, for use, e.g. in
   re-find. If no match, returns nil."
   {:added "1.0"
    :static true}
-  [^PatternType re s]
-    (.search re s))
+  [re s] (re/search re s))
 
-(def MatchObjectType (py/type (.match (re-pattern "^.*$") "foo")))
 (defn re-groups
   "Returns the groups from the most recent match/find. If there are no
   nested groups, returns a string of the entire match. If there are
   nested groups, returns a vector of the groups, the first element
-  being the entire match."
+  being the entire match. Can also take a string containing a regular
+  expression, instead of a compiled regex."
   {:added "1.0"
    :static true}
-  [^MatchObjectType m]
-    (if (nil? m)
-      []
-      (let [gc (count (.groups m))]
-         (loop [ret [] c 0]
-            (if (<= c gc)
-               (recur (conj ret (.group m c)) (inc c))
-               ret)))))
+  [m] 
+  (if (nil? m)
+    []
+    (let [gc (count (.groups m))]
+      (loop [ret [] c 0]
+        (if (<= c gc)
+          (recur (conj ret (.group m c)) (inc c))
+          ret)))))
+
+(defn re-seq
+  "Returns a lazy sequence of successive matches of pattern in string,
+  using re.finditer and re.MatchObject
+  re-groups."
+  {:added "1.0"
+   :static true}
+  [^PatternType re s]
+  (let [m (re-matcher re s)
+        i (.finditer re s)]
+    ((fn step []
+       (let [item (.next i)]
+       (when (.has_next i))
+         (cons (re-groups item) (lazy-seq (step))))))))
 
 

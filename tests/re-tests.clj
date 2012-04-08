@@ -21,10 +21,12 @@
     (assertions/assert-true (instance? MatchObjectType get-matcher))
     (assertions/assert-equal "foo-bar" (.group get-matcher 0))
     (assertions/assert-equal "foo" (.group get-matcher 1))
-    (assertions/assert-equal "bar" (.group get-matcher 2)))
+    (assertions/assert-equal "bar" (.group get-matcher 2))
+    (assertions/assert-not-nil (re-matcher "foo" "foobar"))
+    (assertions/assert-equal "foo" (.group get-matcher 1))
+)
 
 (deftest re-groups-tests
-   (assertions/assert-equal [] [])
    (assertions/assert-equal [""] (re-groups (re-matcher (re-pattern "") "")))
    (assertions/assert-equal [""] (re-groups (re-matcher (re-pattern "") "foo")))
    (assertions/assert-equal [] (re-groups (re-matcher (re-pattern "foo") "")))
@@ -32,6 +34,9 @@
    (assertions/assert-equal ["foo" "foo"] (re-groups (re-matcher (re-pattern "(foo)") "foo")))
    (assertions/assert-equal ["foobar" "foo" "bar"] (re-groups (re-matcher (re-pattern "(foo)(bar)") "foobar")))
    (assertions/assert-equal ["foobbbbbarrrbbbaaazzz" "foo" "bbbbbarrr" "bbbaaazzz"] (re-groups (re-matcher (re-pattern "(fo+)(b+.r*)(b*a*z*)") "foobbbbbarrrbbbaaazzz")))
-   (assertions/assert-equal ["foobarbaz" "foo" "barbaz" "baz"] (re-groups (re-matcher (re-pattern "(foo)(bar(baz))") "foobarbaz")))
-)
+   (assertions/assert-equal ["foobarbaz" "foo" "barbaz" "baz"] (re-groups (re-matcher (re-pattern "(foo)(bar(baz))") "foobarbaz"))))
 
+(deftest re-seq-tests
+   ;(assertions/assert-equal ["123" "1" "2" "3"] (first (re-seq (re-pattern "(1)(2)(3)") "123")))
+   ;(assertions/assert-equal 1 (count (re-seq (re-pattern "(1)(2)(3)") "123")))
+)
