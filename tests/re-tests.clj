@@ -20,6 +20,9 @@
     (assertions/assert-equal "foo" (.group get-matcher 1))
     (assertions/assert-equal "bar" (.group get-matcher 2)))
 
-;(deftest re-groups-tests
-;   (assertions/assert-equal "foo" (re-groups (re-pattern "foo" "foo"))))
+(deftest re-groups-tests
+   (assertions/assert-equal "foo" (re-groups (re-matcher (re-pattern "foo") "foo")))
+   (assertions/assert-equal ["foo" "foo"] (re-groups (re-matcher (re-pattern "(foo)") "foo")))
+   (assertions/assert-equal ["foobar" "foo", "bar"] (re-groups (re-matcher (re-pattern "(foo)(bar)") "foobar")))
+)
 

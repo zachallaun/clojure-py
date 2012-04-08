@@ -3438,3 +3438,22 @@
    :static true}
   [^PatternType re s]
     (.match re s))
+
+(def MatchObjectType (py/type (.match (re-pattern "^.*$") "foo")))
+(defn re-groups
+  "Returns the groups from the most recent match/find. If there are no
+  nested groups, returns a string of the entire match. If there are
+  nested groups, returns a vector of the groups, the first element
+  being the entire match."
+  {:added "1.0"
+   :static true}
+  [^MatchObjectType m]
+    (let [gc (count (.groups m))]
+      (if (zero? gc)
+        (.group m 0)
+        (loop [ret [] c 0]
+          (if (<= c gc)
+            (recur (conj ret (.group m c)) (inc c))
+            ret)))))
+
+
