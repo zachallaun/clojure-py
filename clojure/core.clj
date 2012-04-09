@@ -3475,7 +3475,7 @@
 
 (defn re-seq
   "Returns a lazy sequence of successive matches of pattern in string,
-  using java.util.regex.Matcher.find(), each such match processed with
+  using Python re.finditer(), each such match processed with
   re-groups."
   {:added "1.0"
    :static true}
