@@ -3461,10 +3461,28 @@
           (recur (conj ret (.group m c)) (inc c))
           ret)))))
 
+(defn re-finditer
+  "Returns a Python MatchObject Iterator by calling re.finditer()."
+  [re s]
+  (re/finditer (re-pattern re) s))
+
+(defn iter-next
+   "calls next on a Python Iterable, and returns the object, or nil if there are no more." 
+   [iter]
+   (try 
+      (.next iter)
+      (catch py/StopIteration e nil))) 
+
 (defn re-seq
-  "Returns a sequence of successive matches of pattern in string,
-  using re.findall()."
+  "Returns a lazy sequence of successive matches of pattern in string,
+  using java.util.regex.Matcher.find(), each such match processed with
+  re-groups."
   {:added "1.0"
    :static true}
-  [re s] (re/findall re s))
+  [re s]
+  (let [finditer (re-finditer re s)]
+    ((fn step []
+       (let [matcher (iter-next finditer)]
+         (when matcher
+           (cons (re-groups matcher) (lazy-seq (step)))))))))
 
