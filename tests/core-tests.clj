@@ -800,14 +800,16 @@
 (defmulti bar (fn [x y] [x y]))
 (defmethod bar [::rect ::shape] [x y] :rect-shape)
 (defmethod bar [::shape ::rect] [x y] :shape-rect)
+(defmethod bar [::circle ::foo] [x y] :circle-foo)
  
 (prefer-method bar [::rect ::shape] [::shape ::rect])
-
 
 (deftest mult-method-tests
     (a/assert-equal (factorial 0) 1)
     (a/assert-equal (factorial 1) 1)
     (a/assert-equal (factorial 3) 6)
     (a/assert-equal (factorial 7) 5040)
-    (a/assert-equal (bar ::rect ::rect) :rect-shape))
+    (a/assert-equal (bar ::rect ::rect) :rect-shape)
+    (a/assert-equal (bar ::shape ::rect) :shape-rect)
+    (a/assert-equal (bar ::circle ::foo) :circle-foo))
         
