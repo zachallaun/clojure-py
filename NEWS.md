@@ -13,3 +13,6 @@ Here you will find updates on each version of clojure-py.
 * implemented reify
 * implemented defrecord (still missing equality tests)
 * binding is supported
+* implemented defmulti and defmethod
+* support for derive, supers, bases, etc.
+* numerous other functions

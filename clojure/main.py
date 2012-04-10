@@ -35,7 +35,7 @@ from clojure.lang.symbol import Symbol, symbol
 from clojure.lang.var import pushThreadBindings, popThreadBindings
 import cPickle
 
-VERSION = "0.2.3"
+VERSION = "0.2.4"
 
 
 
