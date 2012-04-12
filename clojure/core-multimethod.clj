@@ -126,7 +126,9 @@
                                                          (first bestEntry)
                                                          " and "
                                                          (first e)
-                                                         ", and neither is prefered")))))))
+                                                         ", and neither is prefered")))
+                                  bestEntry))
+                          bestEntry))
                     nil
                     (.getMethodTable self))]
            (cond (nil? be)

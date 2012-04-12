@@ -36,3 +36,7 @@
     (if (= nil val) (fail val " is nil")
             false))
 
+(defn assert-not-equal [x y]
+    (if (py.bytecode/COMPARE_OP "!=" x y)
+        true
+        (fail x " equals " y)))

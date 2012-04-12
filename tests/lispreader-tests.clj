@@ -1,19 +1,18 @@
 (ns tests.lispreader-tests
-    (:require [tests.assertions :as assertions])
+    (:require [tests.assertions :as a])
     (:require [tests.utils :only [deftest]]))
 
 (deftest literal-char-tests
-    (assertions/assert-equal \tab "\t")
-    (assertions/assert-equal \space " ")
-    (assertions/assert-equal \z "z")
-    (assertions/assert-equal \a "a"))
+    (a/assert-equal \tab "\t")
+    (a/assert-equal \space " ")
+    (a/assert-equal \z "z")
+    (a/assert-equal \a "a"))
 
 (deftest syntax-quote-tests
-  (assertions/assert-true (= `() ()))
-  (assertions/assert-true (= `map 'clojure.core/map))
-  (assertions/assert-true (= `if 'clojure.core/if))
-  (assertions/assert-true (= `-> 'clojure.core/->))
-  (assertions/assert-true (= `recur 'recur))
-  (assertions/assert-true (= `quote 'quote))
-  (assertions/assert-true (= `deftest 'tests.utils/deftest))
-  )
+  (a/assert-equal `() ())
+  (a/assert-equal `map 'clojure.core/map)
+  (a/assert-equal `if 'clojure.core/if)
+  (a/assert-equal `-> 'clojure.core/->)
+  (a/assert-equal `recur 'recur)
+  (a/assert-equal `quote 'quote)
+  (a/assert-equal `deftest 'tests.utils/deftest))

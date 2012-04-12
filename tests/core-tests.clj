@@ -7,21 +7,20 @@
 
 ;  (a/assert-true (= 20 (try (py.bytecode/BINARY_ADD 10 10 ))))
 
-  (a/assert-true (= 20
-    (try (py.bytecode/BINARY_ADD 10 10)
-      (finally (py/print "finally")))))
+  (a/assert-equal 20
+      (try (py.bytecode/BINARY_ADD 10 10)
+          (finally (py/print "finally"))))
 
-  (a/assert-true (= 20
-          (try
-            (py.bytecode/BINARY_ADD 10 10)
-            (catch IllegalStateException e "py/print exception"))))
+  (a/assert-equal 20
+      (try
+          (py.bytecode/BINARY_ADD 10 10)
+          (catch IllegalStateException e "py/print exception")))
 
-  (a/assert-true (= 20
-    (try
-      (py.bytecode/BINARY_ADD 10 10)
-            (catch IllegalArgumentException iae "py/print illegalargument")
-            (catch IllegalStateException e "py/print exception"))))
-  )
+  (a/assert-equal 20
+      (try
+          (py.bytecode/BINARY_ADD 10 10)
+          (catch IllegalArgumentException iae "py/print illegalargument")
+          (catch IllegalStateException e "py/print exception"))))
 
 (deftest if-not-tests
     (a/assert-true (if-not false true))
@@ -344,30 +343,27 @@
     (a/assert-equal (disj #{:a :b :c} :a) #{:b :c}))
 
 (deftest set-tests
-    (a/assert-true (= #{} (set [])))
-    (a/assert-true (= #{"foo"} (set ["foo"])))
-    (a/assert-true (= #{1 2 3} #{1 3 2}))
-; FIXME vector/map find (a/assert-true (= #{#{1 2 3} [4 5 6] {7 8} 9 10} #{10 9 [4 5 6] {7 8} #{1 2 3}}))
-    (a/assert-true (= #{#{1 2 3} 9 10} #{10 9 #{1 2 3}}))
-    ;(a/assert-true (not (= #{nil [] {} 0 #{}} #{})))
-    ;(a/assert-true (= (count #{nil [] {} 0 #{}}) 5))
-    (a/assert-true (= (conj #{1} 1) #{1}))
-    (a/assert-true (= (conj #{1} 2) #{2 1}))
-    (a/assert-true (= (reduce + #{1 2 3 4 5}) 15))
-    (a/assert-true (= 4 (get #{1 2 3 4} 4)))
+    (a/assert-equal #{} (set []))
+    (a/assert-equal #{"foo"} (set ["foo"]))
+    (a/assert-equal #{1 2 3} #{1 3 2})
+    ; FIXME vector/map find (a/assert-equal #{#{1 2 3} [4 5 6] {7 8} 9 10} #{10 9 [4 5 6] {7 8} #{1 2 3}})
+    (a/assert-equal #{#{1 2 3} 9 10} #{10 9 #{1 2 3}})
+    ;(a/assert-not-equal #{nil [] {} 0 #{}} #{})
+    ;(a/assert-equal (count #{nil [] {} 0 #{}}) 5)
+    (a/assert-equal (conj #{1} 1) #{1})
+    (a/assert-equal (conj #{1} 2) #{2 1})
+    (a/assert-equal (reduce + #{1 2 3 4 5}) 15)
+    (a/assert-equal 4 (get #{1 2 3 4} 4))
     (a/assert-true (contains? #{1 2 3 4} 4))
     ;(a/assert-true (contains? #{[] nil 0 {} #{}} {}))
     (a/assert-true (contains? #{[1 2 3]} [1 2 3]))
-    ;; FIXME
-    ;; (a/assert-false (= [] {}))
+    ; FIXME (a/assert-false (= [] {}))
     (a/assert-false (= () #{}))
-    (a/assert-true (= () []))
-    (a/assert-true (= [] ()))
-    (a/assert-true (= #{1 2 3} #{1 2 3}))
-    (a/assert-true (= #{#{1 2 3}} #{#{1 2 3}}))
-    (a/assert-true (= #{[4 5 6]} #{[4 5 6]}))
-    
-)
+    (a/assert-equal () [])
+    (a/assert-equal [] ())
+    (a/assert-equal #{1 2 3} #{1 2 3})
+    (a/assert-equal #{#{1 2 3}} #{#{1 2 3}})
+    (a/assert-equal #{[4 5 6]} #{[4 5 6]}))
 
 (deftest find-tests
     (a/assert-equal (.getKey (find {:a 1} :a)) :a)
@@ -689,30 +685,28 @@
     (a/assert-false (if false true false))
     (a/assert-false (if nil true false)))
 
-
 (deftest defrecord-tests
     (defrecord FooRecord [x y] IDeref (deref [self] 42))
     (let [foo (FooRecord 1 2)]
          (a/assert-equal (:x foo) 1)
          (a/assert-equal (:y foo) 2)
-         (a/assert-equal (get foo "x") 1)         
+         (a/assert-equal (get foo "x") 1)
          (a/assert-equal (get foo 'x) 1)
-         (a/assert-equal (vec (keys foo)) ["x" "y"])         
+         (a/assert-equal (vec (keys foo)) ["x" "y"])
          (a/assert-equal (count foo) 2)
          (a/assert-equal (:x (.without foo "x")) nil)
          (a/assert-equal (deref foo) 42)
-         (a/assert-true  (= (FooRecord 1 2) foo))
-         (a/assert-false (= (FooRecord 2 2) foo))
-         (a/assert-true  (= (py/hash (FooRecord 1 2)) 
-         	 	             (py/hash foo)))
-         (a/assert-false (= (py/hash (FooRecord 2 2)) 
-         	 	             (py/hash foo)))))
-         
+         (a/assert-equal (FooRecord 1 2) foo)
+         (a/assert-not-equal (FooRecord 2 2) foo)
+         (a/assert-equal (py/hash (FooRecord 1 2))
+                         (py/hash foo))
+         (a/assert-not-equal (py/hash (FooRecord 2 2))
+                             (py/hash foo))))
 
 (deftest extend-tests
     (extend py/int ISeq {:seq (fn [self] 42)})
     (a/assert-equal (seq 1) 42))
-         
+
 (deftest binding-tests
     (def x 0)
     (def y 0)
@@ -800,14 +794,16 @@
 (defmulti bar (fn [x y] [x y]))
 (defmethod bar [::rect ::shape] [x y] :rect-shape)
 (defmethod bar [::shape ::rect] [x y] :shape-rect)
+(defmethod bar [::circle ::foo] [x y] :circle-foo)
  
 (prefer-method bar [::rect ::shape] [::shape ::rect])
-
 
 (deftest mult-method-tests
     (a/assert-equal (factorial 0) 1)
     (a/assert-equal (factorial 1) 1)
     (a/assert-equal (factorial 3) 6)
     (a/assert-equal (factorial 7) 5040)
-    (a/assert-equal (bar ::rect ::rect) :rect-shape))
+    (a/assert-equal (bar ::rect ::rect) :rect-shape)
+    (a/assert-equal (bar ::shape ::rect) :shape-rect)
+    (a/assert-equal (bar ::circle ::foo) :circle-foo))
         
