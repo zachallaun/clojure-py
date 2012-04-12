@@ -964,8 +964,9 @@ def compileTryCatchFinally(comp, body, catches, fin):
 
     catch_labels = [Label("TryCatch_" + str(ex)) for ex, _, _ in catches]
     finallyLabel = Label("TryCatchFinally")
-    finallyIfLabel = Label("TryCatchFinallyIf")
+    notCaughtLabel = Label("TryCatchFinally2")
     firstExceptLabel = Label("TryFirstExcept")
+    normalEndLabel = Label("NoExceptionLabel")
 
     ret_val = "__ret_val_" + str(RT.nextID())
 
@@ -976,7 +977,8 @@ def compileTryCatchFinally(comp, body, catches, fin):
     code.append((STORE_FAST, ret_val)) # Because I give up with
     # keeping track of what's in the stack
     code.append((POP_BLOCK, None))
-    code.append((JUMP_FORWARD, finallyLabel)) # if all went fine, goto finally
+    code.append((JUMP_FORWARD, normalEndLabel))
+    # if all went fine, goto finally
 
     n = len(catches)
     for i, (exception, var, val) in enumerate(catches):
@@ -984,15 +986,17 @@ def compileTryCatchFinally(comp, body, catches, fin):
         comp.pushAlias(var, FnArgument(var)) # FnArgument will do
 
         last = i == n - 1
+        first = i == 0
 
         # except Exception
-        code.extend(emitLanding(catch_labels[i]))
-        code.append((firstExceptLabel, None))
+        code.append((catch_labels[i], None))
+        if first:
+            code.append((firstExceptLabel, None))
         code.append((DUP_TOP, None))
         code.extend(comp.compile(exception))
         code.append((COMPARE_OP, "exception match"))
-        code.extend(emitJump(catch_labels[i + 1] if not last else
-                             finallyIfLabel))
+        code.extend(emitJump(catch_labels[i + 1] if not last
+                             else notCaughtLabel))
 
         # as e
         code.append((POP_TOP, None))
@@ -1002,15 +1006,16 @@ def compileTryCatchFinally(comp, body, catches, fin):
         # body
         code.extend(comp.compile(val))
         code.append((STORE_FAST, ret_val))
-        code.append((POP_TOP, None))
-        code.append((JUMP_FORWARD, finallyLabel))
+        code.append((JUMP_FORWARD, normalEndLabel))
 
         comp.popAlias(var)
 
-    code.extend(emitLanding(finallyIfLabel))
-    code.append((POP_TOP, None))
-    code.append((POP_TOP, None))
-    code.append((POP_TOP, None))
+    code.extend(emitLanding(notCaughtLabel))
+    code.append((END_FINALLY, None))
+    code.append((normalEndLabel, None))
+    code.append((POP_BLOCK, None))
+    code.append((LOAD_CONST, None))
+
     code.append((finallyLabel, None))
     code.extend(fin)
     code.append((POP_TOP, None))
