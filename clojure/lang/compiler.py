@@ -991,8 +991,9 @@ def compileTryCatchFinally(comp, body, catches, fin):
         first = i == 0
 
         # except Exception
-        code.append((catch_labels[i], None))
+        code.extend(emitLanding(catch_labels[i]))
         if first:
+            # After the emitLanding, so as to split the label
             code.append((firstExceptLabel, None))
         code.append((DUP_TOP, None))
         code.extend(comp.compile(exception))
