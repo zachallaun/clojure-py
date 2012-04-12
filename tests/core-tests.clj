@@ -34,7 +34,10 @@
                        (py.bytecode/BINARY_ADD 10 10)
                        (catch py/Exception e e)
                        (finally 1))))
-  )
+
+  (a/assert-equal 20
+      (try (py.bytecode/BINARY_ADD 10 10)
+          (finally (py/print "finally")))))
 
 (deftest if-not-tests
     (a/assert-true (if-not false true))
@@ -170,11 +173,11 @@
     (a/assert-equal (quot 3 2) 1)
     (a/assert-equal (quot 6 4) 1)
     (a/assert-equal (quot 0 5) 0)
-    
+
     ;(a/assert-equal (quot 2 1/2) 4)
     ;(a/assert-equal (quot 2/3 1/2) 1)
     ;(a/assert-equal (quot 1 2/3) 1)
-    
+
     (a/assert-equal (quot 4.0 2.0) 2.0)
     (a/assert-equal (quot 4.5 2.0) 2.0)
     ; |num| > |div|, num != k * div
@@ -197,7 +200,7 @@
     (a/assert-equal (quot 0 3) 0)
     (a/assert-equal (quot 0 -3) 0)
     )
-    
+
 
 (deftest rem-tests
     (a/assert-equal (rem 23 7) 2)
@@ -357,30 +360,27 @@
     (a/assert-equal (disj #{:a :b :c} :a) #{:b :c}))
 
 (deftest set-tests
-    (a/assert-true (= #{} (set [])))
-    (a/assert-true (= #{"foo"} (set ["foo"])))
-    (a/assert-true (= #{1 2 3} #{1 3 2}))
-; FIXME vector/map find (a/assert-true (= #{#{1 2 3} [4 5 6] {7 8} 9 10} #{10 9 [4 5 6] {7 8} #{1 2 3}}))
-    (a/assert-true (= #{#{1 2 3} 9 10} #{10 9 #{1 2 3}}))
-    ;(a/assert-true (not (= #{nil [] {} 0 #{}} #{})))
-    ;(a/assert-true (= (count #{nil [] {} 0 #{}}) 5))
-    (a/assert-true (= (conj #{1} 1) #{1}))
-    (a/assert-true (= (conj #{1} 2) #{2 1}))
-    (a/assert-true (= (reduce + #{1 2 3 4 5}) 15))
-    (a/assert-true (= 4 (get #{1 2 3 4} 4)))
+    (a/assert-equal #{} (set []))
+    (a/assert-equal #{"foo"} (set ["foo"]))
+    (a/assert-equal #{1 2 3} #{1 3 2})
+    ; FIXME vector/map find (a/assert-equal #{#{1 2 3} [4 5 6] {7 8} 9 10} #{10 9 [4 5 6] {7 8} #{1 2 3}})
+    (a/assert-equal #{#{1 2 3} 9 10} #{10 9 #{1 2 3}})
+    ;(a/assert-not-equal #{nil [] {} 0 #{}} #{})
+    ;(a/assert-equal (count #{nil [] {} 0 #{}}) 5)
+    (a/assert-equal (conj #{1} 1) #{1})
+    (a/assert-equal (conj #{1} 2) #{2 1})
+    (a/assert-equal (reduce + #{1 2 3 4 5}) 15)
+    (a/assert-equal 4 (get #{1 2 3 4} 4))
     (a/assert-true (contains? #{1 2 3 4} 4))
     ;(a/assert-true (contains? #{[] nil 0 {} #{}} {}))
     (a/assert-true (contains? #{[1 2 3]} [1 2 3]))
-    ;; FIXME
-    ;; (a/assert-false (= [] {}))
+    ; FIXME (a/assert-false (= [] {}))
     (a/assert-false (= () #{}))
-    (a/assert-true (= () []))
-    (a/assert-true (= [] ()))
-    (a/assert-true (= #{1 2 3} #{1 2 3}))
-    (a/assert-true (= #{#{1 2 3}} #{#{1 2 3}}))
-    (a/assert-true (= #{[4 5 6]} #{[4 5 6]}))
-    
-)
+    (a/assert-equal () [])
+    (a/assert-equal [] ())
+    (a/assert-equal #{1 2 3} #{1 2 3})
+    (a/assert-equal #{#{1 2 3}} #{#{1 2 3}})
+    (a/assert-equal #{[4 5 6]} #{[4 5 6]}))
 
 (deftest find-tests
     (a/assert-equal (.getKey (find {:a 1} :a)) :a)
@@ -427,8 +427,8 @@
 ;;; http://blog.jayfields.com/2011/03/clojure-if-let-and-when-let.html
 
 (deftest if-let-tests
-	(a/assert-equal (if-let [a 4] (+ a 4) (+ 10 10)) 8)
-	(a/assert-equal (if-let [a nil] (+ a 4) (+ 10 10)) 20))
+        (a/assert-equal (if-let [a 4] (+ a 4) (+ 10 10)) 8)
+        (a/assert-equal (if-let [a nil] (+ a 4) (+ 10 10)) 20))
 
 
 (deftest when-let-tests
@@ -475,7 +475,7 @@
 
 (deftest mapcat-tests
     (a/assert-equal (mapcat reverse [[3 2 1 0] [6 5 4] [9 8 7]]) [0 1 2 3 4 5 6 7 8 9]))
- 
+
 (deftest filter-tests
     (a/assert-equal (filter even? [1 2 3 4 5]) [2 4]))
 
@@ -522,7 +522,7 @@
     (a/assert-equal (merge {:a 1 :b 2} {:a 3 :c 4}) {:a 3 :b 2 :c 4}))
 
 (deftest merge-with-tests
-    (a/assert-equal (merge-with + 
+    (a/assert-equal (merge-with +
                    {:a 1  :b 2}
                    {:a 9  :b 98 :c 0})
                   {:c 0, :a 10, :b 100}))
@@ -559,7 +559,7 @@
     (a/assert-equal (nth [1 2 3] 1) 2))
 
 (deftest partition-tests
-    (a/assert-equal (partition 4 (range 20)) 
+    (a/assert-equal (partition 4 (range 20))
                   '((0 1 2 3) (4 5 6 7) (8 9 10 11) (12 13 14 15) (16 17 18 19)))
     (a/assert-equal (partition 4 6 ["a" "b" "c" "d"] (range 20))
                   '((0 1 2 3) (6 7 8 9) (12 13 14 15) (18 19 "a" "b"))))
@@ -571,7 +571,7 @@
     (doseq [x [1 2 3]
                           y [1 2 3]]
                          (py/print (* x y))))
-;; prints      
+;; prints
 ;;[1 2 3 2 4 6 3 6 9]
 
 (deftest do-times
@@ -603,7 +603,7 @@
 
 (deftest memfn-tests
     (a/assert-equal (let [f (memfn join ch)]
-                       (f "," ["1" "2"])) 
+                       (f "," ["1" "2"]))
                   "1,2"))
 
 (deftest find-ns-tests
@@ -649,7 +649,7 @@
 (deftest map-entry-tests
     (a/assert-equal (-> {:1 :2} first first) :1)
     (a/assert-equal (-> {:1 :2} first second) :2))
-    
+
 
 (deftest reduce-tests
     (a/assert-equal (reduce + '(1 2 3 4)) 10)
@@ -702,30 +702,28 @@
     (a/assert-false (if false true false))
     (a/assert-false (if nil true false)))
 
-
 (deftest defrecord-tests
     (defrecord FooRecord [x y] IDeref (deref [self] 42))
     (let [foo (FooRecord 1 2)]
          (a/assert-equal (:x foo) 1)
          (a/assert-equal (:y foo) 2)
-         (a/assert-equal (get foo "x") 1)         
+         (a/assert-equal (get foo "x") 1)
          (a/assert-equal (get foo 'x) 1)
-         (a/assert-equal (vec (keys foo)) ["x" "y"])         
+         (a/assert-equal (vec (keys foo)) ["x" "y"])
          (a/assert-equal (count foo) 2)
          (a/assert-equal (:x (.without foo "x")) nil)
          (a/assert-equal (deref foo) 42)
-         (a/assert-true  (= (FooRecord 1 2) foo))
-         (a/assert-false (= (FooRecord 2 2) foo))
-         (a/assert-true  (= (py/hash (FooRecord 1 2)) 
-         	 	             (py/hash foo)))
-         (a/assert-false (= (py/hash (FooRecord 2 2)) 
-         	 	             (py/hash foo)))))
-         
+         (a/assert-equal (FooRecord 1 2) foo)
+         (a/assert-not-equal (FooRecord 2 2) foo)
+         (a/assert-equal (py/hash (FooRecord 1 2))
+                         (py/hash foo))
+         (a/assert-not-equal (py/hash (FooRecord 2 2))
+                             (py/hash foo))))
 
 (deftest extend-tests
     (extend py/int ISeq {:seq (fn [self] 42)})
     (a/assert-equal (seq 1) 42))
-         
+
 (deftest binding-tests
     (def x 0)
     (def y 0)
@@ -746,11 +744,11 @@
 
 (deftype MutatableCloser [state]
         IClosable
-        (__enter__ [self] 
+        (__enter__ [self]
             (py/setattr self "state" :enter))
         (__exit__ [self]
             (py/setattr self "state" :exit)))
-    
+
 (deftest with-open-tests
     (let [mc (MutatableCloser :unknown)]
         (a/assert-equal (.-state mc) :unknown)
@@ -765,7 +763,7 @@
          (a/assert-equal (seq (gen 3)) [0 1 2])))
 
 (deftest bases-tests
-    (a/assert-equal (bases ISeq) 
+    (a/assert-equal (bases ISeq)
                              [IPersistentCollection]))
 
 (deftest supers-tests
@@ -779,25 +777,49 @@
 (def AlterVarInt 0)
 
 (deftest alter-var-root-tests
-	(a/assert-equal AlterVarInt 0)
-	(alter-var-root #'AlterVarInt inc)
-	(a/assert-equal AlterVarInt 1))
+        (a/assert-equal AlterVarInt 0)
+        (alter-var-root #'AlterVarInt inc)
+        (a/assert-equal AlterVarInt 1))
 
 (def ^:dynamic unbound)
 (def bound 1)
 
 (deftest bound?-tests
-	(a/assert-true (bound? #'bound))
-	(a/assert-false (bound? #'bound #'unbound)))
+        (a/assert-true (bound? #'bound))
+        (a/assert-false (bound? #'bound #'unbound)))
 
 (deftest thread-bound?-tests
-	(a/assert-false (thread-bound? #'unbound))
-	(binding [unbound 1]
-		(a/assert-true (thread-bound? #'unbound))
-		(a/assert-false (thread-bound? #'unbound #'bound))))
+        (a/assert-false (thread-bound? #'unbound))
+        (binding [unbound 1]
+                (a/assert-true (thread-bound? #'unbound))
+                (a/assert-false (thread-bound? #'unbound #'bound))))
 
 (deftest isa?-tests
-	(a/assert-true (isa? ISeq Seqable))
-	(a/assert-false (isa? Seqable ISeq)))
-	
-        
+        (a/assert-true (isa? ISeq Seqable))
+        (a/assert-false (isa? Seqable ISeq)))
+
+(defmulti factorial identity)
+
+(defmethod factorial 0 [_]  1)
+(defmethod factorial :default [num]
+    (* num (factorial (dec num))))
+
+
+
+(derive ::rect ::shape)
+
+(defmulti bar (fn [x y] [x y]))
+(defmethod bar [::rect ::shape] [x y] :rect-shape)
+(defmethod bar [::shape ::rect] [x y] :shape-rect)
+(defmethod bar [::circle ::foo] [x y] :circle-foo)
+
+(prefer-method bar [::rect ::shape] [::shape ::rect])
+
+(deftest mult-method-tests
+    (a/assert-equal (factorial 0) 1)
+    (a/assert-equal (factorial 1) 1)
+    (a/assert-equal (factorial 3) 6)
+    (a/assert-equal (factorial 7) 5040)
+    (a/assert-equal (bar ::rect ::rect) :rect-shape)
+    (a/assert-equal (bar ::shape ::rect) :shape-rect)
+    (a/assert-equal (bar ::circle ::foo) :circle-foo))

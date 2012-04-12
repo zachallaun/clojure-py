@@ -28,6 +28,7 @@ _AMP_ = symbol("&")
 _FN_ = symbol("fn")
 _VAR_ = symbol("var")
 _APPLY_ = symbol("apply")
+_DEREF_ = symbol("deref")
 _HASHMAP_ = symbol("clojure.core", "hashmap")
 _CONCAT_ = symbol("clojure.core", "concat")
 _LIST_ = symbol("clojure.core", "list")
@@ -1065,7 +1066,7 @@ macros = {'\"': stringReader,
           "`": SyntaxQuoteReader(),
           "~": unquoteReader,
           "\\": characterReader,
-          "@": derefNotImplemented, # temporary?
+          "@": wrappingReader(_DEREF_)
           }
 
 dispatchMacros = {"\"": regexReader,

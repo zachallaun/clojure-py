@@ -1027,7 +1027,9 @@
   "Returns the number of items in the collection. (count nil) returns
   0.  Also works on strings, arrays, and Java Collections and Maps"
   {:added "1.0"}
-  [coll] (py/len coll))
+  [coll] (if (nil? coll)
+             0
+             (py/len coll)))
 
 
 (defn int
@@ -2342,6 +2344,11 @@
            (clojure.lang.persistenthashset/create s)
            #{}))
 
+(defn hash-set
+  "Creates a hash set for the arguments"
+  [& args]
+   (set args))
+
 (defn find-ns
   "Returns the namespace named by the symbol or nil if it doesn't exist."
   {:added "1.0"}
@@ -3310,4 +3317,106 @@
          :ancestors (tf (:ancestors h) tag td parent ta)
          :descendants (tf (:descendants h) parent ta tag td)})
       h))))
+
+(require 'clojure.core-multimethod :only '[make-multi])
+
+(defn ^:private check-valid-options
+  "Throws an exception if the given option map contains keys not listed
+  as valid, else returns nil."
+  [options & valid-keys]
+  (when (seq (apply disj (apply hash-set (keys options)) valid-keys))
+    (throw
+      (py/Exception.
+        (apply str "Only these options are valid: "
+          (first valid-keys)
+          (map #(str ", " %) (rest valid-keys)))))))
+
+(defmacro defmulti
+  "Creates a new multimethod with the associated dispatch function.
+  The docstring and attribute-map are optional.
+
+  Options are key-value pairs and may be one of:
+    :default    the default dispatch value, defaults to :default
+    :hierarchy  the isa? hierarchy to use for dispatching
+                defaults to the global hierarchy"
+  {:arglists '([name docstring? attr-map? dispatch-fn & options])
+   :added "1.0"}
+  [mm-name & options]
+  (let [docstring   (if (string? (first options))
+                      (first options)
+                      nil)
+        options     (if (string? (first options))
+                      (next options)
+                      options)
+        m           (if (map? (first options))
+                      (first options)
+                      {})
+        options     (if (map? (first options))
+                      (next options)
+                      options)
+        dispatch-fn (first options)
+        options     (next options)
+        m           (if docstring
+                      (assoc m :doc docstring)
+                      m)
+        m           (if (meta mm-name)
+                      (conj (meta mm-name) m)
+                      m)]
+    (when (= (count options) 1)
+      (throw (py/Exception. "The syntax for defmulti has changed. Example: (defmulti name dispatch-fn :default dispatch-value)")))
+    (let [options   (apply hash-map options)
+          default   (get options :default :default)
+          hierarchy (get options :hierarchy #'global-hierarchy)]
+      (check-valid-options options :default :hierarchy)
+      `(let [v# (def ~mm-name)]
+         (when-not (and (.hasRoot v#) (instance? clojure.core-multimethod/MultiFn (deref v#)))
+           (def ~(with-meta mm-name m)
+                (make-multi ~(name mm-name) ~dispatch-fn ~default ~hierarchy)))))))
+
+(defmacro defmethod
+  "Creates and installs a new method of multimethod associated with dispatch-value. "
+  {:added "1.0"}
+  [multifn dispatch-val & fn-tail]
+  `(.addMethod ~(with-meta multifn {:tag 'clojure.lang.MultiFn}) ~dispatch-val (fn ~@fn-tail)))
+
+(defn remove-all-methods
+  "Removes all of the methods of multimethod."
+  {:added "1.2"
+   :static true} 
+ [multifn]
+ (.reset multifn))
+
+(defn remove-method
+  "Removes the method of multimethod associated with dispatch-value."
+  {:added "1.0"
+   :static true}
+ [multifn dispatch-val]
+ (.removeMethod multifn dispatch-val))
+
+(defn prefer-method
+  "Causes the multimethod to prefer matches of dispatch-val-x over dispatch-val-y 
+   when there is a conflict"
+  {:added "1.0"
+   :static true}
+  [multifn dispatch-val-x dispatch-val-y]
+  (.preferMethod multifn dispatch-val-x dispatch-val-y))
+
+(defn methods
+  "Given a multimethod, returns a map of dispatch values -> dispatch fns"
+  {:added "1.0"
+   :static true}
+  [multifn] (.getMethodTable multifn))
+
+(defn get-method
+  "Given a multimethod and a dispatch value, returns the dispatch fn
+  that would apply to that value, or nil if none apply and no default"
+  {:added "1.0"
+   :static true}
+  [multifn dispatch-val] (.getMethod multifn dispatch-val))
+
+(defn prefers
+  "Given a multimethod, returns a map of preferred value -> set of other values"
+  {:added "1.0"
+   :static true}
+  [multifn] (.getPreferTable multifn))
 

@@ -27,3 +27,8 @@
     (if (py.bytecode/COMPARE_OP "==" x y)
         true
         (fail x " does not equal " y)))
+
+(defn assert-not-equal [x y]
+    (if (py.bytecode/COMPARE_OP "!=" x y)
+        true
+        (fail x " equals " y)))

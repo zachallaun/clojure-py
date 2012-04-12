@@ -624,7 +624,6 @@ miscellaneous_FAIL = [
     # always raises
     "#<unreadable object>",
     # deref not implemented (yet)
-    "@foo",
     # reader eval not implemented (yet)
     "#=foo",
     ]
