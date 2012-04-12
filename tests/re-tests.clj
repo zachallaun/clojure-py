@@ -41,5 +41,11 @@
    (assertions/assert-equal [["121" "121"] ["343" "343"] ["565" "565"]] (re-seq (re-pattern "(\\d+)") "121baz343foo-565bar"))
    (assertions/assert-equal [["111222" "111" "222"]] (re-seq (re-pattern "(1+)(2+)") "111222"))
    (assertions/assert-equal [["111222" "111" "222"]] (re-seq (re-pattern "(1+)(2+)") "111222"))
-   (assertions/assert-equal [["111222" "111" "222"] ["11222" "11" "222"] ["11112" "1111" "2"]] (re-seq (re-pattern "(1+)(2+)") "1112221122211112") )
+   (assertions/assert-equal [["111222" "111" "222"] ["11222" "11" "222"] ["11112" "1111" "2"]] (re-seq (re-pattern "(1+)(2+)") "1112221122211112") ))
+
+(deftest re-matches-tests
+   (assertions/assert-equal ["foo"] (re-matches ".*" "foo"))
+   (assertions/assert-equal ["foo", "foo"] (re-matches "(.*)" "foo"))
+   (assertions/assert-equal ["foobar", "foo", "bar"] (re-matches "(f.*)(b.*)" "foobar"))
+   (assertions/assert-equal nil (re-matches "(f.*)(b.*)" "1foobar"))
 )
