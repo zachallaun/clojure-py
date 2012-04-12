@@ -21,6 +21,19 @@
       (py.bytecode/BINARY_ADD 10 10)
             (catch IllegalArgumentException iae "py/print illegalargument")
             (catch IllegalStateException e "py/print exception"))))
+
+  (a/assert-true (= 20
+    (try
+      (py.bytecode/BINARY_ADD 10 10)
+            (catch IllegalArgumentException iae "py/print illegalargument")
+            (catch IllegalStateException e "py/print exception")
+            (finally 3))))
+
+  (a/assert-false (= 1
+                     (try
+                       (py.bytecode/BINARY_ADD 10 10)
+                       (catch py/Exception e e)
+                       (finally 1))))
   )
 
 (deftest if-not-tests
