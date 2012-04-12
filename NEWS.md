@@ -5,7 +5,7 @@ Here you will find updates on each version of clojure-py.
 
 
 
-0.2.0 Updates (version next)
+0.2.0 (4/12/2012)
 ----------------------------
 
 * implemented deftype with protocol support
