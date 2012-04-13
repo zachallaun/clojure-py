@@ -142,7 +142,7 @@ def compileDef(comp, form):
     comp.pushName(RT.name(sym))
     code = []
     v = internVar(comp.getNS(), sym)
-    
+
     v.setDynamic(True)
     if len(form) == 3:
         code.append((LOAD_CONST, v))
@@ -821,7 +821,7 @@ def compileTry(comp, form):
     fin = None
     for subform in form:
         # FIXME, could also be a Cons, LazySeq, etc.
-        #if not isinstance(subform, IPersistentList): 
+        #if not isinstance(subform, IPersistentList):
         #    raise CompilerException("try arguments must be lists", form)
         if not len(subform):
             raise CompilerException("try arguments must not be empty", form)
@@ -932,7 +932,9 @@ def compileTryCatch(comp, body, catches):
 
         # except Exception
         code.extend(emitLanding(catch_labels[i]))
-        code.append((firstExceptLabel, None))
+        if i == 0:
+            # first time only
+            code.append((firstExceptLabel, None))
         code.append((DUP_TOP, None))
         code.extend(comp.compile(exception))
         code.append((COMPARE_OP, "exception match"))
