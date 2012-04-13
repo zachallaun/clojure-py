@@ -875,6 +875,10 @@ def compileTry(comp, form):
         raise CompilerException("Try does not accept else statements on " +\
                                     "their own", form)
 
+    if fin and catch and not els:
+        return compileTryCatchFinally(comp, comp.compile(body), catch,
+                                      comp.compile(fin))
+
 def compileTryFinally(body, fin):
     """
     Compiles the try/finally form. Takes the body of the try statement, and the
@@ -953,6 +957,76 @@ def compileTryCatch(comp, body, catches):
     code.append((LOAD_FAST, ret_val))
 
     return code
+
+def compileTryCatchFinally(comp, body, catches, fin):
+    """
+    Compiles the try/catch/finally form.
+    """
+    assert len(catches), "Calling compileTryCatch with empty catches list"
+
+    catch_labels = [Label("TryCatch_" + str(ex)) for ex, _, _ in catches]
+    finallyLabel = Label("TryCatchFinally")
+    notCaughtLabel = Label("TryCatchFinally2")
+    firstExceptLabel = Label("TryFirstExcept")
+    normalEndLabel = Label("NoExceptionLabel")
+
+    ret_val = "__ret_val_" + str(RT.nextID())
+
+    code = [
+        (SETUP_FINALLY, finallyLabel),
+        (SETUP_EXCEPT, firstExceptLabel)] # First catch label
+    code.extend(body)
+    code.append((STORE_FAST, ret_val)) # Because I give up with
+    # keeping track of what's in the stack
+    code.append((POP_BLOCK, None))
+    code.append((JUMP_FORWARD, normalEndLabel))
+    # if all went fine, goto finally
+
+    n = len(catches)
+    for i, (exception, var, val) in enumerate(catches):
+
+        comp.pushAlias(var, FnArgument(var)) # FnArgument will do
+
+        last = i == n - 1
+        first = i == 0
+
+        # except Exception
+        code.extend(emitLanding(catch_labels[i]))
+        if first:
+            # After the emitLanding, so as to split the label
+            code.append((firstExceptLabel, None))
+        code.append((DUP_TOP, None))
+        code.extend(comp.compile(exception))
+        code.append((COMPARE_OP, "exception match"))
+        code.extend(emitJump(catch_labels[i + 1] if not last
+                             else notCaughtLabel))
+
+        # as e
+        code.append((POP_TOP, None))
+        code.append((STORE_FAST, var.name))
+        code.append((POP_TOP, None))
+
+        # body
+        code.extend(comp.compile(val))
+        code.append((STORE_FAST, ret_val))
+        code.append((JUMP_FORWARD, normalEndLabel))
+
+        comp.popAlias(var)
+
+    code.extend(emitLanding(notCaughtLabel))
+    code.append((END_FINALLY, None))
+    code.append((normalEndLabel, None))
+    code.append((POP_BLOCK, None))
+    code.append((LOAD_CONST, None))
+
+    code.append((finallyLabel, None))
+    code.extend(fin)
+    code.append((POP_TOP, None))
+    code.append((END_FINALLY, None))
+    code.append((LOAD_FAST, ret_val))
+
+    return code
+
 
 """
 We should mention a few words about aliases. Aliases are created when the
