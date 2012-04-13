@@ -3420,3 +3420,97 @@
    :static true}
   [multifn] (.getPreferTable multifn))
 
+(def FunctionType (py/type (fn x [] "")))
+(defn fn?
+  "Returns true if x s a builtin function, i.e. is an object created via fn."
+  {:added "1.0"
+   :static true}
+  [x] (instance? FunctionType x))
+
+(require 're)
+(defn re-pattern
+  "Accepts a compiled regex or a string containing a regex pattern.
+  Returns a compiled Python Pattern object, for use, e.g. in
+  re-matcher."
+  {:added "1.0"
+   :static true}
+  [s] (re/compile s))
+
+(defn re-matcher
+  "Accepts a compiled regex or a string containing a regex pattern.
+   Returns a Python MatchObject. If no match, returns nil."
+  {:added "1.0"
+   :static true}
+  [re s] (re/search re s))
+
+(defn re-groups
+  "Returns the groups from the most recent match/find. If there are no
+  nested groups, returns a string of the entire match. If there are
+  nested groups, returns a vector of the groups, the first element
+  being the entire match. Can also take a string containing a regular
+  expression, instead of a compiled regex."
+  {:added "1.0"
+   :static true}
+  [m] 
+  (if (nil? m)
+    []
+    (let [gc (count (.groups m))]
+      (loop [ret [] c 0]
+        (if (<= c gc)
+          (recur (conj ret (.group m c)) (inc c))
+          ret)))))
+
+(defn re-finditer
+  "Returns a Python MatchObject Iterator by calling re.finditer()."
+  [re s]
+  (re/finditer (re-pattern re) s))
+
+(defn re-finditer-next
+   "calls next on a Python Iterable returned from re.find, and returns the MatchObject, or nil if there are no more." 
+   [iter]
+   (try 
+      (.next iter)
+      (catch py/StopIteration e nil))) 
+
+(defn re-seq
+  "Returns a lazy sequence of successive matches of pattern in string,
+  using Python re.finditer(), each such match processed with
+  re-groups."
+  {:added "1.0"
+   :static true}
+  [re s]
+  (let [finditer (re-finditer re s)]
+    ((fn step []
+       (let [matcher (re-finditer-next finditer)]
+         (when matcher
+           (cons (re-groups matcher) (lazy-seq (step)))))))))
+
+(defn re-matches
+  "Returns the match, if any, of string to pattern, using
+  re-matcher.  Uses re-groups to return the groups."
+  {:added "1.0"
+   :static true}
+  [re s]
+  (let [m (re-matcher re s)]
+     (let [groups (re-groups m)]
+        (if (and (not (nil? groups)) 
+                 (= s (first groups)))
+             groups
+             nil))))
+
+(defn re-find
+  "Given a Python find iterator as returned from finditer, 
+   returns the next regex match, if any, of string to 
+   pattern. Can also pass in a regex and string, and re-find
+   will call finditer itself. Uses re-groups to return the groups."
+  {:added "1.0"
+   :static true}
+  ([finditer]
+    (let [match (re-finditer-next finditer)]
+      (when (not(nil? match))
+        (re-groups match))))
+  ([re s]
+   (let [finditer (re-finditer re s)]
+     (re-find finditer))))
+
+

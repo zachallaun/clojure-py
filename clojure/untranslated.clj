@@ -160,78 +160,6 @@
         (do (f) :ok)
         :no-test)))
 
-(defn re-pattern
-  "Returns an instance of java.util.regex.Pattern, for use, e.g. in
-  re-matcher."
-  {:tag java.util.regex.Pattern
-   :added "1.0"
-   :static true}
-  [s] (if (instance? java.util.regex.Pattern s)
-        s
-        (. java.util.regex.Pattern (compile s))))
-
-(defn re-matcher
-  "Returns an instance of java.util.regex.Matcher, for use, e.g. in
-  re-find."
-  {:tag java.util.regex.Matcher
-   :added "1.0"
-   :static true}
-  [^java.util.regex.Pattern re s]
-    (. re (matcher s)))
-
-(defn re-groups
-  "Returns the groups from the most recent match/find. If there are no
-  nested groups, returns a string of the entire match. If there are
-  nested groups, returns a vector of the groups, the first element
-  being the entire match."
-  {:added "1.0"
-   :static true}
-  [^java.util.regex.Matcher m]
-    (let [gc  (. m (groupCount))]
-      (if (zero? gc)
-        (. m (group))
-        (loop [ret [] c 0]
-          (if (<= c gc)
-            (recur (conj ret (. m (group c))) (inc c))
-            ret)))))
-
-(defn re-seq
-  "Returns a lazy sequence of successive matches of pattern in string,
-  using java.util.regex.Matcher.find(), each such match processed with
-  re-groups."
-  {:added "1.0"
-   :static true}
-  [^java.util.regex.Pattern re s]
-  (let [m (re-matcher re s)]
-    ((fn step []
-       (when (. m (find))
-         (cons (re-groups m) (lazy-seq (step))))))))
-
-(defn re-matches
-  "Returns the match, if any, of string to pattern, using
-  java.util.regex.Matcher.matches().  Uses re-groups to return the
-  groups."
-  {:added "1.0"
-   :static true}
-  [^java.util.regex.Pattern re s]
-    (let [m (re-matcher re s)]
-      (when (. m (matches))
-        (re-groups m))))
-
-
-(defn re-find
-  "Returns the next regex match, if any, of string to pattern, using
-  java.util.regex.Matcher.find().  Uses re-groups to return the
-  groups."
-  {:added "1.0"
-   :static true}
-  ([^java.util.regex.Matcher m]
-   (when (. m (find))
-     (re-groups m)))
-  ([^java.util.regex.Pattern re s]
-   (let [m (re-matcher re s)]
-     (re-find m))))
-
 (defn rand
   "Returns a random floating point number between 0 (inclusive) and
   n (default 1) (exclusive)."
@@ -1321,13 +1249,6 @@
   {:added "1.0"
    :static true}
   [x] (instance? clojure.lang.IFn x))
-
-(defn fn?
-  "Returns true if x implements Fn, i.e. is an object created via fn."
-  {:added "1.0"
-   :static true}
-  [x] (instance? clojure.lang.Fn x))
-
 
 (defn associative?
  "Returns true if coll implements Associative"
