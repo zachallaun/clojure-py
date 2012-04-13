@@ -3438,8 +3438,7 @@
 
 (defn re-matcher
   "Accepts a compiled regex or a string containing a regex pattern.
-   Returns a Python MatchObject, for use, e.g. in
-  re-find. If no match, returns nil."
+   Returns a Python MatchObject. If no match, returns nil."
   {:added "1.0"
    :static true}
   [re s] (re/search re s))
@@ -3466,7 +3465,7 @@
   [re s]
   (re/finditer (re-pattern re) s))
 
-(defn find-iter-next
+(defn re-finditer-next
    "calls next on a Python Iterable returned from re.find, and returns the MatchObject, or nil if there are no more." 
    [iter]
    (try 
@@ -3482,14 +3481,13 @@
   [re s]
   (let [finditer (re-finditer re s)]
     ((fn step []
-       (let [matcher (find-iter-next finditer)]
+       (let [matcher (re-finditer-next finditer)]
          (when matcher
            (cons (re-groups matcher) (lazy-seq (step)))))))))
 
 (defn re-matches
   "Returns the match, if any, of string to pattern, using
-  java.util.regex.Matcher.matches().  Uses re-groups to return the
-  groups."
+  re-matcher.  Uses re-groups to return the groups."
   {:added "1.0"
    :static true}
   [re s]
@@ -3499,5 +3497,20 @@
                  (= s (first groups)))
              groups
              nil))))
+
+(defn re-find
+  "Given a Python find iterator as returned from finditer, 
+   returns the next regex match, if any, of string to 
+   pattern. Can also pass in a regex and string, and re-find
+   will call finditer itself. Uses re-groups to return the groups."
+  {:added "1.0"
+   :static true}
+  ([finditer]
+    (let [match (re-finditer-next finditer)]
+      (when (not(nil? match))
+        (re-groups match))))
+  ([re s]
+   (let [finditer (re-finditer re s)]
+     (re-find finditer))))
 
 
