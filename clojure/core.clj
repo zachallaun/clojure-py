@@ -2336,6 +2336,32 @@
 ;     (py/print (str "Elapsed time: " (* (- (pytime) start#) 1000) " msecs"))
 ;     ret#))
 
+(defn macroexpand-1
+  "If form represents a macro form, returns its expansion,
+  else returns form."
+  {:added "1.0"
+   :static true}
+  [form]
+  (let [current-comp-var (.-currentCompiler (.-globals clojure/lang))
+        comp  (if (.isBound current-comp-var)
+                (.deref current-comp-var)
+                (let [comp (.Compiler (.-compiler clojure/lang))]
+                  (.setNS comp __name__) ; should be *ns*, not __name__
+                  comp))]
+    (first (.macroexpand (.-compiler clojure/lang) form comp true))))
+
+(defn macroexpand
+  "Repeatedly calls macroexpand-1 on form until it no longer
+  represents a macro form, then returns it.  Note neither
+  macroexpand-1 nor macroexpand expand macros in subforms."
+  {:added "1.0"
+   :static true}
+  [form]
+    (let [ex (macroexpand-1 form)]
+      (if (identical? ex form)
+        form
+        (macroexpand ex))))
+
 (defn set
   "Returns a set of the distinct elements of coll."
   {:added "1.0"

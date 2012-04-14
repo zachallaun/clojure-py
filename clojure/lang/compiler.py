@@ -1195,7 +1195,8 @@ def macroexpand(form, comp, one = False):
             if hasattr(mresult, "withMeta") \
                and hasattr(form, "meta"):
                 mresult = mresult.withMeta(form.meta())
-            mresult = comp.compile(mresult)
+            if not one:
+                mresult = comp.compile(mresult)
             return mresult, True
 
     return form, False
