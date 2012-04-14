@@ -81,7 +81,8 @@ class Var(ARef, Settable, IFn, IPrintable):
         return self.public
         
     def isBound(self):
-        return not isinstance(self.root.get(), Unbound)
+        return self.getThreadBinding() is not None \
+                or not isinstance(self.root.get(), Unbound)
 
     def set(self, val):
         self.validate(self.getValidator(), val)
