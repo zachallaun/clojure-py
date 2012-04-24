@@ -2657,7 +2657,13 @@
                             (str sym " does not exist")))))
             (refer-var (the-ns __name__) 
                        (or (rename sym) sym) 
-                       (get nspublics sym)))))))
+                       (get nspublics sym)))))))       
+
+(defmacro refer-clojure
+  "Same as (refer 'clojure.core <filters>)"
+  {:added "1.0"}
+  [& filters]
+  `(clojure.core/refer '~'clojure.core ~@filters))
     
 (defn ns-refers
   "Returns a map of the refer mappings for the namespace."
@@ -3514,3 +3520,73 @@
      (re-find finditer))))
 
 
+(defmacro defn-
+  "same as defn, yielding non-public def"
+  {:added "1.0"}
+  [name & decls]
+    (list* `defn (with-meta name (assoc (meta name) :private true)) decls))
+
+(defn max-key
+  "Returns the x for which (k x), a number, is greatest."
+  {:added "1.0"
+   :static true}
+  ([k x] x)
+  ([k x y] (if (> (k x) (k y)) x y))
+  ([k x y & more]
+   (reduce1 #(max-key k %1 %2) (max-key k x y) more)))
+
+(defn min-key
+  "Returns the x for which (k x), a number, is lesser."
+  {:added "1.0"
+   :static true}
+  ([k x] x)
+  ([k x y] (if (< (k x) (k y)) x y))
+  ([k x y & more]
+   (reduce1 #(min-key k %1 %2) (min-key k x y) more)))
+
+(defn into
+  "Returns a new coll consisting of to-coll with all of the items of
+  from-coll conjoined."
+  {:added "1.0"
+   :static true}
+  [to from]
+  (reduce conj to from))
+
+
+;;;;; STM stuff ;;;;
+
+(defn ^{:private true}
+  setup-reference [^clojure.lang.ARef r options]
+  (let [opts (apply hash-map options)]
+    (when (:meta opts)
+      (.resetMeta r (:meta opts)))
+    (when (:validator opts)
+      (.setValidator r (:validator opts)))
+    r))
+
+(defn reset!
+  "Sets the value of atom to newval without regard for the
+  current value. Returns newval."
+  {:added "1.0"
+   :static true}
+  [atom newval] (.reset atom newval))
+
+(defn atom
+  "Creates and returns an Atom with an initial value of x and zero or
+  more options (in any order):
+
+  :meta metadata-map
+
+  :validator validate-fn
+
+  If metadata-map is supplied, it will be come the metadata on the
+  atom. validate-fn must be nil or a side-effect-free fn of one
+  argument, which will be passed the intended new state on any state
+  change. If the new state is unacceptable, the validate-fn should
+  return false or throw an exception."
+  {:added "1.0"
+   :static true}
+  ([x] (Atom x))
+  ([x & options] (setup-reference (atom x) options)))
+
+(def Exception py/Exception)

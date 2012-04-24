@@ -7,6 +7,7 @@ from clojure.lang.ilookup import ILookup
 from clojure.lang.associative import Associative
 from clojure.lang.ideref import IDeref
 from clojure.lang.seqable import Seqable
+from clojure.lang.atom import Atom
 
 from clojure.lang.iseq import ISeq
 from clojure.lang.var import Var
