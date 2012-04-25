@@ -121,7 +121,7 @@
 ;; =============================================================================
 ;; # Map Pattern Interop
 
-(extend-type clojure.lang.ILookup
+(extend-type clojure.lang.ilookup/ILookup
   IMatchLookup
   (val-at [this k not-found]
     (.valAt this k not-found)))
@@ -157,7 +157,7 @@
   [t] (throw (Exception. (str "No tag specified for vector specialization " t))))
 
 (defmethod tag ::vector
-  [_] clojure.lang.IPersistentVector)
+  [_] IPersistentVector)
 
 (defn with-tag [t ocr]
   (let [the-tag (tag t)
@@ -207,7 +207,7 @@
   (drop-nth [this n])
   (swap [this n]))
 
-(extend-type clojure.lang.IPersistentVector
+(extend-type IPersistentVector
   IVecMod
   (prepend [this x]
     (into [x] this))
@@ -305,15 +305,15 @@
     (PatternRow. (into [x] ps) action bindings))
   (swap [_ n]
     (PatternRow. (swap ps n) action bindings))
-  clojure.lang.Associative
+  clojure.lang.associative/Associative
   (assoc [this k v]
     (PatternRow. (assoc ps k v) action bindings))
-  clojure.lang.Indexed
+  clojure.lang.indexed/Indexed
   (nth [_ i]
     (nth ps i))
   (nth [_ i x]
     (nth ps i x))
-  clojure.lang.ISeq
+  ISeq
   (first [_] (first ps))
   (next [_]
     (if-let [nps (next ps)]
@@ -328,10 +328,10 @@
     (seq ps))
   (count [_]
     (count ps))
-  clojure.lang.IFn
-  (invoke [_ n]
-    (nth ps n))
-  clojure.lang.IPersistentCollection
+  ;IFn
+  ;(invoke [_ n]
+  ;  (nth ps n))
+  IPersistentCollection
   (cons [_ x]
     (PatternRow. (conj ps x) action bindings)))
 
@@ -1478,7 +1478,7 @@
                      (recur (nnext ps) t (conj v (rest-pattern rp)))) 
           :else (recur (next ps) t (conj v (emit-pattern (first ps)))))))))
 
-(defmethod emit-pattern clojure.lang.IPersistentVector
+(defmethod emit-pattern IPersistentVector
   [pat]
   (let [ps (emit-patterns pat :vector)]
     (vector-pattern ps *vector-type* 0 (some rest-pattern? ps))))

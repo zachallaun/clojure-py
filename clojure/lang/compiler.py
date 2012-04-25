@@ -30,6 +30,7 @@ import marshal
 import types
 
 _MACRO_ = keyword(symbol("macro"))
+_NS_ = symbol("*ns*")
 version = (sys.version_info[0] * 10) + sys.version_info[1]
 
 PTR_MODE_GLOBAL = "PTR_MODE_GLOBAL"
@@ -136,7 +137,7 @@ def compileDef(comp, form):
         value = form.next().next().first()
     if sym.ns is None:
         ns = comp.getNS()
-    else:
+    else:                                        
         ns = sym.ns
 
     comp.pushName(RT.name(sym))
@@ -1353,6 +1354,9 @@ class Compiler(object):
     def compileSymbol(self, sym):
         """ Compiles the symbol. First the compiler tries to compile it
             as an alias, then as a global """
+            
+        if sym == _NS_:
+            return [(LOAD_CONST, self.getNS().__name__)]
 
         if sym in self.aliases:
             return self.compileAlias(sym)

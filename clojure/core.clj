@@ -2235,6 +2235,13 @@
   {:added "1.0"}
   [x] (py/type x))
 
+(defn type 
+  "Returns the :type metadata of x, or its Class if none"
+  {:added "1.0"
+   :static true}
+  [x]
+  (or (get (meta x) :type) (class x)))
+
 (defn num
   "Coerce to Number"
   {:added "1.0"}
@@ -2824,6 +2831,15 @@
     `(let [iter# ~(emit-bind (to-groups seq-exprs))]
         (iter# ~(second seq-exprs)))))
 
+
+
+(defmacro defn-
+  "same as defn, yielding non-public def"
+  {:added "1.0"}
+  [name & decls]
+    (list* `defn (with-meta name (assoc (meta name) :private true)) decls))
+
+
 (defn format
   "Formats a string"
   {:added "1.0"
@@ -3002,7 +3018,18 @@
   [seed hash]
   (bit-and 0xFFFFFFFF (bit-xor seed (+ hash 0x9e3779b9 (bit-shift-left seed 6) (bit-shift-left seed 2)))))
 
-(require 'clojure.core-deftype :only ['deftype 'reify 'definterface 'defprotocol 'defrecord])
+(defn vary-meta
+ "Returns an object of the same type and value as obj, with
+  (apply f (meta obj) args) as its metadata."
+ {:added "1.0"
+   :static true}
+ [obj f & args]
+  (with-meta obj (apply f (meta obj) args)))
+
+
+
+(require 'clojure.core-deftype :only ['deftype 'reify 'definterface 
+                                      'defprotocol 'defrecord 'extend-type])
 
 ; FIXME: Am I polluting the namespace by requiring those?!
 (require 'numbers :only ['Number])
@@ -3030,6 +3057,8 @@
 ;; (def ^:dynamic *print-meta* false)
 ;; (def ^:dynamic *print-readably* true)
 (def ^:dynamic *out* sys/stdout)
+(def ^:dynamic *err* sys/stderr)
+(def ^:dynamic *in* sys/stdin)
 
 (defn newline [] (.write *out* "\n") nil)
 (defn flush [] (.flush *out*) nil)
@@ -3520,12 +3549,6 @@
      (re-find finditer))))
 
 
-(defmacro defn-
-  "same as defn, yielding non-public def"
-  {:added "1.0"}
-  [name & decls]
-    (list* `defn (with-meta name (assoc (meta name) :private true)) decls))
-
 (defn max-key
   "Returns the x for which (k x), a number, is greatest."
   {:added "1.0"
@@ -3588,5 +3611,10 @@
    :static true}
   ([x] (Atom x))
   ([x & options] (setup-reference (atom x) options)))
+
+(defmacro declare
+  "defs the supplied var names with no bindings, useful for making forward declarations."
+  {:added "1.0"}
+  [& names] `(do ~@(map #(list 'def (vary-meta % assoc :declared true)) names)))
 
 (def Exception py/Exception)
