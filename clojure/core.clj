@@ -3303,6 +3303,60 @@
                (.isExtendedBy p atype))
                (py/issubclass protocol atype)))
 
+(defn satisfies? 
+  "Returns true if x satisfies the protocol"
+  {:added "1.2"}
+  [protocol x]
+  (extends? (class x) protocol))
+
+(defn sequential?
+ "Returns true if coll implements Sequential"
+ {:added "1.0"
+  :static true}
+  [coll] (instance? clojure.lang/Sequential coll))
+
+(defmacro letfn 
+  "fnspec ==> (fname [params*] exprs) or (fname ([params*] exprs)+)
+
+  Takes a vector of function specs and a body, and generates a set of
+  bindings of functions to their names. All of the names are available
+  in all of the definitions of the functions, as well as the body."
+  {:added "1.0", :forms '[(letfn [fnspecs*] exprs*)],
+   :special-form true, :url nil}
+  [fnspecs & body] 
+  `(let ~(vec (interleave (map first fnspecs) 
+                             (map #(cons `fn %) fnspecs)))
+           ~@body))
+
+(defn rseq
+  "Returns, in constant time, a seq of the items in rev (which
+  can be a vector or sorted-map), in reverse order. If rev is empty returns nil"
+  {:added "1.0"
+   :static true}
+  [rev]
+    (. rev (rseq)))
+
+(defn map-indexed
+  "Returns a lazy sequence consisting of the result of applying f to 0
+  and the first item of coll, followed by applying f to 1 and the second
+  item in coll, etc, until coll is exhausted. Thus function f should
+  accept 2 arguments, index and item."
+  {:added "1.2"
+   :static true}
+  [f coll]
+  (letfn [(mapi [idx coll]
+            (lazy-seq
+             (when-let [s (seq coll)]
+               (if (chunked-seq? s)
+                 (let [c (chunk-first s)
+                       size (int (count c))
+                       b (chunk-buffer size)]
+                   (dotimes [i size]
+                     (chunk-append b (f (+ idx i) (.nth c i))))
+                   (chunk-cons (chunk b) (mapi (+ idx size) (chunk-rest s))))
+                 (cons (f idx (first s)) (mapi (inc idx) (rest s)))))))]
+    (mapi 0 coll)))
+
 (defn parents
   "Returns the immediate parents of tag, either via a Java type
   inheritance relationship or a relationship established via derive. h

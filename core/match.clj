@@ -673,7 +673,7 @@
 (declare default-specialize-matrix)
 
 (deftype PatternMatrix [rows ocrs _meta]
-  clojure.lang.IObj
+  clojure.lang/IObj
   (meta [_] _meta)
 
   (withMeta [_ new-meta]
@@ -836,11 +836,10 @@
 (deftype WildcardPattern [sym _meta]
   IWildcardPattern
   (sym [_] sym)
-  clojure.lang.IObj
+  IObj
   (meta [_] _meta)
   (withMeta [_ new-meta]
     (WildcardPattern. sym new-meta))
-  Object
   (toString [_]
     (str sym)))
 
@@ -872,7 +871,7 @@
 ;; It "literally" matches a given occurrence.
 
 (deftype LiteralPattern [l _meta]
-  clojure.lang.IObj
+  clojure.lang/IObj
   (meta [_] _meta)
   (withMeta [_ new-meta]
     (LiteralPattern. l new-meta))
@@ -882,7 +881,7 @@
      (= l ()) `(empty? ~ocr)
      (and (symbol? l) (not (-> l meta :local))) `(= ~ocr '~l)
      :else `(= ~ocr ~l)))
-  Object
+  py/object
   (toString [_]
     (if (nil? l)
       "nil"
@@ -910,14 +909,14 @@
 (declare seq-pattern)
 
 (deftype SeqPattern [s _meta]
-  clojure.lang.IObj
+  clojure.lang/IObj
   (meta [_] _meta)
   (withMeta [_ new-meta]
     (SeqPattern. s new-meta))
   IPatternCompile
   (to-source* [this ocr]
     `(or (seq? ~ocr) (sequential? ~ocr)))
-  Object
+  py/object
   (toString [_]
     (str s))
   ISpecializeMatrix
@@ -975,11 +974,11 @@
 (deftype RestPattern [p _meta]
   IPatternContainer
   (pattern [_] p)
-  clojure.lang.IObj
+  IObj
   (meta [_] _meta)
   (withMeta [_ new-meta]
     (RestPattern. p new-meta))
-  Object
+  py/object
   (toString [_]
     p))
 
@@ -1001,18 +1000,17 @@
 (declare guard-pattern)
 
 (deftype MapPattern [m _meta]
-  clojure.lang.IObj
+  IObj
   (meta [_] _meta)
   (withMeta [_ new-meta]
     (MapPattern. m new-meta))
+  (toString [_]
+    (str m " :only " (or (:only _meta) [])))
   IPatternCompile
   (to-source* [this ocr]
     (if *clojurescript*
       `(or (satisfies? cljs.core.ILookup ~ocr))
       `(or (instance? clojure.lang.ILookup ~ocr) (satisfies? IMatchLookup ~ocr))))
-  Object
-  (toString [_]
-    (str m " :only " (or (:only _meta) [])))
   ISpecializeMatrix
   (specialize-matrix [this rows ocrs]
     (let [focr (first ocrs)
@@ -1107,18 +1105,17 @@
        (into [])))
 
 (deftype VectorPattern [v t size offset rest? _meta]
-  clojure.lang.IObj
+  IObj
   (meta [_] _meta)
   (withMeta [_ new-meta]
     (VectorPattern. v t size offset rest? new-meta))
+  (toString [_]
+    (str v " " t))
   IPatternCompile
   (to-source* [this ocr]
     (if (and (touched? this) (not rest?) size (check-size? t))
       (test-with-size-inline t ocr size)
       (test-inline t ocr)))
-  Object
-  (toString [_]
-    (str v " " t))
   IContainsRestPattern
   (contains-rest-pattern? [_] rest?)
   IVectorPattern
@@ -1213,11 +1210,10 @@
 ;; Or Patterns
 
 (deftype OrPattern [ps _meta]
-  clojure.lang.IObj
+  IObj
   (meta [_] _meta)
   (withMeta [_ new-meta]
     (OrPattern. ps new-meta))
-  Object
   (toString [this]
     (str ps))
   ISpecializeMatrix
@@ -1268,18 +1264,17 @@
 (declare guard-pattern?)
 
 (deftype GuardPattern [p gs _meta]
-  clojure.lang.IObj
+  IObj
   (meta [_] _meta)
   (withMeta [_ new-meta]
     (GuardPattern. p gs new-meta))
+  (toString [this]
+    (str p " :guard " gs))
   IPatternCompile
   (to-source* [this ocr]
     `(and ~@(map (fn [expr ocr]
                    (list expr ocr))
                  gs (repeat ocr))))
-  Object
-  (toString [this]
-    (str p " :guard " gs))
   ISpecializeMatrix
   (specialize-matrix [this rows ocrs]
     (let [nrows (->> rows
@@ -1330,18 +1325,17 @@
 (declare predicate-pattern?)
 
 (deftype PredicatePattern [p gs _meta]
-  clojure.lang.IObj
+  IObj
   (meta [_] _meta)
   (withMeta [_ new-meta]
     (PredicatePattern. p gs new-meta))
+  (toString [this]
+    (str p " :when " gs))
   IPatternCompile
   (to-source* [this ocr]
     `(and ~@(map (fn [expr ocr]
                    (list expr ocr))
                  gs (repeat ocr))))
-  Object
-  (toString [this]
-    (str p " :when " gs))
   ISpecializeMatrix
   (specialize-matrix [this rows ocrs]
     (let [nrows (->> rows
@@ -1568,7 +1562,7 @@
                             (keys (.getMethodTable ^clojure.lang.MultiFn emit-pattern-for-syntax))))))))
 
 
-(let [void (Object.)
+(let [void (py/object.)
       void? #(identical? void %)
       infix-keyword? #(#{:when :as :guard} %)]
   ;; void is a unique placeholder for nothing -- we can't use nil

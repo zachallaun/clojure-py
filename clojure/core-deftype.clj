@@ -73,14 +73,14 @@
                                                  ~@'([self & args] 
                                                  (throw (AbstractMethodCall self))))) sigs))
           methods (assoc methods "__doc__" docstr)]
-         `(do (def ~name (py/type ~(clojure.core/name name)
+         (debug `(do (def ~name (py/type ~(clojure.core/name name)
                                       (py/tuple [py/object])
                                       (.toDict ~methods)))
                      (clojure.lang.protocol/protocolFromType ~'__name__ ~name)
                 ~@(for [s sigs :when (string? (last s))]
                     `(py/setattr (resolve ~(list 'quote (first s)))
                                  "__doc__"
-                                 ~(last s))))))
+                                 ~(last s)))))))
 
 
 (defmacro reify 

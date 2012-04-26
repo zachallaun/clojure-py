@@ -743,7 +743,6 @@ def compileThrow(comp, form):
 
 @register_builtin("applyTo")
 def compileApply(comp, form):
-    print "foo", form
     s = form.next()
     code = []
     while s is not None:

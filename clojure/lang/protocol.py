@@ -202,7 +202,11 @@ def extendProtocolForClass(proto, tp):
         
         pfn = proto.protofns[fn]
         if hasattr(tp, fn):
-            pfn.extend(tp, getattr(tp, fn))
+            try:
+                pfn.extend(tp, getattr(tp, fn))
+            except AttributeError as e:
+                print "Can't extend, got ", str(pfn), type(pfn)
+                raise
         
     proto.markImplementor(tp)
     
