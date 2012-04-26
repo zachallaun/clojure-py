@@ -324,16 +324,15 @@
       nil
       (let [nps (rest ps)]
         (PatternRow. nps action bindings))))
+  (cons [_ x]
+    (PatternRow. (conj ps x) action bindings))
   (seq [this]
     (seq ps))
   (count [_]
     (count ps))
-  ;IFn
-  ;(invoke [_ n]
-  ;  (nth ps n))
-  IPersistentCollection
-  (cons [_ x]
-    (PatternRow. (conj ps x) action bindings)))
+  clojure.lang/IFn
+  (__call__ [_ n]
+    (nth ps n)))
 
 (defn ^PatternRow pattern-row
   ([ps action] 

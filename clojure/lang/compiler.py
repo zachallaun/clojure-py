@@ -741,8 +741,9 @@ def compileThrow(comp, form):
     return code
 
 
-@register_builtin("apply")
+@register_builtin("applyTo")
 def compileApply(comp, form):
+    print "foo", form
     s = form.next()
     code = []
     while s is not None:
@@ -752,7 +753,7 @@ def compileApply(comp, form):
     code.append((LOAD_CONST, RT.seqToTuple))
     code.append((ROT_TWO, None))
     code.append((CALL_FUNCTION, 1))
-    code.append((CALL_FUNCTION_VAR, len(form) - 3))
+    code.append((CALL_FUNCTION_VAR, 0))
     return code
 
 

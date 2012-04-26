@@ -823,3 +823,7 @@
     (a/assert-equal (bar ::rect ::rect) :rect-shape)
     (a/assert-equal (bar ::shape ::rect) :shape-rect)
     (a/assert-equal (bar ::circle ::foo) :circle-foo))
+
+(deftest extends?-tests
+    (a/assert-true (extends? (type '()) ISeq))
+    (a/assert-false (extends? (type 1) ISeq))) 

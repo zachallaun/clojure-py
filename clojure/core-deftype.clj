@@ -43,7 +43,6 @@
           methods (if (= (count fields) 0)
                       methods
                       (assoc methods "__init__" (clojure.core/make-init fields)))]
-          (py/print interfaces (type interfaces) (py/tuple (concat interfaces ["obj"])))
           `(~'do (def ~name (py/type ~(.-name name)
                                       (py/tuple ~(vec (concat interfaces [py/object])))
                                       (.toDict ~methods)))

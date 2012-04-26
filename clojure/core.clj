@@ -598,6 +598,20 @@
        (py.bytecode/COMPARE_OP "==" y (first more)))
      false)))
 
+(defn apply
+  "Applies fn f to the argument list formed by prepending intervening arguments to args."
+  {:added "1.0"
+   :static true}
+  ([f args]
+     (applyTo f (seq args)))
+  ([ f x args]
+     (applyTo f (list* x args)))
+  ([ f x y args]
+     (applyTo f (list* x y args)))
+  ([ f x y z args]
+     (applyTo f (list* x y z args)))
+  ([ f a b c d & args]
+     (applyTo f (cons a (cons b (cons c (cons d (spread args))))))))
 
 (defn not=
   "Same as (not (= obj1 obj2))"
@@ -818,14 +832,21 @@
   [& body]
   (list 'clojure.core/LazySeq (list* '^{:once true} fn* [] body) nil nil nil))    
 
-(extend clojure.lang.pytypes/pyTypeGenerator
-    Seqable
-    {:seq (fn generator-seq [self]
+(def generic-interator-fn {:seq (fn generator-seq [self]
                (lazy-seq
                    (try
                        (let [result (.next self)]
                            (cons result (generator-seq self)))
                        (catch py/StopIteration e nil))))})
+
+(extend clojure.lang.pytypes/pyTypeGenerator
+    Seqable
+    generic-interator-fn)
+
+(extend clojure.lang.pytypes/pyReversedType
+    Seqable
+    generic-interator-fn)
+
 
 
 (definterface IChunkedSeq [] 
@@ -3273,6 +3294,14 @@
               (if (or (not ret) (= i (count parent)))
                 ret
                 (recur (isa? h (child i) (parent i)) (inc i))))))))
+
+(defn extends?
+  {:static true}
+  [protocol atype]
+       (let [p (clojure.lang.protocol/getExactProtocol protocol)]
+            (if p
+               (.isExtendedBy p atype))
+               (py/issubclass protocol atype)))
 
 (defn parents
   "Returns the immediate parents of tag, either via a Java type

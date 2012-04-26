@@ -1,1 +1,2 @@
-from ilookup import ILookup as ILookup
+from ilookup import ILookup
+from ifn import IFn

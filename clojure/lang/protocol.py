@@ -86,13 +86,13 @@ class Protocol(object):
         self.fns = fns
         self.protofns = registerFns(ns, fns)
         self.__name__ = name
-        self.implementors = {}
+        self.implementors = set()
         
     def markImplementor(self, tp):
-        if tp.__name__ in self.implementors:
+        if tp in self.implementors:
             return
             
-        self.implementors[tp.__name__] = tp
+        self.implementors.add(tp)
         
     def extendForType(self, tp, mp):
         """Extends this protocol for the given type and the given map of methods
@@ -105,8 +105,11 @@ class Protocol(object):
             
             fn = self.protofns[name]
             fn.extend(tp, mp[x])
+
+        self.markImplementor(tp)
                 
-       
+    def isExtendedBy(self, tp):
+        return tp in self.implementors
         
     def __repr__(self):
         return "Protocol<" + self.name + ">"
