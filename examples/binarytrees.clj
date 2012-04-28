@@ -94,4 +94,4 @@
         max-depth (if (> (+ min-depth 2) n) (+ min-depth 2) n)]
     (main max-depth)))
 
-(-main 12)
+(-main 15)

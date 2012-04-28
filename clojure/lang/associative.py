@@ -3,7 +3,7 @@ from clojure.lang.ilookup import ILookup
 from clojure.lang.ipersistentcollection import IPersistentCollection
 
 
-class Associative(ILookup, IPersistentCollection):
+class Associative(ILookup, IPersistentCollection, object):
     def containsKey(self, key):
         raise AbstractMethodCall(self)
 

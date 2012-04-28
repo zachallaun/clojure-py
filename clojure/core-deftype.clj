@@ -73,14 +73,14 @@
                                                  ~@'([self & args] 
                                                  (throw (AbstractMethodCall self))))) sigs))
           methods (assoc methods "__doc__" docstr)]
-         `(do (def ~name (py/type ~(clojure.core/name name)
+         (debug `(do (def ~name (py/type ~(clojure.core/name name)
                                       (py/tuple [py/object])
                                       (.toDict ~methods)))
                      (clojure.lang.protocol/protocolFromType ~'__name__ ~name)
                 ~@(for [s sigs :when (string? (last s))]
                     `(py/setattr (resolve ~(list 'quote (first s)))
                                  "__doc__"
-                                 ~(last s))))))
+                                 ~(last s)))))))
 
 
 (defmacro reify 
@@ -261,3 +261,49 @@
                                       (.toDict ~methods)))
                 ~@(map (fn [x] `(clojure.lang.protocol/extendForType ~x ~name))
                                interfaces))))
+
+(defn- emit-impl [[p fs]]
+  [p (zipmap (map #(-> % first keyword) fs)
+             (map #(cons 'fn (drop 1 %)) fs))])
+
+(defn- emit-hinted-impl [c [p fs]]
+  (let [hint (fn [specs]
+               (let [specs (if (vector? (first specs)) 
+                                        (list specs) 
+                                        specs)]
+                 (map (fn [[[target & args] & body]]
+                        (cons (apply vector (vary-meta target assoc :tag c) args)
+                              body))
+                      specs)))]
+    [p (zipmap (map #(-> % first name keyword) fs)
+               (map #(cons 'fn (hint (drop 1 %))) fs))]))
+
+(defn- emit-extend-type [c specs]
+  (let [impls (parse-impls specs)]
+    `(extend ~c
+             ~@(mapcat (partial emit-hinted-impl c) impls))))
+
+(defmacro extend-type 
+  "A macro that expands into an extend call. Useful when you are
+  supplying the definitions explicitly inline, extend-type
+  automatically creates the maps required by extend.  Propagates the
+  class as a type hint on the first argument of all fns.
+
+  (extend-type MyType 
+    Countable
+      (cnt [c] ...)
+    Foo
+      (bar [x y] ...)
+      (baz ([x] ...) ([x y & zs] ...)))
+
+  expands into:
+
+  (extend MyType
+   Countable
+     {:cnt (fn [c] ...)}
+   Foo
+     {:baz (fn ([x] ...) ([x y & zs] ...))
+      :bar (fn [x y] ...)})"
+  {:added "1.2"} 
+  [t & specs]
+  (emit-extend-type t specs))

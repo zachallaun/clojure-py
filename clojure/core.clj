@@ -598,6 +598,20 @@
        (py.bytecode/COMPARE_OP "==" y (first more)))
      false)))
 
+(defn apply
+  "Applies fn f to the argument list formed by prepending intervening arguments to args."
+  {:added "1.0"
+   :static true}
+  ([f args]
+     (applyTo f (seq args)))
+  ([ f x args]
+     (applyTo f (list* x args)))
+  ([ f x y args]
+     (applyTo f (list* x y args)))
+  ([ f x y z args]
+     (applyTo f (list* x y z args)))
+  ([ f a b c d & args]
+     (applyTo f (cons a (cons b (cons c (cons d (spread args))))))))
 
 (defn not=
   "Same as (not (= obj1 obj2))"
@@ -818,14 +832,21 @@
   [& body]
   (list 'clojure.core/LazySeq (list* '^{:once true} fn* [] body) nil nil nil))    
 
-(extend clojure.lang.pytypes/pyTypeGenerator
-    Seqable
-    {:seq (fn generator-seq [self]
+(def generic-interator-fn {:seq (fn generator-seq [self]
                (lazy-seq
                    (try
                        (let [result (.next self)]
                            (cons result (generator-seq self)))
                        (catch py/StopIteration e nil))))})
+
+(extend clojure.lang.pytypes/pyTypeGenerator
+    Seqable
+    generic-interator-fn)
+
+(extend clojure.lang.pytypes/pyReversedType
+    Seqable
+    generic-interator-fn)
+
 
 
 (definterface IChunkedSeq [] 
@@ -2235,6 +2256,13 @@
   {:added "1.0"}
   [x] (py/type x))
 
+(defn type 
+  "Returns the :type metadata of x, or its Class if none"
+  {:added "1.0"
+   :static true}
+  [x]
+  (or (get (meta x) :type) (class x)))
+
 (defn num
   "Coerce to Number"
   {:added "1.0"}
@@ -2683,7 +2711,13 @@
                             (str sym " does not exist")))))
             (refer-var (the-ns __name__) 
                        (or (rename sym) sym) 
-                       (get nspublics sym)))))))
+                       (get nspublics sym)))))))       
+
+(defmacro refer-clojure
+  "Same as (refer 'clojure.core <filters>)"
+  {:added "1.0"}
+  [& filters]
+  `(clojure.core/refer '~'clojure.core ~@filters))
     
 (defn ns-refers
   "Returns a map of the refer mappings for the namespace."
@@ -2843,6 +2877,15 @@
                                        ~(do-mod mod-pairs)))))))))))]
     `(let [iter# ~(emit-bind (to-groups seq-exprs))]
         (iter# ~(second seq-exprs)))))
+
+
+
+(defmacro defn-
+  "same as defn, yielding non-public def"
+  {:added "1.0"}
+  [name & decls]
+    (list* `defn (with-meta name (assoc (meta name) :private true)) decls))
+
 
 (defn format
   "Formats a string"
@@ -3022,7 +3065,18 @@
   [seed hash]
   (bit-and 0xFFFFFFFF (bit-xor seed (+ hash 0x9e3779b9 (bit-shift-left seed 6) (bit-shift-left seed 2)))))
 
-(require 'clojure.core-deftype :only ['deftype 'reify 'definterface 'defprotocol 'defrecord])
+(defn vary-meta
+ "Returns an object of the same type and value as obj, with
+  (apply f (meta obj) args) as its metadata."
+ {:added "1.0"
+   :static true}
+ [obj f & args]
+  (with-meta obj (apply f (meta obj) args)))
+
+
+
+(require 'clojure.core-deftype :only ['deftype 'reify 'definterface 
+                                      'defprotocol 'defrecord 'extend-type])
 
 ; FIXME: Am I polluting the namespace by requiring those?!
 (require 'numbers :only ['Number])
@@ -3050,6 +3104,8 @@
 ;; (def ^:dynamic *print-meta* false)
 ;; (def ^:dynamic *print-readably* true)
 (def ^:dynamic *out* sys/stdout)
+(def ^:dynamic *err* sys/stderr)
+(def ^:dynamic *in* sys/stdin)
 
 (defn newline [] (.write *out* "\n") nil)
 (defn flush [] (.flush *out*) nil)
@@ -3264,6 +3320,68 @@
               (if (or (not ret) (= i (count parent)))
                 ret
                 (recur (isa? h (child i) (parent i)) (inc i))))))))
+
+(defn extends?
+  {:static true}
+  [protocol atype]
+       (let [p (clojure.lang.protocol/getExactProtocol protocol)]
+            (if p
+               (.isExtendedBy p atype))
+               (py/issubclass protocol atype)))
+
+(defn satisfies? 
+  "Returns true if x satisfies the protocol"
+  {:added "1.2"}
+  [protocol x]
+  (extends? (class x) protocol))
+
+(defn sequential?
+ "Returns true if coll implements Sequential"
+ {:added "1.0"
+  :static true}
+  [coll] (instance? clojure.lang/Sequential coll))
+
+(defmacro letfn 
+  "fnspec ==> (fname [params*] exprs) or (fname ([params*] exprs)+)
+
+  Takes a vector of function specs and a body, and generates a set of
+  bindings of functions to their names. All of the names are available
+  in all of the definitions of the functions, as well as the body."
+  {:added "1.0", :forms '[(letfn [fnspecs*] exprs*)],
+   :special-form true, :url nil}
+  [fnspecs & body] 
+  `(let ~(vec (interleave (map first fnspecs) 
+                             (map #(cons `fn %) fnspecs)))
+           ~@body))
+
+(defn rseq
+  "Returns, in constant time, a seq of the items in rev (which
+  can be a vector or sorted-map), in reverse order. If rev is empty returns nil"
+  {:added "1.0"
+   :static true}
+  [rev]
+    (. rev (rseq)))
+
+(defn map-indexed
+  "Returns a lazy sequence consisting of the result of applying f to 0
+  and the first item of coll, followed by applying f to 1 and the second
+  item in coll, etc, until coll is exhausted. Thus function f should
+  accept 2 arguments, index and item."
+  {:added "1.2"
+   :static true}
+  [f coll]
+  (letfn [(mapi [idx coll]
+            (lazy-seq
+             (when-let [s (seq coll)]
+               (if (chunked-seq? s)
+                 (let [c (chunk-first s)
+                       size (int (count c))
+                       b (chunk-buffer size)]
+                   (dotimes [i size]
+                     (chunk-append b (f (+ idx i) (.nth c i))))
+                   (chunk-cons (chunk b) (mapi (+ idx size) (chunk-rest s))))
+                 (cons (f idx (first s)) (mapi (inc idx) (rest s)))))))]
+    (mapi 0 coll)))
 
 (defn parents
   "Returns the immediate parents of tag, either via a Java type
@@ -3540,3 +3658,72 @@
      (re-find finditer))))
 
 
+(defn max-key
+  "Returns the x for which (k x), a number, is greatest."
+  {:added "1.0"
+   :static true}
+  ([k x] x)
+  ([k x y] (if (> (k x) (k y)) x y))
+  ([k x y & more]
+   (reduce1 #(max-key k %1 %2) (max-key k x y) more)))
+
+(defn min-key
+  "Returns the x for which (k x), a number, is lesser."
+  {:added "1.0"
+   :static true}
+  ([k x] x)
+  ([k x y] (if (< (k x) (k y)) x y))
+  ([k x y & more]
+   (reduce1 #(min-key k %1 %2) (min-key k x y) more)))
+
+(defn into
+  "Returns a new coll consisting of to-coll with all of the items of
+  from-coll conjoined."
+  {:added "1.0"
+   :static true}
+  [to from]
+  (reduce conj to from))
+
+
+;;;;; STM stuff ;;;;
+
+(defn ^{:private true}
+  setup-reference [^clojure.lang.ARef r options]
+  (let [opts (apply hash-map options)]
+    (when (:meta opts)
+      (.resetMeta r (:meta opts)))
+    (when (:validator opts)
+      (.setValidator r (:validator opts)))
+    r))
+
+(defn reset!
+  "Sets the value of atom to newval without regard for the
+  current value. Returns newval."
+  {:added "1.0"
+   :static true}
+  [atom newval] (.reset atom newval))
+
+(defn atom
+  "Creates and returns an Atom with an initial value of x and zero or
+  more options (in any order):
+
+  :meta metadata-map
+
+  :validator validate-fn
+
+  If metadata-map is supplied, it will be come the metadata on the
+  atom. validate-fn must be nil or a side-effect-free fn of one
+  argument, which will be passed the intended new state on any state
+  change. If the new state is unacceptable, the validate-fn should
+  return false or throw an exception."
+  {:added "1.0"
+   :static true}
+  ([x] (Atom x))
+  ([x & options] (setup-reference (atom x) options)))
+
+(defmacro declare
+  "defs the supplied var names with no bindings, useful for making forward declarations."
+  {:added "1.0"}
+  [& names] `(do ~@(map #(list 'def (vary-meta % assoc :declared true)) names)))
+
+(def Exception py/Exception)

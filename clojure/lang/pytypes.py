@@ -26,5 +26,6 @@ pyTypeType = type
 pyTypeCode = types.CodeType
 pyTypeGenerator = types.GeneratorType
 pyClassType = types.ClassType
+pyReversedType = reversed
 
 # add more if needed

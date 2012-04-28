@@ -823,3 +823,19 @@
     (a/assert-equal (bar ::rect ::rect) :rect-shape)
     (a/assert-equal (bar ::shape ::rect) :shape-rect)
     (a/assert-equal (bar ::circle ::foo) :circle-foo))
+
+(deftest extends?-tests
+    (a/assert-true (extends? (type '()) ISeq))
+    (a/assert-false (extends? (type 1) ISeq))) 
+
+(deftest satisfies?-tests
+    (a/assert-true (satisfies? ISeq '()))
+    (a/assert-false (satisfies? ISeq 1))) 
+    
+(deftest letfn-tests
+    (letfn [(twice [x]
+                 (* x 2))
+               (six-times [y]
+                 (* (twice y) 3))]
+         (a/assert-equal (twice 15) 30)
+         (a/assert-equal (six-times 15) 90)))
