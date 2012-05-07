@@ -216,14 +216,6 @@
    :static true}
   [v] (instance? clojure.lang.Var v))
 
-(defn subs
-  "Returns the substring of s beginning at start inclusive, and ending
-  at end (defaults to length of string), exclusive."
-  {:added "1.0"
-   :static true}
-  (^String [^String s start] (. s (substring start)))
-  (^String [^String s start end] (. s (substring start end))))
-
 (defn max-key
   "Returns the x for which (k x), a number, is greatest."
   {:added "1.0"

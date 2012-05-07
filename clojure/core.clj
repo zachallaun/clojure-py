@@ -3646,6 +3646,15 @@
    :static true}
   [n] (int (rand n)))
 
+(defn subs
+  "Returns the substring of s beginning at start inclusive, and ending
+  at end (defaults to length of string), exclusive.  A negative end
+  counts backwards from the end of the string"
+  {:added "1.0"
+   :static true}
+  ([s start] (.__getitem__ s (py/slice start nil)))
+  ([s start end] (.__getitem__ s (py/slice start end))))
+
 (defn max-key
   "Returns the x for which (k x), a number, is greatest."
   {:added "1.0"
