@@ -189,24 +189,6 @@
    :static true}
   [v] (instance? clojure.lang.Var v))
 
-(defn max-key
-  "Returns the x for which (k x), a number, is greatest."
-  {:added "1.0"
-   :static true}
-  ([k x] x)
-  ([k x y] (if (> (k x) (k y)) x y))
-  ([k x y & more]
-   (reduce1 #(max-key k %1 %2) (max-key k x y) more)))
-
-(defn min-key
-  "Returns the x for which (k x), a number, is least."
-  {:added "1.0"
-   :static true}
-  ([k x] x)
-  ([k x y] (if (< (k x) (k y)) x y))
-  ([k x y & more]
-   (reduce1 #(min-key k %1 %2) (min-key k x y) more)))
-
 (defn distinct
   "Returns a lazy sequence of the elements of coll with duplicates removed"
   {:added "1.0"
@@ -723,14 +705,6 @@
    :static true}
   [e]
   (clojure.lang.EnumerationSeq/create e))
-
-(defn format
-  "Formats a string using java.lang.String.format, see java.util.Formatter for format
-  string syntax"
-  {:added "1.0"
-   :static true}
-  ^String [fmt & args]
-  (String/format fmt (to-array args)))
 
 (defn printf
   "Prints formatted output, as per format"
