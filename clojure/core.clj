@@ -3631,6 +3631,20 @@
    (let [finditer (re-finditer re s)]
      (re-find finditer))))
 
+(require 'random)
+(defn rand
+  "Returns a random floating point number between 0 (inclusive) and
+  n (default 1) (exclusive)."
+  {:added "1.0"
+   :static true}
+  ([] (random/random))
+  ([n] (* n (rand))))
+
+(defn rand-int
+  "Returns a random integer between 0 (inclusive) and n (exclusive)."
+  {:added "1.0"
+   :static true}
+  [n] (int (rand n)))
 
 (defn max-key
   "Returns the x for which (k x), a number, is greatest."
