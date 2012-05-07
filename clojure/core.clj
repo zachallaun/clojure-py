@@ -3710,6 +3710,33 @@
   [to from]
   (reduce conj to from))
 
+(require 'array)
+(defmacro make-type-array
+  {:private true}
+  [type-name type-code added]
+  `(def ~(with-meta (symbol (str type-name "-array"))
+                    {:doc (str "Creates an array of " type-name "s")
+                     :added added})
+     (fn
+       ([size-or-seq#]
+         (array/array
+           ~type-code
+           (if (sequential? size-or-seq#)
+             size-or-seq#
+             (take size-or-seq# (repeat 0)))))
+       ([size# init-val-or-seq#]
+         (array/array
+           ~type-code
+           (take size# (if (sequential? init-val-or-seq#)
+                         (concat init-val-or-seq# (repeat 0))
+                         (take size# (repeat init-val-or-seq#)))))))))
+(make-type-array "float" "f" "1.0")
+(make-type-array "byte" "b" "1.1")
+(make-type-array "char" "c" "1.1")
+(make-type-array "short" "h" "1.1")
+(make-type-array "double" "d" "1.0")
+(make-type-array "int" "i" "1.0")
+(make-type-array "long" "l" "1.0")
 
 ;;;;; STM stuff ;;;;
 
