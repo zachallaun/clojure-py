@@ -3631,6 +3631,58 @@
    (let [finditer (re-finditer re s)]
      (re-find finditer))))
 
+(require 'random)
+(defn rand
+  "Returns a random floating point number between 0 (inclusive) and
+  n (default 1) (exclusive)."
+  {:added "1.0"
+   :static true}
+  ([] (random/random))
+  ([n] (* n (rand))))
+
+(defn rand-int
+  "Returns a random integer between 0 (inclusive) and n (exclusive)."
+  {:added "1.0"
+   :static true}
+  [n] (int (rand n)))
+
+(defn tree-seq
+  "Returns a lazy sequence of the nodes in a tree, via a depth-first walk.
+  branch? must be a fn of one arg that returns true if passed a node
+  that can have children (but may not).  children must be a fn of one
+  arg that returns a sequence of the children. Will only be called on
+  nodes for which branch? returns true. Root is the root node of the
+  tree."
+  {:added "1.0"
+   :static true}
+   [branch? children root]
+   (let [walk (fn walk [node]
+                (lazy-seq
+                  (cons node
+                    (when (branch? node)
+                      (mapcat walk (children node))))))]
+     (walk root)))
+
+(require 'os)
+(require 'os.path)
+(defn file-seq
+  "A tree seq on files"
+  {:added "1.0"
+   :static true}
+  [dir]
+    (tree-seq
+      os.path/isdir
+      #(map (partial os.path/join %) (os/listdir %))
+     dir))
+
+(defn subs
+  "Returns the substring of s beginning at start inclusive, and ending
+  at end (defaults to length of string), exclusive.  A negative end
+  counts backwards from the end of the string"
+  {:added "1.0"
+   :static true}
+  ([s start] (.__getitem__ s (py/slice start nil)))
+  ([s start end] (.__getitem__ s (py/slice start end))))
 
 (defn max-key
   "Returns the x for which (k x), a number, is greatest."
@@ -3658,6 +3710,33 @@
   [to from]
   (reduce conj to from))
 
+(require 'array)
+(defmacro make-type-array
+  {:private true}
+  [type-name type-code added]
+  `(def ~(with-meta (symbol (str type-name "-array"))
+                    {:doc (str "Creates an array of " type-name "s")
+                     :added added})
+     (fn
+       ([size-or-seq#]
+         (array/array
+           ~type-code
+           (if (sequential? size-or-seq#)
+             size-or-seq#
+             (take size-or-seq# (repeat 0)))))
+       ([size# init-val-or-seq#]
+         (array/array
+           ~type-code
+           (take size# (if (sequential? init-val-or-seq#)
+                         (concat init-val-or-seq# (repeat 0))
+                         (take size# (repeat init-val-or-seq#)))))))))
+(make-type-array "float" "f" "1.0")
+(make-type-array "byte" "b" "1.1")
+(make-type-array "char" "c" "1.1")
+(make-type-array "short" "h" "1.1")
+(make-type-array "double" "d" "1.0")
+(make-type-array "int" "i" "1.0")
+(make-type-array "long" "l" "1.0")
 
 ;;;;; STM stuff ;;;;
 
