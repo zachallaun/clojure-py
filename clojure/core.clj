@@ -2282,13 +2282,6 @@
   [n]
   (instance? py/int n))
 
-(defn number?
-  "Returns true if x is a Number"
-  {:added "1.0"
-   :static true}
-  [x]
-  (or (float? x) (int? x)))
-
 (defn keyword
   "Returns a keyword for the given string"
   [x]
