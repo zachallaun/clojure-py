@@ -5,9 +5,12 @@
 ;   By using this software in any fashion, you are agreeing to be bound by
 ;   the terms of this license.
 ;   You must not remove this notice, or any other, from this software.
+
 (ns* ^{:doc "The core Clojure language."
        :author "Rich Hickey"}
   clojure.core)
+
+;;; preparing support for defn and defmacro
 
 (def unquote)
 (def unquote-splicing)
@@ -16,35 +19,18 @@
  ^{:arglists '([& items])
    :doc "Creates a new list containing the items."
    :added "1.0"}
-  list clojure.lang.persistentlist/creator)
-
-(def
- ^{:arglists '([& items])
-   :doc "Creates a new vector containing the items."
-   :added "1.0"}
-  vector clojure.lang.rt/vector)
-
-(def 
-  ^{:static true}
-  extend clojure.lang.protocol/extend)
-
-(def
- ^{:arglists '([& items])
-   :doc "Creates a new hashmap containing the items."
-   :added "1.0"}
-  hashmap clojure.lang.rt/map)
+ list clojure.lang.persistentlist/creator)
 
 (def
  ^{:arglists '([x seq])
-    :doc "Returns a new seq where x is the first element and seq is
-    the rest."}
+   :doc "Returns a new seq where x is the first element and seq is the rest."}
  cons (fn* cons [x seq] (clojure.lang.rt/cons x seq)))
 
 ;during bootstrap we don't have destructuring let, loop or fn, will redefine later
 (def
-  ^{:macro true
-    :added "1.0"}
-  let (fn* let [&form &env & decl] (cons 'let* decl)))
+ ^{:macro true
+   :added "1.0"}
+ let (fn* let [&form &env & decl] (cons 'let* decl)))
 
 (def
  ^{:macro true
@@ -54,30 +40,14 @@
 (def
  ^{:macro true
    :added "1.0"}
- fn (fn* fn [&form &env & decl] 
+ fn (fn* fn [&form &env & decl]
          (cons 'fn* decl)))
 
 (def
-  ^{:macro true
-    :added "1.0"
-    :arglists '([pred val] [pred val else])}
-  if (fn* if [ form env & decl] (cons 'if* decl)))
-
-(def
-    ^{:arglists '([& args])
-      :doc "Clojure version of RT.assoc"
-      :added "1.0"}
- _assoc (fn* assoc [col k v]
-                   (py/if col
-                      (.assoc col k v)
-                      (clojure.lang.rt/map k v))))
-
-(def
  ^{:arglists '(^clojure.lang.ISeq [coll])
-   :doc "Returns a seq on the collection. If the collection is
-    empty, returns nil.  (seq nil) returns nil. seq also works on
-    Strings, native Python lists and any objects
-    that implement __getitem__."
+   :doc "Returns a seq on the collection. If the collection is empty, returns
+  nil.  (seq nil) returns nil. seq also works on Strings, native Python lists
+  and any objects that implement __getitem__."
    :tag clojure.lang.ISeq
    :added "1.0"
    :static true}
@@ -89,7 +59,6 @@
     c. Returns true or false"
    :added "1.0"}
  instance? (fn instance? [c x] (py/isinstance x c)))
-
 (def
  ^{:arglists '([x])
    :doc "Return true if x implements ISeq"
@@ -98,49 +67,80 @@
  seq? (fn seq? [x] (instance? clojure.lang.iseq/ISeq x)))
 
 (def
+ ^{:arglists '([x])
+   :doc "Return true if x is a String"
+   :added "1.0"
+   :static true}
+ string? (fn string? [x] (instance? py/str x)))
+
+(def
+ ^{:arglists '([x])
+   :doc "Return true if x implements IPersistentMap"
+   :added "1.0"
+   :static true}
+ map? (fn ^:static map? [x] (instance? clojure.lang.ipersistentmap/IPersistentMap x)))
+
+(def
+ ^{:arglists '([x])
+   :doc "Return true if x implements IPersistentVector"
+   :added "1.0"
+   :static true}
+ vector? (fn vector? [x] (instance? clojure.lang.ipersistentvector/IPersistentVector x)))
+
+(def
+ ^{:arglists '([& args])
+   :doc "Clojure version of RT.assoc"
+   :added "1.0"}
+ _assoc (fn* assoc [col k v]
+          (py/if col
+            (.assoc col k v)
+            (clojure.lang.rt/map k v))))
+
+(def
  ^{:arglists '([coll])
-   :doc "Returns the first item in the collection. Calls seq on its
-    argument. If coll is nil, returns nil."
+   :doc "Returns the first item in the collection. Calls seq on its argument.
+  If coll is nil, returns nil."
    :added "1.0"
    :static true}
  first (fn first [s]
-	   (py/if (py.bytecode/COMPARE_OP "is not" s nil)
-	     (py/if (instance? ISeq s)
-	       (.first s)
-	       (let [s (seq s)]
-	            (py/if (py.bytecode/COMPARE_OP "is not" s nil)
-	                   (.first s)
-			   nil)))
-	    nil)))
+         (py/if (py.bytecode/COMPARE_OP "is not" s nil)
+           (py/if (instance? ISeq s)
+             (.first s)
+             (let [s (seq s)]
+               (py/if (py.bytecode/COMPARE_OP "is not" s nil)
+                 (.first s)
+                 nil)))
+           nil)))
 
 (def
  ^{:arglists '([coll])
    :tag clojure.lang.ISeq
-   :doc "Returns a seq of the items after the first. Calls seq on its
-  argument.  If there are no more items, returns nil."
+   :doc "Returns a seq of the items after the first. Calls seq on its argument.
+  If there are no more items, returns nil."
    :added "1.0"
-   :static true}  
+   :static true}
  next (fn next [s]
- 	 			 (py/if (is? nil s)
- 	 			 	 nil
-					 (py/if (instance? ISeq s)
-						 (.next s)
-						 (let [s (seq s)]
-							  (.next s))))))
+        (py/if (is? nil s)
+          nil
+          (py/if (instance? ISeq s)
+            (.next s)
+            (let [s (seq s)]
+              (.next s))))))
 
 (def
  ^{:arglists '([coll])
    :tag clojure.lang.ISeq
-   :doc "Returns a possibly empty seq of the items after the first. Calls seq on its
-  argument."
+   :doc "Returns a possibly empty seq of the items after the first. Calls seq
+  on its argument."
    :added "1.0"
-   :static true}  
- rest (fn rest [x] (py/if (py/isinstance x ISeq)
-                       (.more x)
-                       (let [s (seq x)]
-                           (py/if s
-                               (.more s)
-                               clojure.lang.persistentlist/EMPTY)))))
+   :static true}
+ rest (fn rest [x]
+        (py/if (py/isinstance x ISeq)
+          (.more x)
+          (let [s (seq x)]
+            (py/if s
+              (.more s)
+              clojure.lang.persistentlist/EMPTY)))))
 
 (def
  ^{:doc "Same as (first (next x))"
@@ -177,71 +177,6 @@
    :static true}
  nnext (fn nnext [x] (next (next x))))
 
-(def
- ^{:arglists '([x])
-   :doc "Return true if x is a String"
-   :added "1.0"
-   :static true}
- string? (fn string? [x] (instance? py/str x)))
-
-(def
- ^{:arglists '([x])
-   :doc "Return true if x implements IPersistentMap"
-   :added "1.0"
-   :static true}
- map? (fn ^:static map? [x] (instance? clojure.lang.ipersistentmap/IPersistentMap x)))
-
-(def
- ^{:arglists '([x])
-   :doc "Return true if x implements IPersistentVector"
-   :added "1.0"
-   :static true}
- vector? (fn vector? [x] (instance? clojure.lang.ipersistentvector/IPersistentVector x)))
-
-(def
- ^{:arglists '([map key val] [map key val & kvs])
-   :doc "assoc[iate]. When applied to a map, returns a new map of the
-    same (hashed/sorted) type, that contains the mapping of key(s) to
-    val(s). When applied to a vector, returns a new vector that
-    contains val at index. Note - index must be <= (count vector)."
-   :added "1.0"}
- assoc
- (fn assoc
-   ([map key val] (_assoc map key val))
-   ([map key val & kvs]
-    (let [ret (assoc map key val)]
-      (py/if kvs
-        (recur ret (first kvs) (second kvs) (nnext kvs))
-        ret)))))
-
-;;;;;;;;;;;;;;;;; metadata ;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(def
- ^{:arglists '([obj])
-   :doc "Returns the metadata of obj, returns nil if there is no metadata."
-   :added "1.0"}
- meta (fn meta [x]
-        (py/if (py/hasattr x "meta")
-          (.meta x))))
-
-(def
- ^{:arglists '([obj m])
-   :doc "Returns an object of the same type and value as obj, with
-    map m as its metadata."
-   :added "1.0"}
- with-meta (fn with-meta [x m]
-             (. x (withMeta m))))
-
-;;;;;;;;;;;;;;;;
-
-(def 
- ^{:arglists '([coll])
-   :doc "Return the last item in coll, in linear time"
-   :added "1.0"}
- last (fn last [s]
-        (py/if (next s)
-          (recur (next s))
-          (first s))))
-
 (def nil?
  ^{:tag Boolean
    :doc "Returns true if x is nil, false otherwise."
@@ -253,62 +188,76 @@
  ^{:arglists '([& args])
    :doc "Clojure version of RT.conj"
    :added "1.0"}
- _conj (fn _conj [coll x] (py/if (nil? coll)
-                            clojure.lang.persistentlist/EMPTY
-                            (.cons coll x))))
-
+ _conj (fn _conj [coll x]
+         (py/if (nil? coll)
+           clojure.lang.persistentlist/EMPTY
+           (.cons coll x))))
 
 (def
  ^{:arglists '([coll x] [coll x & xs])
-   :doc "conj[oin]. Returns a new collection with the xs
-    'added'. (conj nil item) returns (item).  The 'addition' may
-    happen at different 'places' depending on the concrete type."
+   :doc "conj[oin]. Returns a new collection with the xs 'added'. (conj nil
+  item) returns (item). The 'addition' may happen at different 'places'
+  depending on the concrete type."
    :added "1.0"}
- conj (fn conj 
+ conj (fn conj
         ([coll x] (_conj coll x))
         ([coll x & xs]
-         (py/if (nil? xs)
-             (conj coll x)
-             (recur (conj coll x) (first xs) (next xs))))))
+          (py/if (nil? xs)
+            (conj coll x)
+            (recur (conj coll x) (first xs) (next xs))))))
 
-
-
-(def 
- ^{:arglists '([coll])
-   :doc "Return a seq of all but the last item in coll, in linear time"
+(def
+ ^{:arglists '([map key val] [map key val & kvs])
+   :doc "assoc[iate]. When applied to a map, returns a new map of the same
+  (hashed/sorted) type, that contains the mapping of key(s) to val(s). When
+  applied to a vector, returns a new vector that contains val at index. Note -
+  index must be <= (count vector)."
    :added "1.0"}
- butlast (fn butlast [s]
-           (loop [ret [] s s]
-             (py/if (nil? (next s))
-               (seq ret)  
-               (recur (conj ret (first s)) (next s))))))
+ assoc
+ (fn assoc
+   ([map key val] (_assoc map key val))
+   ([map key val & kvs]
+    (let [ret (assoc map key val)]
+      (py/if kvs
+        (recur ret (first kvs) (second kvs) (nnext kvs))
+        ret)))))
 
- 		
-(def set-macro 
-    (fn set-macro [f]
-        (py/setattr f "macro?" true)
-        f))	 
- 	 
- 	 
+(def
+ ^{:arglists '([obj])
+   :doc "Returns the metadata of obj, returns nil if there is no metadata."
+   :added "1.0"}
+ meta (fn meta [x]
+        (py/if (py/hasattr x "meta")
+          (.meta x))))
+
+(def
+ ^{:arglists '([obj m])
+   :doc "Returns an object of the same type and value as obj, with map m as its
+  metadata."
+   :added "1.0"}
+ with-meta (fn with-meta [x m]
+             (. x (withMeta m))))
+
 (def ^{:private true :dynamic true}
   assert-valid-fdecl (fn [fdecl]))
 
-(def
- ^{:private true}
+(def ^{:private true}
  sigs
  (fn [fdecl]
    (assert-valid-fdecl fdecl)
-   (let [asig 
+   (let [asig
          (fn [fdecl]
            (let [arglist (first fdecl)
                  ;elide implicit macro args
-                 arglist (py/if (.__eq__ '&form (first arglist)) 
+                 arglist (py/if (.__eq__ '&form (first arglist))
                            (clojure.lang.rt/subvec arglist 2 (py/len arglist))
                            arglist)
                  body (next fdecl)]
              (py/if (map? (first body))
                (py/if (next body)
-                 (with-meta arglist (conj (py/if (meta arglist) (meta arglist) {}) (first body)))
+                 (with-meta
+                   arglist
+                   (conj (py/if (meta arglist) (meta arglist) {}) (first body)))
                  arglist)
                arglist)))]
      (py/if (seq? (first fdecl))
@@ -318,16 +267,32 @@
            (seq ret)))
        (list (asig fdecl))))))
 
+(def
+ ^{:arglists '([coll])
+   :doc "Return the last item in coll, in linear time"
+   :added "1.0"}
+ last (fn last [s]
+        (py/if (next s)
+          (recur (next s))
+          (first s))))
 
+(def
+ ^{:arglists '([coll])
+   :doc "Return a seq of all but the last item in coll, in linear time"
+   :added "1.0"}
+ butlast (fn butlast [s]
+           (loop [ret [] s s]
+             (py/if (nil? (next s))
+               (seq ret)
+               (recur (conj ret (first s)) (next s))))))
 
-(def 
-
- ^{:doc "Same as (def name (fn [params* ] exprs*)) or (def
-    name (fn ([params* ] exprs*)+)) with any doc-string or attrs added
-    to the var metadata. prepost-map defines a map with optional keys
-    :pre and :post that contain collections of pre or post conditions."
+(def
+ ^{:doc "Same as (def name (fn [params* ] exprs*)) or (def name (fn ([params*]
+  exprs*)+)) with any doc-string or attrs added to the var metadata.
+  prepost-map defines a map with optional keys :pre and :post that contain
+  collections of pre or post conditions."
    :arglists '([name doc-string? attr-map? [params*] prepost-map? body]
-                [name doc-string? attr-map? ([params*] prepost-map? body)+ attr-map?])
+               [name doc-string? attr-map? ([params*] prepost-map? body)+ attr-map?])
    :added "1.0"}
  defn (fn defn [&form &env name & fdecl]
         (let [m (py/if (string? (first fdecl))
@@ -357,20 +322,33 @@
                       iname (second inline)]
                   ;; same as: (py/if (and (= 'fn ifn) (not (symbol? iname))) ...)
                   (py/if (py/if (.__eq__ 'fn ifn)
-                        (py/if (instance? clojure.lang.symbol/Symbol iname) false true))
+                           (py/if (instance? clojure.lang.symbol/Symbol iname) false true))
                     ;; inserts the same fn name to the inline fn if it does not have one
-                    (assoc m :inline (cons ifn (cons (clojure.lang.symbol/symbol (.concat (.getName name) "__inliner"))
-                                                     (next inline))))
+                    (assoc m :inline
+                      (cons
+                        ifn
+                        (cons (clojure.lang.symbol/symbol
+                                (.concat (.getName name) "__inliner"))
+                              (next inline))))
                     m))
-              m (conj (py/if (meta name) (meta name) {}) m)
-              ]
+              m (conj (py/if (meta name) (meta name) {}) m)]
           (list 'def (with-meta name m)
                 ;;todo - restore propagation of fn name
                 ;;must figure out how to convey primitive hints to self calls first
                 (cons `fn fdecl)))))
 
+(def set-macro
+  (fn set-macro [f]
+    (py/setattr f "macro?" true)
+    f))
+
 (set-macro defn)
 
+(def
+ ^{:arglists '([& items])
+   :doc "Creates a new vector containing the items."
+   :added "1.0"}
+  vector clojure.lang.rt/vector)
 
 (defn vec
   "Creates a new vector containing the contents of coll."
@@ -378,58 +356,89 @@
    :static true}
   ([coll]
     (py/if (nil? coll)
-        nil
-        (clojure.lang.persistentvector/vec coll))))
+      nil
+      (clojure.lang.persistentvector/vec coll))))
+
+(defn hash-map
+  "keyval => key val
+  Returns a new hash map with supplied mappings."
+  {:added "1.0"}
+  ([] {})
+  ([& keyvals]
+    (let [coll {}]
+      (loop [keyvals (seq keyvals) coll coll]
+        (py/if (nil? keyvals)
+          coll
+          (do
+            (py/if (py.bytecode/COMPARE_OP "==" (py/len keyvals) 1)
+              (throw (py/Exception "Even number of args required to hash-map")))
+            (py/if (py.bytecode/COMPARE_OP "in" (first keyvals) coll)
+              (throw (py/Exception "Duplicate keys found in hash-map")))
+            (recur (nnext keyvals)
+              (.assoc coll
+                (first keyvals)
+                (fnext keyvals)))))))))
 
 (def
- ^{:doc "Like defn, but the resulting function name is declared as a
-  macro and will be used as a macro by the compiler when it is
-  called."
+ ^{:arglists '([& items])
+   :doc "Creates a new hashmap containing the items."
+   :added "1.0"}
+  hashmap clojure.lang.rt/map)
+
+(def
+ ^{:doc "Like defn, but the resulting function name is declared as a macro and
+  will be used as a macro by the compiler when it is called."
    :arglists '([name doc-string? attr-map? [params*] body]
-                 [name doc-string? attr-map? ([params*] body)+ attr-map?])
+               [name doc-string? attr-map? ([params*] body)+ attr-map?])
    :added "1.0"}
  defmacro (fn [&form &env
                 name & args]
-             (let [prefix (loop [p (list name) args args]
-                            (let [f (first args)]
-                              (py/if (string? f)
-                                (recur (cons f p) (next args))
-                                (py/if (map? f)
-                                  (recur (cons f p) (next args))
-                                  p))))
-                   fdecl (loop [fd args]
-                           (py/if (string? (first fd))
-                             (recur (next fd))
-                             (py/if (map? (first fd))
-                               (recur (next fd))
-                               fd)))
-                   fdecl (py/if (vector? (first fdecl))
-                           (list fdecl)
-                           fdecl)
-                   add-implicit-args (fn [fd]
-                             (let [args (first fd)]
-                               (cons (vec (cons '&form (cons '&env args))) (next fd))))
-                   add-args (fn [acc ds]
-                              (py/if (nil? ds)
-                                acc
-                                (let [d (first ds)]
-                                  (py/if (map? d)
-                                    (conj acc d)
-                                    (recur (conj acc (add-implicit-args d)) (next ds))))))
-                   fdecl (seq (add-args [] fdecl))
-                   decl (loop [p prefix d fdecl]
-                          (py/if p
-                            (recur (next p) (cons (first p) d))
-                            d))]
-               (list 'do
-                     (cons `defn decl)
-                     (list 'set-macro name)
-                     (list 'py/setattr name "_macro-form" (list 'quote decl))
-                     name))))
-
+            (let [prefix (loop [p (list name) args args]
+                           (let [f (first args)]
+                             (py/if (string? f)
+                               (recur (cons f p) (next args))
+                               (py/if (map? f)
+                                 (recur (cons f p) (next args))
+                                 p))))
+                  fdecl (loop [fd args]
+                          (py/if (string? (first fd))
+                            (recur (next fd))
+                            (py/if (map? (first fd))
+                              (recur (next fd))
+                              fd)))
+                  fdecl (py/if (vector? (first fdecl))
+                          (list fdecl)
+                          fdecl)
+                  add-implicit-args (fn [fd]
+                            (let [args (first fd)]
+                              (cons (vec (cons '&form (cons '&env args))) (next fd))))
+                  add-args (fn [acc ds]
+                             (py/if (nil? ds)
+                               acc
+                               (let [d (first ds)]
+                                 (py/if (map? d)
+                                   (conj acc d)
+                                   (recur (conj acc (add-implicit-args d)) (next ds))))))
+                  fdecl (seq (add-args [] fdecl))
+                  decl (loop [p prefix d fdecl]
+                         (py/if p
+                           (recur (next p) (cons (first p) d))
+                           d))]
+              (list 'do
+                    (cons `defn decl)
+                    (list 'set-macro name)
+                    (list 'py/setattr name "_macro-form" (list 'quote decl))
+                    name))))
 
 (set-macro defmacro)
 
+;;; preparing support for the syntax-quote
+
+(def
+  ^{:macro true
+    :added "1.0"
+    :arglists '([pred val] [pred val else])}
+  if (fn* if [form env & decl] (cons 'if* decl)))
 
 (defmacro when
   "Evaluates test. If logical true, evaluates body in an implicit do."
@@ -458,38 +467,27 @@
   {:added "1.0"}
   [x] (py/if x false true))
 
-(defn println
-  "Pass through one string to Python print.  This is just for debugging,
-   and is not a proper final solution."
-  {}
-  [x] (py/print x))
-
 (defn str
-  "With no args, returns the empty string. With one arg x, returns
-  x.__str__().  (str nil) returns the empty string. With more than
-  one arg, returns the concatenation of the str values of the args."
+  "With no args, returns the empty string. With one arg x, returns x.__str__().
+  (str nil) returns the empty string. With more than one arg, returns the
+  concatenation of the str values of the args."
   {:added "1.0"}
   ([] "")
   ([x]
-   (py/if (nil? x) "" (py/str x)))
+    (py/if (nil? x) "" (py/str x)))
   ([x & ys]
-     (let [lst (py/list (py/str x))
-           lst (loop [remain ys]
-                 (py/if remain
-                   (do (.append lst (py/str (first remain)))
-                       (recur (next remain)))
-                   lst))]
-           (.join "" lst))))
+    (let [lst (py/list (py/str x))
+          lst (loop [remain ys]
+                (py/if remain
+                  (do (.append lst (py/str (first remain)))
+                      (recur (next remain)))
+                  lst))]
+      (.join "" lst))))
 
 (defn symbol?
   "Return true if x is a Symbol"
   {:added "1.0"}
   [x] (instance? clojure.lang.symbol/Symbol x))
-
-(defn var?
-  "Return true if x is a Var"
-  {:static true}
-  [x] (instance? clojure.lang.var/Var x))
 
 (defn keyword?
   "Return true if x is a Keyword"
@@ -503,71 +501,42 @@
   ([name] (py/if (symbol? name) name (clojure.lang.symbol/symbol name)))
   ([ns name] (clojure.lang.symbol/symbol ns name)))
 
-
-(defn inc
-  "Returns a number one greater than num. Does not auto-promote
-  longs, will throw on overflow. See also: inc'"
-  {:added "1.2"
-   :static true}
-  [x] (py.bytecode/BINARY_ADD x 1))
-
-(defn +
-  [x y] (py.bytecode/BINARY_ADD x y))
-
-(defn hash-map
-  "keyval => key val
-  Returns a new hash map with supplied mappings."
-  {:added "1.0"}
-  ([] {})
-  ([& keyvals]
-      (let [coll {}]
-          (loop [keyvals (seq keyvals) coll coll]
-              (py/if (nil? keyvals)
-                  coll
-                  (do (py/if (py.bytecode/COMPARE_OP "==" (py/len keyvals) 1)
-                          (throw (py/Exception "Even number of args required to hash-map")))
-                      (py/if (py.bytecode/COMPARE_OP "in" (first keyvals) coll)
-                          (throw (py/Exception "Duplicate keys found in hash-map")))
-                      (recur (nnext keyvals) 
-                             (.assoc coll 
-                                    (first keyvals)
-                                    (fnext keyvals)))))))))
-          
-      
-
-
 (defn gensym
-  "Returns a new symbol with a unique name. If a prefix string is
-  supplied, the name is prefix# where # is some unique number. If
-  prefix is not supplied, the prefix is 'G__'."
+  "Returns a new symbol with a unique name. If a prefix string is supplied, the
+  name is prefix# where # is some unique number. If prefix is not supplied, the
+  prefix is 'G__'."
   {:added "1.0"}
   ([] (gensym "G__"))
-  ([prefix-string] (. clojure.lang.symbol (symbol (str prefix-string (py/str (. clojure.lang.rt (nextID))))))))
+  ([prefix-string]
+    (. clojure.lang.symbol
+       (symbol (str prefix-string (py/str (. clojure.lang.rt (nextID))))))))
 
+(defn keyword
+  "Returns a keyword for the given string"
+  [x]
+  (clojure.lang.cljkeyword/keyword (symbol x)))
 
 (defmacro cond
-  "Takes a set of test/expr pairs. It evaluates each test one at a
-  time.  If a test returns logical true, cond evaluates and returns
-  the value of the corresponding expr and doesn't evaluate any of the
-  other tests or exprs. (cond) returns nil."
+  "Takes a set of test/expr pairs. It evaluates each test one at a time.  If a
+  test returns logical true, cond evaluates and returns the value of the
+  corresponding expr and doesn't evaluate any of the other tests or exprs.
+  (cond) returns nil."
   {:added "1.0"}
   [& clauses]
     (when clauses
       (list 'py/if (first clauses)
-            (py/if (next clauses)
-                (second clauses)
-                (throw (IllegalArgumentException
-                         "cond requires an even number of forms")))
-            (cons 'clojure.core/cond (next (next clauses))))))
-
+        (py/if (next clauses)
+          (second clauses)
+          (throw (IllegalArgumentException "cond requires an even number of forms")))
+        (cons 'clojure.core/cond (next (next clauses))))))
 
 (defn spread
   {:private true}
   [arglist]
   (cond
-   (nil? arglist) nil
-   (nil? (next arglist)) (seq (first arglist))
-   :else (cons (first arglist) (spread (next arglist)))))
+    (nil? arglist) nil
+    (nil? (next arglist)) (seq (first arglist))
+    :else (cons (first arglist) (spread (next arglist)))))
 
 (defn list*
   "Creates a new list containing the items prepended to the rest, the
@@ -578,16 +547,37 @@
   ([a b args] (cons a (cons b args)))
   ([a b c args] (cons a (cons b (cons c args))))
   ([a b c d & more]
-     (cons a (cons b (cons c (cons d (spread more)))))))
+    (cons a (cons b (cons c (cons d (spread more)))))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defn apply
+  "Applies fn f to the argument list formed by prepending intervening arguments
+  to args."
+  {:added "1.0"
+   :static true}
+  ([f args]
+     (applyTo f (seq args)))
+  ([f x args]
+     (applyTo f (list* x args)))
+  ([f x y args]
+     (applyTo f (list* x y args)))
+  ([f x y z args]
+     (applyTo f (list* x y z args)))
+  ([f a b c d & args]
+     (applyTo f (cons a (cons b (cons c (cons d (spread args))))))))
+
+(defn vary-meta
+  "Returns an object of the same type and value as obj, with (apply f (meta
+  obj) args) as its metadata."
+ {:added "1.0"
+   :static true}
+ [obj f & args]
+  (with-meta obj (apply f (meta obj) args)))
 
 (defn =
-  "Equality. Returns true if x equals y, false if not. Same as
-  Java x.equals(y) except it also works for nil, and compares
-  numbers and collections in a type-independent manner.  Clojure's immutable data
-  structures define equals() (and thus =) as a value, not an identity,
-  comparison."
+  "Equality. Returns true if x equals y, false if not. Same as Java x.equals(y)
+  except it also works for nil, and compares numbers and collections in a
+  type-independent manner.  Clojure's immutable data structures define equals()
+  (and thus =) as a value, not an identity, comparison."
   {:added "1.0"}
   ([x] true)
   ([x y] (py.bytecode/COMPARE_OP "==" x y))
@@ -598,21 +588,6 @@
        (py.bytecode/COMPARE_OP "==" y (first more)))
      false)))
 
-(defn apply
-  "Applies fn f to the argument list formed by prepending intervening arguments to args."
-  {:added "1.0"
-   :static true}
-  ([f args]
-     (applyTo f (seq args)))
-  ([ f x args]
-     (applyTo f (list* x args)))
-  ([ f x y args]
-     (applyTo f (list* x y args)))
-  ([ f x y z args]
-     (applyTo f (list* x y z args)))
-  ([ f a b c d & args]
-     (applyTo f (cons a (cons b (cons c (cons d (spread args))))))))
-
 (defn not=
   "Same as (not (= obj1 obj2))"
   {:added "1.0"}
@@ -621,223 +596,230 @@
   ([x y & more]
    (not (apply = x y more))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; private defs
+(defmacro defn-
+  "same as defn, yielding non-public def"
+  {:added "1.0"}
+  [name & decls]
+    (list* `defn (with-meta name (assoc (meta name) :private true)) decls))
 
+;;; deftype
 (defn make-init
-    "Creates a __init__ method for use in deftype"
-    [fields]
-    (loop [fields fields
-           args ['self]
-           body []]
-           (py/if (not fields)
-               (cons 'fn (cons '__init__ (cons args body)))
-               (let [newargs (conj args (first fields))
-                     newbody (conj body (list 'py/setattr
-                                              'self 
-                                              (py/str (first fields))
-                                              (first fields)))]
-                     (recur (next fields) newargs newbody)))))
+  "Creates a __init__ method for use in deftype"
+  [fields]
+  (loop [fields fields
+         args ['self]
+         body []]
+    (py/if (not fields)
+      (cons 'fn (cons '__init__ (cons args body)))
+      (let [newargs (conj args (first fields))
+            newbody (conj body
+                          (list 'py/setattr 'self (py/str (first fields)) (first fields)))]
+           (recur (next fields) newargs newbody)))))
 
 (defn make-props
-    [fields selfname]
-    (loop [remain (seq fields)
-        props []]
-       (py/if (nil? remain)
-           props
-           (recur (next remain) 
-                  (conj (conj props (first remain))
-                        (list 'py/getattr selfname (.-name (first remain))))))))
+  [fields selfname]
+  (loop [remain (seq fields)
+         props []]
+    (py/if (nil? remain)
+      props
+      (recur (next remain)
+             (conj (conj props (first remain))
+                   (list 'py/getattr selfname (.-name (first remain))))))))
 
 (defn prop-wrap-fn
-    [name members f]
-    (list 'fn 
- 	  (clojure.lang.symbol/symbol (str name "_" (first f))) 
-	  (second f)
-          (list* 'let-macro 
-		(make-props members 
-			    (first (fnext f)))
-		(next (next f)))))
+  [name members f]
+  (list 'fn
+    (clojure.lang.symbol/symbol (str name "_" (first f)))
+    (second f)
+    (list* 'let-macro
+      (make-props members
+                  (first (fnext f)))
+      (next (next f)))))
 
 (defn prop-wrap-multi
-    [name members f]
-    (let [name (clojure.lang.symbol/symbol (str name "_" (first f))) 
-          f (next f)
-          wrapped (loop [remain f
-                         wr []]
-			(py/if remain
-			    (let [cur (first remain)
-				   args (first cur)
-				   body (next cur)]
-				  (recur (next remain) 
- 			               (cons (list args
-					          (list* 'let-macro
-						      (make-props members
-								  (first args))
-						      body))
-					     wr)))
-			    wr))]
-	(list* 'fn name wrapped)))
-                        
-         
-(defn prop-wrap
-    [name members f]
-    (if (vector? (fnext f))
-	(prop-wrap-fn name members f)
-	(prop-wrap-multi name members f)))
+  [name members f]
+  (let [name (clojure.lang.symbol/symbol (str name "_" (first f)))
+        f (next f)
+        wrapped (loop [remain f
+                       wr []]
+    (py/if remain
+      (let [cur (first remain)
+            args (first cur)
+            body (next cur)]
+        (recur (next remain)
+               (cons (list args
+                       (list* 'let-macro
+                         (make-props members (first args))
+                        body))
+                     wr)))
+      wr))]
+  (list* 'fn name wrapped)))
 
+(defn prop-wrap
+  [name members f]
+  (if (vector? (fnext f))
+    (prop-wrap-fn name members f)
+    (prop-wrap-multi name members f)))
 
 (defmacro deftype
-    [name fields & specs]
-    (loop [specs (seq specs)
-           inherits []
-           fns (if (= (py/len fields) 0) {} {"__init__" (make-init fields)})]
-          (cond (not specs)
-                   (list 'def name (list 'py/type (.-name name) 
-                                                   (list 'py/tuple 
-                                                         (conj inherits py/object))
-                                                   (list '.toDict fns)))
-                (symbol? (first specs))
-                    (recur (next specs) 
-                           (conj inherits (first specs))
-                           fns)
-                (instance? clojure.lang.ipersistentlist/IPersistentList
-                           (first specs))
-                    (recur (next specs)
-                           inherits
-                           (assoc fns (py/str (ffirst specs))
-                           	   	      (prop-wrap name fields (first specs)))))))
+  [name fields & specs]
+  (loop [specs (seq specs)
+         inherits []
+         fns (if (= (py/len fields) 0) {} {"__init__" (make-init fields)})]
+    (cond (not specs)
+            (list 'def name (list 'py/type (.-name name)
+                            (list 'py/tuple (conj inherits py/object))
+                            (list '.toDict fns)))
+          (symbol? (first specs))
+            (recur (next specs)
+                   (conj inherits (first specs))
+                   fns)
+          (instance? clojure.lang.ipersistentlist/IPersistentList (first specs))
+            (recur (next specs)
+                   inherits
+                   (assoc fns (py/str (ffirst specs))
+                     (prop-wrap name fields (first specs)))))))
+
 (def definterface deftype)
+
 (set-macro definterface)
 
-;;;;;;;;;;;;;;;;;Lazy Seq and Chunked Seq;;;;;;;;;;;;;;;;
+(def
+  ^{:static true}
+  extend clojure.lang.protocol/extend)
 
+;;; lazy and chunked seqs
+(defn inc
+  "Returns a number one greater than num. Does not auto-promote longs, will
+  throw on overflow. See also: inc'"
+  {:added "1.2"
+   :static true}
+  [x] (py.bytecode/BINARY_ADD x 1))
+
+(defmacro lazy-seq
+  "Takes a body of expressions that returns an ISeq or nil, and yields a
+  Seqable object that will invoke the body only the first time seq is called,
+  and will cache the result and return it on all subsequent seq calls. See also
+  - realized?"
+  {:added "1.0"}
+  [& body]
+  (list 'clojure.core/LazySeq (list* '^{:once true} fn* [] body) nil nil nil))
 
 (definterface IPending []
-	(isRealized [self] nil))
+  (isRealized [self] nil))
 
 (deftype LazySeq [fnc sv s _meta]
-	(withMeta [self meta]
-		(LazySeq nil nil (.seq self) meta))
-	(sval [self]
-		(when (not (nil? fnc))
-			  (py/setattr self "sv" (fnc))
-			  (py/setattr self "fnc" nil))
-		(py/if (not (nil? sv))
-			sv
-		s))
-	clojure.lang.iseq/ISeq
-	(seq [self]
-		(.sval self)
-		(when (not (nil? sv))
-		      (let [ls sv]
-		           (py/setattr self "sv" nil)
-          		   (py/setattr self "s"
-       		 	 	   (loop [ls ls]
-					         (py/if (instance? LazySeq ls)
-					                (recur (.sval ls))
-					                (seq ls))))))
-		s)
-	(__len__ [self]
-	    (loop [c 0
-	           s (.seq self)]
-	          (py/if (nil? s)
-	              c
-	              (recur (inc c) (next s)))))
-	(__eq__ [self other]
-	    (loop [s (seq self)
-	           o (seq other)]
-	           (if (nil? s)
-	               (if (nil? o)
-	                   true
-	                   false)
-	               (if (nil? o)
-	                   false
-	                   (if (py.bytecode/COMPARE_OP "==" (first s) (first o))
-	                       (recur (next s) (next o))
-	                       false)))))
-	(__iter__ [self]
-	    (loop [s (seq self)]
-	          (when s
-	              (py.bytecode/YIELD_VALUE (first s))
-	              (recur (next s)))))
-	(__repr__ [self]
-	    (loop [c []
-	           s (seq self)
-	           cnt 0]
-	           (if (not (nil? s))
-                   (if (py.bytecode/COMPARE_OP "<" cnt 10)
-                       (recur (conj c (str (first s))) 
-                              (next s)
-                              (inc cnt))
-                       (recur (conj c "...")
-                              nil
-                              11)))
-               (str "[" (.join " " c) "]")))
-	(first [self]
-	    (.seq self)
-	    (py/if (nil? s)
-	        nil
-	        (.first s)))
-	(next [self]
-	    (.seq self)
-	    (py/if (nil? s)
-	        nil
-	        (.next s)))
-	(more [self]
-	    (.seq self)
-	    (py/if (nil? s)
-	        (list)
-	        (.more s)))
-	(cons [self o]
-	    (cons o (.seq self)))
-	(empty [self]
-	    (list))
-        ;; IPrintable protocol
-        ;; These methods realize the entire sequence as Clojure does. But
-        ;; __repr__ does not. Is the intent to prevent spamming the repl?
-        clojure.lang.iprintable/IPrintable
-        (writeAsString [self writer]
-          (.write writer "(")
-          (loop [s (.seq self)]
-            (when s
-              (clojure.protocols/writeAsString (.first s) writer)
-              (when (.next s)
-                (.write writer " "))
-              (recur (.next s))))
-          (.write writer ")"))
-        (writeAsReplString [self writer]
-          (.write writer "(")
-          (loop [s (.seq self)]
-            (when s
-              (clojure.protocols/writeAsReplString (.first s) writer)
-              (when (.next s)
-                (.write writer " "))
-              (recur (.next s))))
-          (.write writer ")")))
-
+  (withMeta [self meta]
+    (LazySeq nil nil (.seq self) meta))
+  (sval [self]
+    (when (not (nil? fnc))
+      (py/setattr self "sv" (fnc))
+      (py/setattr self "fnc" nil))
+    (py/if (not (nil? sv))
+      sv
+      s))
+  clojure.lang.iseq/ISeq
+  (seq [self]
+    (.sval self)
+    (when (not (nil? sv))
+      (let [ls sv]
+        (py/setattr self "sv" nil)
+          (py/setattr self "s"
+          (loop [ls ls]
+            (py/if (instance? LazySeq ls)
+              (recur (.sval ls))
+              (seq ls))))))
+    s)
+  (__len__ [self]
+    (loop [c 0
+           s (.seq self)]
+      (py/if (nil? s)
+        c
+        (recur (inc c) (next s)))))
+  (__eq__ [self other]
+    (loop [s (seq self)
+           o (seq other)]
+      (if (nil? s)
+        (if (nil? o)
+          true
+          false)
+        (if (nil? o)
+          false
+          (if (py.bytecode/COMPARE_OP "==" (first s) (first o))
+            (recur (next s) (next o))
+            false)))))
+  (__iter__ [self]
+    (loop [s (seq self)]
+      (when s
+        (py.bytecode/YIELD_VALUE (first s))
+        (recur (next s)))))
+  (__repr__ [self]
+    (loop [c []
+           s (seq self)
+           cnt 0]
+      (if (not (nil? s))
+        (if (py.bytecode/COMPARE_OP "<" cnt 10)
+          (recur (conj c (str (first s)))
+                 (next s)
+                 (inc cnt))
+          (recur (conj c "...")
+                 nil
+                 11)))
+      (str "[" (.join " " c) "]")))
+  (first [self]
+    (.seq self)
+    (py/if (nil? s)
+      nil
+      (.first s)))
+  (next [self]
+    (.seq self)
+    (py/if (nil? s)
+      nil
+      (.next s)))
+  (more [self]
+    (.seq self)
+    (py/if (nil? s)
+      (list)
+      (.more s)))
+  (cons [self o]
+    (cons o (.seq self)))
+  (empty [self]
+    (list))
+    ;; IPrintable protocol
+    ;; These methods realize the entire sequence as Clojure does. But
+    ;; __repr__ does not. Is the intent to prevent spamming the repl?
+    clojure.lang.iprintable/IPrintable
+    (writeAsString [self writer]
+      (.write writer "(")
+      (loop [s (.seq self)]
+      (when s
+        (clojure.protocols/writeAsString (.first s) writer)
+        (when (.next s)
+        (.write writer " "))
+        (recur (.next s))))
+      (.write writer ")"))
+    (writeAsReplString [self writer]
+      (.write writer "(")
+      (loop [s (.seq self)]
+      (when s
+        (clojure.protocols/writeAsReplString (.first s) writer)
+        (when (.next s)
+        (.write writer " "))
+        (recur (.next s))))
+      (.write writer ")")))
 
 (clojure.lang.protocol/extendForAllSubclasses clojure.lang.iseq/ISeq)
 (clojure.lang.protocol/extendForAllSubclasses
  clojure.lang.iprintable/IPrintable)
 
-
-                        
-
-(defmacro lazy-seq
-  "Takes a body of expressions that returns an ISeq or nil, and yields
-  a Seqable object that will invoke the body only the first time seq
-  is called, and will cache the result and return it on all subsequent
-  seq calls. See also - realized?"
-  {:added "1.0"}
-  [& body]
-  (list 'clojure.core/LazySeq (list* '^{:once true} fn* [] body) nil nil nil))    
-
-(def generic-interator-fn {:seq (fn generator-seq [self]
-               (lazy-seq
-                   (try
-                       (let [result (.next self)]
-                           (cons result (generator-seq self)))
-                       (catch py/StopIteration e nil))))})
+(def generic-interator-fn
+  {:seq (fn generator-seq [self]
+          (lazy-seq
+            (try
+              (let [result (.next self)]
+                (cons result (generator-seq self)))
+              (catch py/StopIteration e nil))))})
 
 (extend clojure.lang.pytypes/pyTypeGenerator
     Seqable
@@ -847,125 +829,106 @@
     Seqable
     generic-interator-fn)
 
-
-
-(definterface IChunkedSeq [] 
-	clojure.lang.sequential/Sequential
-
-	clojure.lang.iseq/ISeq
-	(chunkedFirst [self] nil)
-	(chunkedNext [self] nil)
-	(chunkedMore [self] nil))
-
-
+(definterface IChunkedSeq []
+  clojure.lang.sequential/Sequential
+  clojure.lang.iseq/ISeq
+  (chunkedFirst [self] nil)
+  (chunkedNext [self] nil)
+  (chunkedMore [self] nil))
 
 (deftype ArrayChunk [array off end]
-    (__getitem__ 
-        ([self i]
-          (py.bytecode/BINARY_SUBSCR array (py.bytecode/BINARY_ADD off i)))
-        ([self i not-found]
-          (if (py.bytecode/COMPARE_OP ">=" i 0)
-              (if (py.bytecode/COMPARE_OP "<" i (py/len self))
-                  (py.bytecode/BINARY_SUBSCR array i)
-                  not-found)
-              not-found)))
-
-    (__len__ [self]
-        (py.bytecode/BINARY_SUBTRACT end off))
-
-    (dropFirst [self]
-        (if (= off end)
-            (throw (IllegalStateException "dropFirst of empty chunk")))
-        (ArrayChunk array (inc off) end))
-
-    (reduce [self f start]
-        (loop [ret (f start (py.bytecode/BINARY_SUBSCR array off))
-               x (inc off)]
-             (if (py.bytecode/COMPARE_OP "<" x end)
-             (recur (f ret (py.bytecode/BINARY_SUBSCR array x)) 
-                (inc x))
-             ret))))
-
+  (__getitem__
+    ([self i]
+      (py.bytecode/BINARY_SUBSCR array (py.bytecode/BINARY_ADD off i)))
+    ([self i not-found]
+      (if (py.bytecode/COMPARE_OP ">=" i 0)
+        (if (py.bytecode/COMPARE_OP "<" i (py/len self))
+          (py.bytecode/BINARY_SUBSCR array i)
+          not-found)
+        not-found)))
+  (__len__ [self]
+    (py.bytecode/BINARY_SUBTRACT end off))
+  (dropFirst [self]
+    (if (= off end)
+      (throw (IllegalStateException "dropFirst of empty chunk")))
+    (ArrayChunk array (inc off) end))
+  (reduce [self f start]
+    (loop [ret (f start (py.bytecode/BINARY_SUBSCR array off))
+         x (inc off)]
+       (if (py.bytecode/COMPARE_OP "<" x end)
+       (recur (f ret (py.bytecode/BINARY_SUBSCR array x))
+        (inc x))
+       ret))))
 
 (deftype ChunkBuffer [buffer end]
-    (add [self o]
-        (py.bytecode/STORE_SUBSCR o buffer end)
-        (py/setattr self "end" (inc end)))
-    (chunk [self]
-        (let [ret (ArrayChunk buffer 0 end)]
-             (py/setattr self "buffer" nil)
-             ret))
-    (__len__ [self] end))
+  (add [self o]
+    (py.bytecode/STORE_SUBSCR o buffer end)
+    (py/setattr self "end" (inc end)))
+  (chunk [self]
+    (let [ret (ArrayChunk buffer 0 end)]
+       (py/setattr self "buffer" nil)
+       ret))
+  (__len__ [self] end))
 
 (deftype ChunkedCons [_meta chunk _more]
+  clojure.lang.aseq/ASeq
+  (first [self]
+    (py.bytecode/BINARY_SUBSCR chunk 0))
+  (withMeta [self meta]
+    (if (py.bytecode/COMPARE_OP "is not" meta _meta)
+      (ChunkedCons meta chunk _more)
+    self))
+  (meta [self] _meta)
+  (next [self]
+    (if (py.bytecode/COMPARE_OP ">" (py/len chunk) 1)
+      (ChunkedCons nil (.dropFirst chunk) _more)
+      (.chunkedNext self)))
+  (more [self]
+    (cond (py.bytecode/COMPARE_OP ">" (py/len chunk) 1)
+            (ChunkedCons nil (.dropFirst chunk) _more)
+          (py.bytecode/COMPARE_OP "is" _more nil)
+            '()
+          :else
+            _more))
 
-	clojure.lang.aseq/ASeq
-
-	(first [self]
-	       (py.bytecode/BINARY_SUBSCR chunk 0))
-	(withMeta [self meta]
-	  (if (py.bytecode/COMPARE_OP "is not" meta _meta)
-	        (ChunkedCons meta chunk _more)
-		self))
-	
-	(meta [self] _meta)
-
-	(next [self]
-	  (if (py.bytecode/COMPARE_OP ">" (py/len chunk) 1)
-	      (ChunkedCons nil (.dropFirst chunk) _more)
-	      (.chunkedNext self)))
-
-	(more [self]
-	  (cond (py.bytecode/COMPARE_OP ">" (py/len chunk) 1)
-		        (ChunkedCons nil (.dropFirst chunk) _more)
-		    (py.bytecode/COMPARE_OP "is" _more nil)
-		        '()
-		    :else
-		        _more))
-
-	IChunkedSeq
-	(chunkedFirst [self] chunk)
-
-	(chunkedNext [self]
-	  (.seq (.chunkedMore self)))
-
-	(chunkedMore [self]
-	  (if (is? _more nil)
-	        '()
-		_more)))
-
-
-
+  IChunkedSeq
+  (chunkedFirst [self] chunk)
+  (chunkedNext [self]
+    (.seq (.chunkedMore self)))
+  (chunkedMore [self]
+    (if (is? _more nil)
+      '()
+      _more)))
 
 (defn chunk-buffer [capacity]
-     (ChunkBuffer (py.bytecode/BINARY_MULTIPLY (py/list [nil]) capacity)
-		  0))
+  (ChunkBuffer (py.bytecode/BINARY_MULTIPLY (py/list [nil]) capacity) 0))
+
 (defn chunk-append [b x]
-     (.add b x))
+  (.add b x))
 
 (defn chunk [b]
-     (.chunk b))
+  (.chunk b))
 
 (defn chunk-first [s]
-     (.chunkedFirst s))
+  (.chunkedFirst s))
 
 (defn chunk-rest [s]
-     (.chunkedMore s))
+  (.chunkedMore s))
 
 (defn chunk-next [s]
-     (.chunkedNext s))
+  (.chunkedNext s))
 
 (defn chunk-cons [chunk rest]
-     (if (= (py/len chunk) 0)
-	 rest
-	 (ChunkedCons nil chunk rest)))
+  (if (= (py/len chunk) 0)
+    rest
+    (ChunkedCons nil chunk rest)))
 
 (defn chunked-seq? [s]
-     (instance? IChunkedSeq s))
-
+  (instance? IChunkedSeq s))
 
 (defn concat
-  "Returns a lazy seq representing the concatenation of the elements in the supplied colls."
+  "Returns a lazy seq representing the concatenation of the elements in the
+  supplied colls."
   {:added "1.0"}
   ([] (lazy-seq nil))
   ([x] (lazy-seq x))
@@ -990,9 +953,11 @@
                          (cat (first zs) (next zs)))))))]
        (cat (concat x y) zs))))
 
+;; at this point all the support for the syntax quote exists
 
+;;; flow control
 (defmacro if-not
-  "Evaluates test. If logical false, evaluates and returns then expr, 
+  "Evaluates test. If logical false, evaluates and returns then expr,
   otherwise else expr, if supplied, else nil."
   {:added "1.0"}
   ([test then] `(if-not ~test ~then nil))
@@ -1000,10 +965,10 @@
    `(if (not ~test) ~then ~else)))
 
 (defmacro and
-  "Evaluates exprs one at a time, from left to right. If a form
-  returns logical false (nil or false), and returns that value and
-  doesn't evaluate any of the other expressions, otherwise it returns
-  the value of the last expr. (and) returns true."
+  "Evaluates exprs one at a time, from left to right. If a form returns logical
+  false (nil or false), and returns that value and doesn't evaluate any of the
+  other expressions, otherwise it returns the value of the last expr. (and)
+  returns true."
   {:added "1.0"}
   ([] true)
   ([x] x)
@@ -1011,56 +976,86 @@
    `(let [and# ~x]
       (if and# (and ~@next) and#))))
 
-
-
-(defn identical?
-  "Tests if 2 arguments are the same object"
-  {:added "1.0"}
-  ([x y] (py.bytecode/COMPARE_OP "is" x y)))
-
-(defn compare
-  "Comparator. Returns a negative number, zero, or a positive number
-  when x is logically 'less than', 'equal to', or 'greater than'
-  y. Same as Java x.compareTo(y) except it also works for nil, and
-  compares numbers and collections in a type-independent manner. x
-  must implement Comparable"
-  {:added "1.0"}
-  [x y] (py/cmp x y))
-
 (defmacro or
-  "Evaluates exprs one at a time, from left to right. If a form
-  returns a logical true value, or returns that value and doesn't
-  evaluate any of the other expressions, otherwise it returns the
-  value of the last expression. (or) returns nil."
+  "Evaluates exprs one at a time, from left to right. If a form returns a
+  logical true value, or returns that value and doesn't evaluate any of the
+  other expressions, otherwise it returns the value of the last expression.
+  (or) returns nil."
   {:added "1.0"}
   ([] nil)
   ([x] x)
   ([x & next]
-      `(let [or# ~x]
-         (if or# or# (or ~@next)))))
+    `(let [or# ~x]
+       (if or# or# (or ~@next)))))
 
-(defn zero?
-  "Returns true if num is zero, else false"
+;; reduce is defined again later after InternalReduce loads
+(defn reduce1
+  ([f coll]
+    (let [s (seq coll)]
+      (if s
+        (reduce1 f (first s) (next s))
+        (f))))
+  ([f val coll]
+    (let [s (seq coll)]
+      (if s
+        (if (chunked-seq? s)
+          (recur f
+                 (.reduce (chunk-first s) f val)
+                 (chunk-next s))
+          (recur f (f val (first s)) (next s)))
+       val))))
+
+(defn reverse
+  "Returns a seq of the items in coll in reverse order. Not lazy."
   {:added "1.0"}
-  [x] (py.bytecode/COMPARE_OP "==" x 0))
+  [coll] (reduce1 conj () coll))
 
-(defn count
-  "Returns the number of items in the collection. (count nil) returns
-  0.  Also works on strings, arrays, and Java Collections and Maps"
+;;; math functions
+(defn >1? [n] (py.bytecode/COMPARE_OP ">" n 1))
+(defn >0? [n] (py.bytecode/COMPARE_OP ">" n 0))
+
+(defn +
+  "Returns the sum of nums. (+) returns 0. Does not auto-promote longs, will
+  throw on overflow. See also: +'"
+  {:added "1.2"}
+  ([] 0)
+  ([x] x)
+  ([x y] (py.bytecode/BINARY_ADD x y))
+  ([x y & more]
+     (reduce1 + (+ x y) more)))
+
+(defn *
+  "Returns the product of nums. (*) returns 1. Does not auto-promote longs,
+  will throw on overflow. See also: *'"
+  {:added "1.2"}
+  ([] 1)
+  ([x] x)
+  ([x y] (py.bytecode/BINARY_MULTIPLY x y))
+  ([x y & more]
+     (reduce1 * (* x y) more)))
+
+(defn /
+  "If no denominators are supplied, returns 1/numerator, else returns numerator
+  divided by all of the denominators."
   {:added "1.0"}
-  [coll] (if (nil? coll)
-             0
-             (py/len coll)))
+  ([x] (/ 1 x))
+  ([x y] (py.bytecode/BINARY_DIVIDE x y))
+  ([x y & more]
+   (reduce1 / (/ x y) more)))
 
-
-(defn int
-  "Coerce to int"
-  {:added "1.0"}
-  [x] (py/int x))
+(defn -
+  "If no ys are supplied, returns the negation of x, else subtracts the ys from
+  x and returns the result. Does not auto-promote longs, will throw on
+  overflow. See also: -'"
+  {:added "1.2"}
+  ([x] (py.bytecode/UNARY_NEGATIVE x))
+  ([x y] (py.bytecode/BINARY_SUBTRACT x y))
+  ([x y & more]
+     (reduce1 - (- x y) more)))
 
 (defn <
-  "Returns non-nil if nums are in monotonically increasing order,
-  otherwise false."
+  "Returns non-nil if nums are in monotonically increasing order, otherwise
+  false."
   {:added "1.0"
    :static true}
   ([x] true)
@@ -1072,74 +1067,9 @@
        (< y (first more)))
      false)))
 
-;; reduce is defined again later after InternalReduce loads
-(defn reduce1
-       ([f coll]
-             (let [s (seq coll)]
-               (if s
-         (reduce1 f (first s) (next s))
-                 (f))))
-       ([f val coll]
-          (let [s (seq coll)]
-            (if s
-              (if (chunked-seq? s)
-                (recur f 
-                       (.reduce (chunk-first s) f val)
-                       (chunk-next s))
-                (recur f (f val (first s)) (next s)))
-         val))))
-
-(defn reverse
-  "Returns a seq of the items in coll in reverse order. Not lazy."
-  {:added "1.0"}
-  [coll]
-    (reduce1 conj () coll))
-
-(defn >1? [n] (py.bytecode/COMPARE_OP ">" n 1))
-(defn >0? [n] (py.bytecode/COMPARE_OP ">" n 0))
-
-(defn +
-  "Returns the sum of nums. (+) returns 0. Does not auto-promote
-  longs, will throw on overflow. See also: +'"
-  {:added "1.2"}
-  ([] 0)
-  ([x] x)
-  ([x y] (py.bytecode/BINARY_ADD x y))
-  ([x y & more]
-     (reduce1 + (+ x y) more)))
-
-(defn *
-  "Returns the product of nums. (*) returns 1. Does not auto-promote
-  longs, will throw on overflow. See also: *'"
-  {:added "1.2"}
-  ([] 1)
-  ([x] x)
-  ([x y] (py.bytecode/BINARY_MULTIPLY x y))
-  ([x y & more]
-     (reduce1 * (* x y) more)))
-
-(defn /
-  "If no denominators are supplied, returns 1/numerator,
-  else returns numerator divided by all of the denominators."
-  {:added "1.0"}
-  ([x] (/ 1 x))
-  ([x y] (py.bytecode/BINARY_DIVIDE x y))
-  ([x y & more]
-   (reduce1 / (/ x y) more)))
-
-(defn -
-  "If no ys are supplied, returns the negation of x, else subtracts
-  the ys from x and returns the result. Does not auto-promote
-  longs, will throw on overflow. See also: -'"
-  {:added "1.2"}
-  ([x] (py.bytecode/UNARY_NEGATIVE x))
-  ([x y] (py.bytecode/BINARY_SUBTRACT x y))
-  ([x y & more]
-     (reduce1 - (- x y) more)))
-
 (defn <=
-  "Returns non-nil if nums are in monotonically non-decreasing order,
-  otherwise false."
+  "Returns non-nil if nums are in monotonically non-decreasing order, otherwise
+  false."
   {:added "1.0"}
   ([x] true)
   ([x y] (py.bytecode/COMPARE_OP "<=" x y))
@@ -1151,8 +1081,8 @@
      false)))
 
 (defn >
-  "Returns non-nil if nums are in monotonically decreasing order,
-  otherwise false."
+  "Returns non-nil if nums are in monotonically decreasing order, otherwise
+  false."
   {:added "1.0"}
   ([x] true)
   ([x y] (py.bytecode/COMPARE_OP ">" x y))
@@ -1164,8 +1094,8 @@
      false)))
 
 (defn >=
-  "Returns non-nil if nums are in monotonically non-increasing order,
-  otherwise false."
+  "Returns non-nil if nums are in monotonically non-increasing order, otherwise
+  false."
   {:added "1.0"}
   ([x] true)
   ([x y] (py.bytecode/COMPARE_OP ">=" x y))
@@ -1177,8 +1107,8 @@
      false)))
 
 (defn ==
-  "Returns non-nil if nums all have the equivalent
-  value (type-independent), otherwise false"
+  "Returns non-nil if nums all have the equivalent value (type-independent),
+  otherwise false"
   {:added "1.0"}
   ([x] true)
   ([x y] (py.bytecode/COMPARE_OP "==" x y))
@@ -1190,8 +1120,8 @@
      false)))
 
 (defn dec
-  "Returns a number one less than num. Does not auto-promote
-  longs, will throw on overflow. See also: dec'"
+  "Returns a number one less than num. Does not auto-promote longs, will throw
+  on overflow. See also: dec'"
   {:added "1.2"}
   [x] (py.bytecode/BINARY_SUBTRACT x 1))
 
@@ -1201,7 +1131,7 @@
   ([x] x)
   ([x y] (py/max x y))
   ([x y & more]
-   (reduce1 max (max x y) more)))
+    (reduce1 max (max x y) more)))
 
 (defn min
   "Returns the least of the nums."
@@ -1209,7 +1139,12 @@
   ([x] x)
   ([x y] (py/min x y))
   ([x y & more]
-   (reduce1 min (min x y) more)))
+    (reduce1 min (min x y) more)))
+
+(defn zero?
+  "Returns true if num is zero, else false"
+  {:added "1.0"}
+  [x] (py.bytecode/COMPARE_OP "==" x 0))
 
 (defn pos?
   "Returns true if num is greater than zero, else false"
@@ -1230,7 +1165,7 @@
         q
         (if (= 0 (py.bytecode/BINARY_MODULO num div))
           q
-          (inc q)))))        
+          (inc q)))))
 
 (defn mod
   "modulus of dividing numerator by denominator. Truncates toward negative infinity."
@@ -1242,8 +1177,8 @@
   "remainder of dividing numerator by denominator."
   {:added "1.0"
    :static true}
-  [num div] 
-  (let [m (quot num div)]   
+  [num div]
+  (let [m (quot num div)]
       (- num (* m div))))
 
 (defn bit-not
@@ -1256,7 +1191,7 @@
    {:added "1.0"}
    ([x y] (py.bytecode/BINARY_AND x y))
    ([x y & more]
-      (reduce1 bit-and (bit-and x y) more)))
+     (reduce1 bit-and (bit-and x y) more)))
 
 (defn bit-or
   "Bitwise or"
@@ -1275,7 +1210,7 @@
 (defn bit-and-not
   "Bitwise and with complement"
   {:added "1.0"}
-  ([x y] (py.bytecode/BINARY_AND  x (py.bytecode/UNARY_NOT y)))
+  ([x y] (py.bytecode/BINARY_AND x (py.bytecode/UNARY_NOT y)))
   ([x y & more]
     (reduce1 bit-and-not (bit-and-not x y) more)))
 
@@ -1312,63 +1247,22 @@
 (defn integer?
   "Returns true if n is an integer"
   {:added "1.0"}
-  [n]
-  (or (instance? py/int n)))
+  [n] (or (instance? py/int n)))
 
 (defn even?
   "Returns true if n is even, throws an exception if n is not an integer"
   {:added "1.0"}
-   [n] (if (integer? n)
-        (zero? (bit-and n 1))
-        (throw (py/TypeError (str "Argument must be an integer: " n)))))
+  [n]
+  (if (integer? n)
+    (zero? (bit-and n 1))
+    (throw (py/TypeError (str "Argument must be an integer: " n)))))
 
 (defn odd?
   "Returns true if n is odd, throws an exception if n is not an integer"
   {:added "1.0"}
   [n] (not (even? n)))
 
-(defn complement
-  "Takes a fn f and returns a fn that takes the same arguments as f,
-  has the same effects, if any, and returns the opposite truth value."
-  {:added "1.0"}
-  [f] 
-  (fn 
-    ([] (not (f)))
-    ([x] (not (f x)))
-    ([x y] (not (f x y)))
-    ([x y & zs] (not (apply f x y zs)))))
-
-(defn constantly
-  "Returns a function that takes any number of arguments and returns x."
-  {:added "1.0"}
-  [x] (fn [& args] x))
-
-(defn identity
-  "Returns its argument."
-  {:added "1.0"}
-  [x] x)
-
-;; list stuff
-(defn peek
-  "For a list or queue, same as first, for a vector, same as, but much
-  more efficient than, last. If the collection is empty, returns nil."
-  {:added "1.0"}
-  [coll] (if (nil? coll) 
-             nil
-             (.peek coll)))
-
-(defn pop
-  "For a list or queue, returns a new list/queue without the first
-  item, for a vector, returns a new vector without the last item. If
-  the collection is empty, throws an exception.  Note - not the same
-  as next/butlast."
-  {:added "1.0"}
-  [coll] (if (nil? coll)
-             nil
-             (.pop coll)))
-
-;; map stuff
-
+;;; collections
 (defn coll?
   "Returns true if x implements IPersistentCollection"
   {:added "1.0"}
@@ -1377,8 +1271,7 @@
 (defn list?
   "Returns true if x implements IPersistentList"
   {:added "1.0"}
-  [x] (instance? clojure.lang.ipersistentlist/IPersistentList
- x))
+  [x] (instance? clojure.lang.ipersistentlist/IPersistentList x))
 
 (defn set?
   "Returns true if x implements IPersistentSet"
@@ -1393,25 +1286,59 @@
   "Returns true if toll is a native python tuple"
   [coll] (instance? py/tuple coll))
 
-(defn contains?
-  "Returns true if key is present in the given collection, otherwise
-  returns false.  Note that for numerically indexed collections like
-  vectors and Java arrays, this tests if the numeric key is within the
-  range of indexes. 'contains?' operates constant or logarithmic time;
-  it will not perform a linear search for a value.  See also 'some'."
-  {:added "1.0"}
-  [coll key] (cond (or (vector? coll)
-                        (list? coll)
-                        (tuple? coll)
-                        (pylist? coll)
-                        (string? coll)
-                        (and (not (py/hasattr coll "__contains__"))
-                             (py/hasattr coll "__len__")))
-                     (and (>= key 0) (< key (count coll)))
-                    (nil? coll) false
-                    :else
-                     (py.bytecode/COMPARE_OP "in" key coll)))    
+(defn unicode?
+  "Returns true if x is unicode"
+  [x] (instance? py/unicode x))
 
+(defn sequential?
+  "Returns true if coll implements Sequential"
+  {:added "1.0"
+   :static true}
+  [coll] (instance? clojure.lang/Sequential coll))
+
+(defn count
+  "Returns the number of items in the collection. (count nil) returns 0.  Also
+  works on strings, arrays, and Java Collections and Maps"
+  {:added "1.0"}
+  [coll] (if (nil? coll) 0 (py/len coll)))
+
+;;; list stuff
+(defn peek
+  "For a list or queue, same as first, for a vector, same as, but much more
+  efficient than, last. If the collection is empty, returns nil."
+  {:added "1.0"}
+  [coll]
+  (if (nil? coll) nil (.peek coll)))
+
+(defn pop
+  "For a list or queue, returns a new list/queue without the first item, for a
+  vector, returns a new vector without the last item. If the collection is
+  empty, throws an exception.  Note - not the same as next/butlast."
+  {:added "1.0"}
+  [coll]
+  (if (nil? coll) nil (.pop coll)))
+
+;;; map stuff
+(defn contains?
+  "Returns true if key is present in the given collection, otherwise returns
+  false.  Note that for numerically indexed collections like vectors and Java
+  arrays, this tests if the numeric key is within the range of indexes.
+  'contains?' operates constant or logarithmic time; it will not perform a
+  linear search for a value.  See also 'some'."
+  {:added "1.0"}
+  [coll key]
+  (cond (or (vector? coll)
+            (list? coll)
+            (tuple? coll)
+            (pylist? coll)
+            (string? coll)
+            (and (not (py/hasattr coll "__contains__"))
+                 (py/hasattr coll "__len__")))
+          (and (>= key 0) (< key (count coll)))
+        (nil? coll)
+          false
+        :else
+          (py.bytecode/COMPARE_OP "in" key coll)))
 
 (defn get
   "Returns the value mapped to key, not-found or nil if key not present."
@@ -1421,15 +1348,14 @@
   ([map key not-found]
    (cond (instance? clojure.lang.ilookup/ILookup map)
            (.valAt map key not-found)
-         
          :else
            (if (contains? map key)
                (py.bytecode/BINARY_SUBSCR map key)
                not-found))))
 
 (defn dissoc
-  "dissoc[iate]. Returns a new map of the same (hashed/sorted) type,
-  that does not contain a mapping for key(s)."
+  "dissoc[iate]. Returns a new map of the same (hashed/sorted) type, that does
+  not contain a mapping for key(s)."
   {:added "1.0"
    :static true}
   ([map] map)
@@ -1442,8 +1368,8 @@
        ret))))
 
 (defn disj
-  "disj[oin]. Returns a new set of the same (hashed/sorted) type, that
-  does not contain key(s)."
+  "disj[oin]. Returns a new set of the same (hashed/sorted) type, that does not
+  contain key(s)."
   {:added "1.0"
    :static true}
   ([set] set)
@@ -1460,125 +1386,103 @@
 (defn find
   "Returns the map entry for key, or nil if key not present."
   {:added "1.0"}
-  [map key] 
-    (cond (nil? map)
+  [map key]
+   (cond (nil? map)
            nil
-          (instance? clojure.lang.associative/Associative map)
+         (instance? clojure.lang.associative/Associative map)
            (.entryAt map key)
-          :else
+         :else
            (if (contains? map key)
-               (clojure.lang.mapentry/MapEntry key (get map key))
-               nil)))
+             (clojure.lang.mapentry/MapEntry key (get map key))
+             nil)))
 
 (defn select-keys
   "Returns a map containing only those entries in map whose key is in keys"
   {:added "1.0"}
   [map keyseq]
-    (loop [ret {} keys (seq keyseq)]
-      (if keys
-        (let [entry (find map (first keys))]
-          (recur
-           (if entry
-             (conj ret entry)
-             ret)
-           (next keys)))
-        ret)))
+  (loop [ret {} keys (seq keyseq)]
+    (if keys
+      (let [entry (find map (first keys))]
+        (recur
+          (if entry
+            (conj ret entry)
+            ret)
+          (next keys)))
+      ret)))
 
 (defn keys
   "Returns a sequence of the map's keys."
   {:added "1.0"
    :static true}
-  [map] 
-    (if (map? map)
-         (clojure.lang.apersistentmap/createKeySeq (seq map))
-         (seq (.keys map))))
+  [map]
+  (if (map? map)
+    (clojure.lang.apersistentmap/createKeySeq (seq map))
+    (seq (.keys map))))
 
-(defn vals 
+(defn vals
   "Returns a sequence of the map's keys."
   {:added "1.0"
    :static true}
-  [map] 
-    (if (map? map)
-         (clojure.lang.apersistentmap/createValueSeq (seq map))
-         (seq (.items map))))
+  [map]
+  (if (map? map)
+    (clojure.lang.apersistentmap/createValueSeq (seq map))
+    (seq (.items map))))
 
 (defn key
   "Returns the key of the map entry."
   {:added "1.0"
    :static true}
-  [e]
-    (.getKey e))
+  [e] (.getKey e))
 
 (defn val
   "Returns the value in the map entry."
   {:added "1.0"
    :static true}
-  [e]
-    (. e (getValue)))
+  [e] (. e (getValue)))
 
-(defn unicode?
-  "Returns true if x is unicode"
-  [x]
-  (instance? py/unicode x))
+;;; classes and coercion
+(defn class
+  "Returns the Class of x"
+  {:added "1.0"}
+  [x] (py/type x))
 
-(def 
-  ^{:doc "Returns the name String of a string, symbol or keyword."
-    :static true}
-  name
-  clojure.lang.rt/name)
-
-(def 
-  ^{:doc "Returns the namespace String of a symbol or keyword, or nil if not present."
-   :added "1.0"
+(defn type
+  "Returns the :type metadata of x, or its Class if none"
+  {:added "1.0"
    :static true}
-  namespace
-  clojure.lang.rt/namespace)
+  [x] (or (get (meta x) :type) (class x)))
 
-(defmacro ..
-  "form => fieldName-symbol or (instanceMethodName-symbol args*)
-
-  Expands into a member access (.) of the first member on the first
-  argument, followed by the next member on the result, etc. For
-  instance:
-
-  (.. System (getProperties) (get \"os.name\"))
-
-  expands to:
-
-  (. (. System (getProperties)) (get \"os.name\"))
-
-  but is easier to write, read, and understand."
+(defn int
+  "Coerce to int"
   {:added "1.0"}
-  ([x form] `(. ~x ~form))
-  ([x form & more] `(.. (. ~x ~form) ~@more)))
+  [x] (py/int x))
 
-(defmacro ->
-  "Threads the expr through the forms. Inserts x as the
-  second item in the first form, making a list of it if it is not a
-  list already. If there are more forms, inserts the first form as the
-  second item in second form, etc."
+(defn num
+  "Coerce to Number"
   {:added "1.0"}
-  ([x] x)
-  ([x form] (if (seq? form)
-              (with-meta `(~(first form) ~x ~@(next form)) (meta form))
-              (list form x)))
-  ([x form & more] `(-> (-> ~x ~form) ~@more)))
+  [x] (py/float x))
 
-(defmacro ->>
-  "Threads the expr through the forms. Inserts x as the
-  last item in the first form, making a list of it if it is not a
-  list already. If there are more forms, inserts the first form as the
-  last item in second form, etc."
-  {:added "1.1"} 
-  ([x form] (if (seq? form)
-              (with-meta `(~(first form) ~@(next form)  ~x) (meta form))
-              (list form x)))
-  ([x form & more] `(->> (->> ~x ~form) ~@more)))
+(defn float?
+  "Returns true if n is a floating point number"
+  {:added "1.0"
+   :static true}
+  [n] (instance? py/float n))
 
+(defn int?
+  "Returns true if n is a floating point number"
+  {:added "1.0"
+   :static true}
+  [n] (instance? py/int n))
 
-;;; var stuff
+(defn number?
+  "Returns true if x is a Number"
+  {:added "1.0"
+   :static true}
+  [x] (or (float? x) (int? x)))
 
+(defn boolean [x] (if x true false))
 
+;;; binding forms
 (defmacro assert-args
   [& pairs]
   `(do (when-not ~(first pairs)
@@ -1588,11 +1492,10 @@
         (when more
           (list* `assert-args more)))))
 
-
 (defmacro if-let
   "bindings => binding-form test
 
-  If test is true, evaluates then with binding-form bound to the value of 
+  If test is true, evaluates then with binding-form bound to the value of
   test, if not, yields else"
   {:added "1.0"}
   ([bindings then]
@@ -1623,81 +1526,104 @@
          (let [~form temp#]
            ~@body)))))
 
-;;; functional stuff
+;;; higher-order functions
+(def FunctionType (py/type (fn x [] "")))
+(defn fn?
+  "Returns true if x s a builtin function, i.e. is an object created via fn."
+  {:added "1.0"
+   :static true}
+  [x] (instance? FunctionType x))
+
+(defn complement
+  "Takes a fn f and returns a fn that takes the same arguments as f, has the
+  same effects, if any, and returns the opposite truth value."
+  {:added "1.0"}
+  [f]
+  (fn
+    ([] (not (f)))
+    ([x] (not (f x)))
+    ([x y] (not (f x y)))
+    ([x y & zs] (not (apply f x y zs)))))
+
+(defn constantly
+  "Returns a function that takes any number of arguments and returns x."
+  {:added "1.0"}
+  [x] (fn [& args] x))
+
+(defn identity
+  "Returns its argument."
+  {:added "1.0"}
+  [x] x)
 
 (defn comp
-  "Takes a set of functions and returns a fn that is the composition
-  of those fns.  The returned fn takes a variable number of args,
-  applies the rightmost of fns to the args, the next
-  fn (right-to-left) to the result, etc."
+  "Takes a set of functions and returns a fn that is the composition of those
+  fns.  The returned fn takes a variable number of args, applies the rightmost
+  of fns to the args, the next fn (right-to-left) to the result, etc."
   {:added "1.0"}
   ([] identity)
   ([f] f)
-  ([f g] 
-     (fn 
-       ([] (f (g)))
-       ([x] (f (g x)))
-       ([x y] (f (g x y)))
-       ([x y z] (f (g x y z)))
-       ([x y z & args] (f (apply g x y z args)))))
-  ([f g h] 
-     (fn 
-       ([] (f (g (h))))
-       ([x] (f (g (h x))))
-       ([x y] (f (g (h x y))))
-       ([x y z] (f (g (h x y z))))
-       ([x y z & args] (f (g (apply h x y z args))))))
+  ([f g]
+   (fn
+     ([] (f (g)))
+     ([x] (f (g x)))
+     ([x y] (f (g x y)))
+     ([x y z] (f (g x y z)))
+     ([x y z & args] (f (apply g x y z args)))))
+  ([f g h]
+   (fn
+     ([] (f (g (h))))
+     ([x] (f (g (h x))))
+     ([x y] (f (g (h x y))))
+     ([x y z] (f (g (h x y z))))
+     ([x y z & args] (f (g (apply h x y z args))))))
   ([f1 f2 f3 & fs]
-    (let [fs (reverse (list* f1 f2 f3 fs))]
-      (fn [& args]
-        (loop [ret (apply (first fs) args) fs (next fs)]
-          (if fs
-            (recur ((first fs) ret) (next fs))
-            ret))))))
+   (let [fs (reverse (list* f1 f2 f3 fs))]
+     (fn [& args]
+       (loop [ret (apply (first fs) args) fs (next fs)]
+         (if fs
+           (recur ((first fs) ret) (next fs))
+           ret))))))
 
-
-(defn juxt 
-  "Takes a set of functions and returns a fn that is the juxtaposition
-  of those fns.  The returned fn takes a variable number of args, and
-  returns a vector containing the result of applying each fn to the
-  args (left-to-right).
+(defn juxt
+  "Takes a set of functions and returns a fn that is the juxtaposition of those
+  fns.  The returned fn takes a variable number of args, and returns a vector
+  containing the result of applying each fn to the args (left-to-right).
   ((juxt a b c) x) => [(a x) (b x) (c x)]"
   {:added "1.1"}
-  ([f] 
-     (fn
-       ([] [(f)])
-       ([x] [(f x)])
-       ([x y] [(f x y)])
-       ([x y z] [(f x y z)])
-       ([x y z & args] [(apply f x y z args)])))
-  ([f g] 
-     (fn
-       ([] [(f) (g)])
-       ([x] [(f x) (g x)])
-       ([x y] [(f x y) (g x y)])
-       ([x y z] [(f x y z) (g x y z)])
-       ([x y z & args] [(apply f x y z args) (apply g x y z args)])))
-  ([f g h] 
-     (fn
-       ([] [(f) (g) (h)])
-       ([x] [(f x) (g x) (h x)])
-       ([x y] [(f x y) (g x y) (h x y)])
-       ([x y z] [(f x y z) (g x y z) (h x y z)])
-       ([x y z & args] [(apply f x y z args) (apply g x y z args) (apply h x y z args)])))
+  ([f]
+   (fn
+     ([] [(f)])
+     ([x] [(f x)])
+     ([x y] [(f x y)])
+     ([x y z] [(f x y z)])
+     ([x y z & args] [(apply f x y z args)])))
+  ([f g]
+   (fn
+     ([] [(f) (g)])
+     ([x] [(f x) (g x)])
+     ([x y] [(f x y) (g x y)])
+     ([x y z] [(f x y z) (g x y z)])
+     ([x y z & args] [(apply f x y z args) (apply g x y z args)])))
+  ([f g h]
+   (fn
+     ([] [(f) (g) (h)])
+     ([x] [(f x) (g x) (h x)])
+     ([x y] [(f x y) (g x y) (h x y)])
+     ([x y z] [(f x y z) (g x y z) (h x y z)])
+     ([x y z & args] [(apply f x y z args) (apply g x y z args) (apply h x y z args)])))
   ([f g h & fs]
-     (let [fs (list* f g h fs)]
-       (fn
-         ([] (reduce1 #(conj %1 (%2)) [] fs))
-         ([x] (reduce1 #(conj %1 (%2 x)) [] fs))
-         ([x y] (reduce1 #(conj %1 (%2 x y)) [] fs))
-         ([x y z] (reduce1 #(conj %1 (%2 x y z)) [] fs))
-         ([x y z & args] (reduce1 #(conj %1 (apply %2 x y z args)) [] fs))))))
-
+   (let [fs (list* f g h fs)]
+     (fn
+       ([] (reduce1 #(conj %1 (%2)) [] fs))
+       ([x] (reduce1 #(conj %1 (%2 x)) [] fs))
+       ([x y] (reduce1 #(conj %1 (%2 x y)) [] fs))
+       ([x y z] (reduce1 #(conj %1 (%2 x y z)) [] fs))
+       ([x y z & args] (reduce1 #(conj %1 (apply %2 x y z args)) [] fs))))))
 
 (defn partial
-  "Takes a function f and fewer than the normal arguments to f, and
-  returns a fn that takes a variable number of additional args. When
-  called, the returned function calls f with args + additional args."
+  "Takes a function f and fewer than the normal arguments to f, and returns a
+  fn that takes a variable number of additional args. When called, the returned
+  function calls f with args + additional args."
   {:added "1.0"}
   ([f arg1]
    (fn [& args] (apply f arg1 args)))
@@ -1708,19 +1634,38 @@
   ([f arg1 arg2 arg3 & more]
    (fn [& args] (apply f arg1 arg2 arg3 (concat more args)))))
 
+(defn compare
+  "Comparator. Returns a negative number, zero, or a positive number when x is
+  logically 'less than', 'equal to', or 'greater than' y. Same as Java
+  x.compareTo(y) except it also works for nil, and compares numbers and
+  collections in a type-independent manner. x must implement Comparable"
+  {:added "1.0"}
+  [x y] (py/cmp x y))
 
-;;;;;;;;;;;;;;;;;;; sequence fns  ;;;;;;;;;;;;;;;;;;;;;;;
+;;; collections
 (defn sequence
-  "Coerces coll to a (possibly empty) sequence, if it is not already
-  one. Will not force a lazy seq. (sequence nil) yields ()"
+  "Coerces coll to a (possibly empty) sequence, if it is not already one. Will
+  not force a lazy seq. (sequence nil) yields ()"
   {:added "1.0"}
   [coll]
    (if (seq? coll) coll
     (or (seq coll) ())))
 
+(defn empty?
+  "Returns true if coll has no items - same as (not (seq coll)). Please use the
+  idiom (seq x) rather than (not (empty? x))"
+  {:added "1.0"
+   :static true}
+  [coll] (not (seq coll)))
+
+(defn not-empty
+  "If coll is empty, returns nil, else coll"
+  {:added "1.0"
+   :static true}
+  [coll] (when (seq coll) coll))
+
 (defn every?
-  "Returns true if (pred x) is logical true for every x in coll, else
-  false."
+  "Returns true if (pred x) is logical true for every x in coll, else false."
   {:added "1.0"}
   [pred coll]
   (cond
@@ -1729,25 +1674,23 @@
    :else false))
 
 (def
- ^{:doc "Returns false if (pred x) is logical true for every x in
-  coll, else true."
+ ^{:doc "Returns false if (pred x) is logical true for every x in coll, else
+  true."
    :added "1.0"}
  not-every? (comp not every?))
 
-
 (defn some
-  "Returns the first logical true value of (pred x) for any x in coll,
-  else nil.  One common idiom is to use a set as pred, for example
-  this will return :fred if :fred is in the sequence, otherwise nil:
-  (some #{:fred} coll)"
+  "Returns the first logical true value of (pred x) for any x in coll, else
+  nil.  One common idiom is to use a set as pred, for example this will return
+  :fred if :fred is in the sequence, otherwise nil: (some #{:fred} coll)"
   {:added "1.0"}
   [pred coll]
     (when (seq coll)
       (or (pred (first coll)) (recur pred (next coll)))))
 
 (def
- ^{:doc "Returns false if (pred x) is logical true for any x in coll,
-  else true."
+ ^{:doc "Returns false if (pred x) is logical true for any x in coll, else
+  true."
    :added "1.0"}
  not-any? (comp not some))
 
@@ -1755,8 +1698,8 @@
 (defmacro dotimes
   "bindings => name n
 
-  Repeatedly executes body (presumably for side-effects) with name
-  bound to integers from 0 through n-1."
+  Repeatedly executes body (presumably for side-effects) with name bound to
+  integers from 0 through n-1."
   {:added "1.0"}
   [bindings & body]
   (let [i (first bindings)
@@ -1767,14 +1710,12 @@
            ~@body
            (recur (inc ~i)))))))
 
-
-
 (defn map
-  "Returns a lazy sequence consisting of the result of applying f to the
-  set of first items of each coll, followed by applying f to the set
-  of second items in each coll, until any one of the colls is
-  exhausted.  Any remaining items in other colls are ignored. Function
-  f should accept number-of-colls arguments."
+  "Returns a lazy sequence consisting of the result of applying f to the set of
+  first items of each coll, followed by applying f to the set of second items
+  in each coll, until any one of the colls is exhausted.  Any remaining items
+  in other colls are ignored. Function f should accept number-of-colls
+  arguments."
   {:added "1.0"
    :static true}
   ([f coll]
@@ -1808,59 +1749,56 @@
                       (cons (map first ss) (step (map rest ss)))))))]
      (map #(apply f %) (step (conj colls c3 c2 c1))))))
 
-
 (defn mapcat
-  "Returns the result of applying concat to the result of applying map
-  to f and colls.  Thus function f should return a collection."
+  "Returns the result of applying concat to the result of applying map to f and
+  colls.  Thus function f should return a collection."
   {:added "1.0"
    :static true}
   [f & colls]
     (apply concat (apply map f colls)))
 
 (defn filter
-  "Returns a lazy sequence of the items in coll for which
-  (pred item) returns true. pred must be free of side-effects."
+  "Returns a lazy sequence of the items in coll for which (pred item) returns
+  true. pred must be free of side-effects."
   {:added "1.0"
    :static true}
   ([pred coll]
    (lazy-seq
-    (when-let [s (seq coll)]
-      (if (chunked-seq? s)
-        (let [c (chunk-first s)
-              size (count c)
-              b (chunk-buffer size)]
-          (dotimes [i size]
-              (when (pred (.nth c i))
-                (chunk-append b (.nth c i))))
-          (chunk-cons (chunk b) (filter pred (chunk-rest s))))
-        (let [f (first s) r (rest s)]
-          (if (pred f)
-            (cons f (filter pred r))
-            (filter pred r))))))))
-
+     (when-let [s (seq coll)]
+       (if (chunked-seq? s)
+         (let [c (chunk-first s)
+               size (count c)
+               b (chunk-buffer size)]
+           (dotimes [i size]
+             (when (pred (.nth c i))
+               (chunk-append b (.nth c i))))
+           (chunk-cons (chunk b) (filter pred (chunk-rest s))))
+         (let [f (first s) r (rest s)]
+           (if (pred f)
+             (cons f (filter pred r))
+             (filter pred r))))))))
 
 (defn remove
-  "Returns a lazy sequence of the items in coll for which
-  (pred item) returns false. pred must be free of side-effects."
+  "Returns a lazy sequence of the items in coll for which (pred item) returns
+  false. pred must be free of side-effects."
   {:added "1.0"
    :static true}
   [pred coll]
   (filter (complement pred) coll))
 
-
 (defn take
-  "Returns a lazy sequence of the first n items in coll, or all items if
-  there are fewer than n."
+  "Returns a lazy sequence of the first n items in coll, or all items if there
+  are fewer than n."
   {:added "1.0"}
   [n coll]
   (lazy-seq
-   (when (pos? n) 
+   (when (pos? n)
      (when-let [s (seq coll)]
       (cons (first s) (take (dec n) (rest s)))))))
 
 (defn take-while
-  "Returns a lazy sequence of successive items from coll while
-  (pred item) returns true. pred must be free of side-effects."
+  "Returns a lazy sequence of successive items from coll while (pred item)
+  returns true. pred must be free of side-effects."
   {:added "1.0"}
   [pred coll]
   (lazy-seq
@@ -1885,11 +1823,9 @@
   ([s] (drop-last 1 s))
   ([n s] (map (fn [x _] x) s (drop n s))))
 
-
-
 (defn take-last
-  "Returns a seq of the last n items in coll.  Depending on the type
-  of coll may be no better than linear time.  For vectors, see also subvec."
+  "Returns a seq of the last n items in coll.  Depending on the type of coll
+  may be no better than linear time.  For vectors, see also subvec."
   {:added "1.1"}
   [n coll]
   (loop [s (seq coll), lead (seq (drop n coll))]
@@ -1898,8 +1834,8 @@
       s)))
 
 (defn drop-while
-  "Returns a lazy sequence of the items in coll starting from the first
-  item for which (pred item) returns nil."
+  "Returns a lazy sequence of the items in coll starting from the first item
+  for which (pred item) returns nil."
   {:added "1.0"}
   [pred coll]
   (let [step (fn [pred coll]
@@ -1912,8 +1848,8 @@
 (defn cycle
   "Returns a lazy (infinite!) sequence of repetitions of the items in coll."
   {:added "1.0"}
-  [coll] (lazy-seq 
-          (when-let [s (seq coll)] 
+  [coll] (lazy-seq
+          (when-let [s (seq coll)]
               (concat s (cycle s)))))
 
 (defn split-at
@@ -1934,17 +1870,15 @@
   ([x] (lazy-seq (cons x (repeat x))))
   ([n x] (take n (repeat x))))
 
-
-
 (defn iterate
-  "Returns a lazy sequence of x, (f x), (f (f x)) etc. f must be free of side-effects"
+  "Returns a lazy sequence of x, (f x), (f (f x)) etc. f must be free of
+  side-effects"
   {:added "1.0"}
   [f x] (cons x (lazy-seq (iterate f (f x)))))
 
-(defn range 
-  "Returns a lazy seq of nums from start (inclusive) to end
-  (exclusive), by step, where start defaults to 0, step to 1, and end
-  to infinity."
+(defn range
+  "Returns a lazy seq of nums from start (inclusive) to end (exclusive), by
+  step, where start defaults to 0, step to 1, and end to infinity."
   {:added "1.0"}
   ([] (range 0 (py/float "inf")))
   ([end] (range 0 end 1))
@@ -1959,37 +1893,35 @@
           (do
             (chunk-append b i)
             (recur (+ i step)))
-          (chunk-cons (chunk b) 
-                      (when (comp i end) 
+          (chunk-cons (chunk b)
+                      (when (comp i end)
                         (range i end step)))))))))
 
 (defn merge
-  "Returns a map that consists of the rest of the maps conj-ed onto
-  the first.  If a key occurs in more than one map, the mapping from
-  the latter (left-to-right) will be the mapping in the result."
+  "Returns a map that consists of the rest of the maps conj-ed onto the first.
+  If a key occurs in more than one map, the mapping from the latter
+  (left-to-right) will be the mapping in the result."
   {:added "1.0"}
   [& maps]
   (when (some identity maps)
     (reduce1 #(conj (or %1 {}) %2) maps)))
 
-
 (defn merge-with
-  "Returns a map that consists of the rest of the maps conj-ed onto
-  the first.  If a key occurs in more than one map, the mapping(s)
-  from the latter (left-to-right) will be combined with the mapping in
-  the result by calling (f val-in-result val-in-latter)."
+  "Returns a map that consists of the rest of the maps conj-ed onto the first.
+  If a key occurs in more than one map, the mapping(s) from the latter
+  (left-to-right) will be combined with the mapping in the result by calling (f
+  val-in-result val-in-latter)."
   {:added "1.0"}
   [f & maps]
   (when (some identity maps)
     (let [merge-entry (fn [m e]
-			(let [k (key e) v (val e)]
-			  (if (contains? m k)
-			    (assoc m k (f (get m k) v))
-			    (assoc m k v))))
+                        (let [k (key e) v (val e)]
+                          (if (contains? m k)
+                            (assoc m k (f (get m k) v))
+                            (assoc m k v))))
           merge2 (fn [m1 m2]
-		   (reduce1 merge-entry (or m1 {}) (seq m2)))]
+                   (reduce1 merge-entry (or m1 {}) (seq m2)))]
       (reduce1 merge2 maps))))
-
 
 (defn zipmap
   "Returns a map with the keys mapped to the corresponding vals."
@@ -2004,10 +1936,9 @@
                (next vs))
         map)))
 
-
 (defn line-seq
-  "Returns the lines of text from rdr as a lazy sequence of strings.
-  rdr must implement .readline"
+  "Returns the lines of text from rdr as a lazy sequence of strings. rdr must
+  implement .readline"
   {:added "1.0"}
   [rdr]
   (let [line (.readline rdr)]
@@ -2024,29 +1955,27 @@
 
 (defn wrap-fn-for-compare
   [f]
-    (fn [x y]
-        (let [ret (f x y)]
-             (if (instance? py/bool ret)
-                 (if ret -1 1)
-                 ret))))
+  (fn [x y]
+    (let [ret (f x y)]
+      (if (instance? py/bool ret)
+        (if ret -1 1)
+        ret))))
 
 (defn sort
   "Returns a sorted sequence of the items in coll. If no comparator is
-  supplied, uses compare. comparator must
-  implement java.util.Comparator."
+  supplied, uses compare. comparator must implement java.util.Comparator."
   {:added "1.0"}
   ([coll]
    (sort compare coll))
   ([comp coll]
    (if (seq coll)
-       (seq (py/sorted coll (wrap-fn-for-compare comp)))
-       ())))
+     (seq (py/sorted coll (wrap-fn-for-compare comp)))
+     ())))
 
 (defn sort-by
-  "Returns a sorted sequence of the items in coll, where the sort
-  order is determined by comparing (keyfn item).  If no comparator is
-  supplied, uses compare. comparator must
-  implement java.util.Comparator."
+  "Returns a sorted sequence of the items in coll, where the sort order is
+  determined by comparing (keyfn item).  If no comparator is supplied, uses
+  compare. comparator must implement java.util.Comparator."
   {:added "1.0"}
   ([keyfn coll]
    (sort-by keyfn compare coll))
@@ -2054,11 +1983,11 @@
    (seq (py/sorted coll (wrap-fn-for-compare comp) keyfn))))
 
 (defn dorun
-  "When lazy sequences are produced via functions that have side
-  effects, any effects other than those needed to produce the first
-  element in the seq do not occur until the seq is consumed. dorun can
-  be used to force any effects. Walks through the successive nexts of
-  the seq, does not retain the head and returns nil."
+  "When lazy sequences are produced via functions that have side effects, any
+  effects other than those needed to produce the first element in the seq do
+  not occur until the seq is consumed. dorun can be used to force any effects.
+  Walks through the successive nexts of the seq, does not retain the head and
+  returns nil."
   {:added "1.0"}
   ([coll]
    (when (seq coll)
@@ -2067,33 +1996,12 @@
    (when (and (seq coll) (pos? n))
      (recur (dec n) (next coll)))))
 
-
-
-(defn nthnext
-  "Returns the nth next of coll, (seq coll) when n is 0."
-  {:added "1.0"}
-  [coll n]
-    (loop [n n xs (seq coll)]
-      (if (and xs (pos? n))
-        (recur (dec n) (next xs))
-        xs)))
-
-(defn nthrest
-  "Returns the nth rest of coll, coll when n is 0."
-  {:added "1.3"}
-  [coll n]
-    (loop [n n xs coll]
-      (if (and (pos? n) (seq xs))
-        (recur (dec n) (rest xs))
-        xs)))
-
 (defn doall
-  "When lazy sequences are produced via functions that have side
-  effects, any effects other than those needed to produce the first
-  element in the seq do not occur until the seq is consumed. doall can
-  be used to force any effects. Walks through the successive nexts of
-  the seq, retains the head and returns it, thus causing the entire
-  seq to reside in memory at one time."
+  "When lazy sequences are produced via functions that have side effects, any
+  effects other than those needed to produce the first element in the seq do
+  not occur until the seq is consumed. doall can be used to force any effects.
+  Walks through the successive nexts of the seq, retains the head and returns
+  it, thus causing the entire seq to reside in memory at one time."
   {:added "1.0"}
   ([coll]
    (dorun coll)
@@ -2102,43 +2010,10 @@
    (dorun n coll)
    coll))
 
-
-(defn partition
-  "Returns a lazy sequence of lists of n items each, at offsets step
-  apart. If step is not supplied, defaults to n, i.e. the partitions
-  do not overlap. If a pad collection is supplied, use its elements as
-  necessary to complete last partition upto n items. In case there are
-  not enough padding elements, return a partition with less than n items."
-  {:added "1.0"}
-  ([n coll]
-     (partition n n coll))
-  ([n step coll]
-     (lazy-seq
-       (when-let [s (seq coll)]
-         (let [p (doall (take n s))]
-           (when (= n (count p))
-             (cons p (partition n step (nthrest s step))))))))
-  ([n step pad coll]
-     (lazy-seq
-       (when-let [s (seq coll)]
-         (let [p (doall (take n s))]
-           (if (= n (count p))
-             (cons p (partition n step pad (nthrest s step)))
-             (list (take n (concat p pad)))))))))
-
-;;
-(defn eval
-  "Evaluates the form data structure (not text!) and returns the result."
-  {:added "1.0"
-   :static true}
-  [form] (clojure.lang.compiler/evalForm form __name__))
-
-
-
 (defmacro doseq
-  "Repeatedly executes body (presumably for side-effects) with
-  bindings and filtering as provided by \"for\".  Does not retain
-  the head of the sequence. Returns nil."
+  "Repeatedly executes body (presumably for side-effects) with bindings and
+  filtering as provided by \"for\".  Does not retain the head of the sequence.
+  Returns nil."
   {:added "1.0"}
   [seq-exprs & body]
   (assert-args
@@ -2172,7 +2047,7 @@
                            steppair (step recform (nnext exprs))
                            needrec (steppair 0)
                            subform (steppair 1)
-                           recform-chunk 
+                           recform-chunk
                              `(recur ~seq- ~chunk- ~count- (inc ~i-))
                            steppair-chunk (step recform-chunk (nnext exprs))
                            subform-chunk (steppair-chunk 1)]
@@ -2193,17 +2068,16 @@
                                    ~@(when needrec [recform]))))))])))))]
     (.__getitem__ (step nil (seq seq-exprs)) 1)))
 
-
 (defmacro dotimes
   "bindings => name n
 
-  Repeatedly executes body (presumably for side-effects) with name
-  bound to integers from 0 through n-1."
+  Repeatedly executes body (presumably for side-effects) with name bound to
+  integers from 0 through n-1."
   {:added "1.0"}
   [bindings & body]
   (assert-args
-     (vector? bindings) "a vector for its binding"
-     (= 2 (count bindings)) "exactly 2 forms in binding vector")
+    (vector? bindings) "a vector for its binding"
+    (= 2 (count bindings)) "exactly 2 forms in binding vector")
   (let [i (first bindings)
         n (second bindings)]
     `(let [n# ~n]
@@ -2212,122 +2086,157 @@
            ~@body
            (recur (inc ~i)))))))
 
-;redef into with batch support
-(defn ^:private into1
-  "Returns a new coll consisting of to-coll with all of the items of
-  from-coll conjoined."
-  {:added "1.0"
-   :static true}
-  [to from]
-    (reduce1 conj to from))
-
-
-(defmacro import*
-  ([module syms] 
-    (let [module (.-name module)
-          copies (map #(list 'py.bytecode/STORE_GLOBAL
-                             (name %)
-                             (list 'py/getattr 'itms (name %)))
-                        syms)
-          symnames (list* (map name syms))]
-                  
-         `(let [~'itms (py/__import__ (name ~module)
-						     (py/globals)
-						     (py/locals)
-					  	     (py/list (list ~@symnames))
-						     -1)]
-		       ~@copies ))))
-
-(defmacro import 
-  "import-list => (package-symbol class-name-symbols*)
-
-  For each name in class-name-symbols, adds a mapping from name to the
-  class named by package.name to the current namespace. Use :import in the ns
-  macro in preference to calling this directly."
+(defn nthnext
+  "Returns the nth next of coll, (seq coll) when n is 0."
   {:added "1.0"}
-  [& import-symbols-or-lists]
-  (let [specs (map #(if (and (seq? %) (= 'quote (first %))) (second %) %) 
-                   import-symbols-or-lists)]
-   `(do ~@(map #(list 'clojure.core/import* (first %) (next %))
-                specs))))
+  [coll n]
+    (loop [n n xs (seq coll)]
+      (if (and xs (pos? n))
+        (recur (dec n) (next xs))
+        xs)))
 
-(defn class
-  "Returns the Class of x"
+(defn nthrest
+  "Returns the nth rest of coll, coll when n is 0."
+  {:added "1.3"}
+  [coll n]
+    (loop [n n xs coll]
+      (if (and (pos? n) (seq xs))
+        (recur (dec n) (rest xs))
+        xs)))
+
+(defn partition
+  "Returns a lazy sequence of lists of n items each, at offsets step apart. If
+  step is not supplied, defaults to n, i.e. the partitions do not overlap. If a
+  pad collection is supplied, use its elements as necessary to complete last
+  partition upto n items. In case there are not enough padding elements, return
+  a partition with less than n items."
   {:added "1.0"}
-  [x] (py/type x))
+  ([n coll]
+     (partition n n coll))
+  ([n step coll]
+     (lazy-seq
+       (when-let [s (seq coll)]
+         (let [p (doall (take n s))]
+           (when (= n (count p))
+             (cons p (partition n step (nthrest s step))))))))
+  ([n step pad coll]
+     (lazy-seq
+       (when-let [s (seq coll)]
+         (let [p (doall (take n s))]
+           (if (= n (count p))
+             (cons p (partition n step pad (nthrest s step)))
+             (list (take n (concat p pad)))))))))
 
-(defn type 
-  "Returns the :type metadata of x, or its Class if none"
+(defn take-nth
+  "Returns a lazy seq of every nth item in coll."
   {:added "1.0"
    :static true}
-  [x]
-  (or (get (meta x) :type) (class x)))
-
-(defn num
-  "Coerce to Number"
-  {:added "1.0"}
-  [x] (py/float x))
-
-(defn float?
-  "Returns true if n is a floating point number"
-  {:added "1.0"
-   :static true}
-  [n]
-  (instance? py/float n))
-
-(defn int?
-  "Returns true if n is a floating point number"
-  {:added "1.0"
-   :static true}
-  [n]
-  (instance? py/int n))
-
-(defn number?
-  "Returns true if x is a Number"
-  {:added "1.0"
-   :static true}
-  [x]
-  (or (float? x) (int? x)))
-
-(defn keyword
-  "Returns a keyword for the given string"
-  [x]
-  (clojure.lang.cljkeyword/keyword (symbol x)))
+  [n coll]
+    (lazy-seq
+     (when-let [s (seq coll)]
+       (cons (first s) (take-nth n (drop n s))))))
 
 (defn nth
   ([coll x]
-      (if (py/hasattr coll "__getitem__")
-          (py.bytecode/BINARY_SUBSCR coll x)
-          (first (drop x coll))))
+    (if (py/hasattr coll "__getitem__")
+      (py.bytecode/BINARY_SUBSCR coll x)
+      (first (drop x coll))))
   ([coll x default]
-      (if (contains? coll x)
-          (nth coll x)
-          default)))
-
-(import '(clojure.lang.lispreader readString))
-
-(defn read-string
-  "Reads one object from the string s"
-  {:added "1.0"}
-  [s] (readString s))
-
+    (if (contains? coll x)
+      (nth coll x)
+      default)))
 
 (defn subvec
-  "Returns a persistent vector of the items in vector from
-  start (inclusive) to end (exclusive).  If end is not supplied,
-  defaults to (count vector). This operation is O(1) and very fast, as
-  the resulting vector shares structure with the original and no
-  trimming is done."
+  "Returns a persistent vector of the items in vector from start (inclusive) to
+  end (exclusive).  If end is not supplied, defaults to (count vector). This
+  operation is O(1) and very fast, as the resulting vector shares structure
+  with the original and no trimming is done."
   {:added "1.0"}
   ([v start]
    (subvec v start (count v)))
   ([v start end]
    (. clojure.lang.rt (subvec v start end))))
 
+(defn interleave
+  "Returns a lazy seq of the first item in each coll, then the second etc."
+  {:added "1.0"
+   :static true}
+  ([c1 c2]
+     (lazy-seq
+      (let [s1 (seq c1) s2 (seq c2)]
+        (when (and s1 s2)
+          (cons (first s1) (cons (first s2)
+                                 (interleave (rest s1) (rest s2))))))))
+  ([c1 c2 & colls]
+     (lazy-seq
+      (let [ss (map seq (conj colls c2 c1))]
+        (when (every? identity ss)
+          (concat (map first ss) (apply interleave (map rest ss))))))))
+
+(defn max-key
+  "Returns the x for which (k x), a number, is greatest."
+  {:added "1.0"
+   :static true}
+  ([k x] x)
+  ([k x y] (if (> (k x) (k y)) x y))
+  ([k x y & more]
+   (reduce1 #(max-key k %1 %2) (max-key k x y) more)))
+
+(defn min-key
+  "Returns the x for which (k x), a number, is lesser."
+  {:added "1.0"
+   :static true}
+  ([k x] x)
+  ([k x y] (if (< (k x) (k y)) x y))
+  ([k x y & more]
+   (reduce1 #(min-key k %1 %2) (min-key k x y) more)))
+
+;; redef into with batch support
+(defn- into1
+  "Returns a new coll consisting of to-coll with all of the items of from-coll
+  conjoined."
+  {:added "1.0"
+   :static true}
+  [to from]
+    (reduce1 conj to from))
+
+;;; sets
+(defn set
+  "Returns a set of the distinct elements of coll."
+  {:added "1.0"
+   :static true}
+  [coll]
+  (if-let [s (seq coll)]
+    (clojure.lang.persistenthashset/create s)
+    #{}))
+
+(defn hash-set
+  "Creates a hash set for the arguments"
+  [& args]
+  (set args))
+
+;;; multiple forms
+(defmacro ..
+  "form => fieldName-symbol or (instanceMethodName-symbol args*)
+
+  Expands into a member access (.) of the first member on the first argument,
+  followed by the next member on the result, etc. For instance:
+
+  (.. System (getProperties) (get \"os.name\"))
+
+  expands to:
+
+  (. (. System (getProperties)) (get \"os.name\"))
+
+  but is easier to write, read, and understand."
+  {:added "1.0"}
+  ([x form] `(. ~x ~form))
+  ([x form & more] `(.. (. ~x ~form) ~@more)))
+
 (defmacro doto
-  "Evaluates x then calls all of the methods and functions with the
-  value of x supplied at the front of the given arguments.  The forms
-  are evaluated in order.  Returns x.
+  "Evaluates x then calls all of the methods and functions with the value of x
+  supplied at the front of the given arguments.  The forms are evaluated in
+  order.  Returns x.
 
   (doto (new java.util.HashMap) (.put \"a\" 1) (.put \"b\" 2))"
   {:added "1.0"}
@@ -2341,114 +2250,28 @@
                 forms)
          ~gx)))
 
-(defmacro memfn
-  "Expands into code that creates a fn that expects to be passed an
-  object and any args and calls the named instance method on the
-  object passing the args. Use when you want to treat a Java method as
-  a first-class fn."
+(defmacro ->
+  "Threads the expr through the forms. Inserts x as the second item in the
+  first form, making a list of it if it is not a list already. If there are
+  more forms, inserts the first form as the second item in second form, etc."
   {:added "1.0"}
-  [name & args]
-  `(fn [target# ~@args]
-     (. target# (~name ~@args))))
+  ([x] x)
+  ([x form] (if (seq? form)
+              (with-meta `(~(first form) ~x ~@(next form)) (meta form))
+              (list form x)))
+  ([x form & more] `(-> (-> ~x ~form) ~@more)))
 
-;(import '(time time))
-;(def pytime time)
+(defmacro ->>
+  "Threads the expr through the forms. Inserts x as the last item in the first
+  form, making a list of it if it is not a list already. If there are more
+  forms, inserts the first form as the last item in second form, etc."
+  {:added "1.1"}
+  ([x form] (if (seq? form)
+              (with-meta `(~(first form) ~@(next form)  ~x) (meta form))
+              (list form x)))
+  ([x form & more] `(->> (->> ~x ~form) ~@more)))
 
-;(defmacro time
-;  "Evaluates expr and prints the time it took.  Returns the value of
-; expr."
-;  {:added "1.0"}
-;  [expr]
-;  `(let [start# (pytime)
-;         ret# ~expr]
-;     (py/print (str "Elapsed time: " (* (- (pytime) start#) 1000) " msecs"))
-;     ret#))
-
-(defn set
-  "Returns a set of the distinct elements of coll."
-  {:added "1.0"
-   :static true}
-  [coll] (if-let [s (seq coll)]
-           (clojure.lang.persistenthashset/create s)
-           #{}))
-
-(defn hash-set
-  "Creates a hash set for the arguments"
-  [& args]
-   (set args))
-
-(defn find-ns
-  "Returns the namespace named by the symbol or nil if it doesn't exist."
-  {:added "1.0"}
-  [sym] (clojure.lang.namespace/find sym))
-
-(defn create-ns
-  "Create a new namespace named by the symbol if one doesn't already
-  exist, returns it or the already-existing namespace of the same
-  name."
-  {:added "1.0"}
-  [sym] (clojure.lang.namespace/findOrCreate sym))
-
-(defn remove-ns
-  "Removes the namespace named by the symbol. Use with caution.
-  Cannot be used to remove the clojure namespace."
-  {:added "1.0"}
-  [sym] (clojure.lang.namespace/remove sym))
-
-
-
-(defn all-ns
-  "Returns a sequence of all namespaces."
-  {:added "1.0"
-   :static true}
-  [] (seq (py/tuple (.itervalues sys/modules))))
-
-(defn the-ns
-  "If passed a namespace, returns it. Else, when passed a symbol,
-  returns the namespace named by it, throwing an exception if not
-  found."
-  {:added "1.0"}
-  [x]
-  (if (instance? types/ModuleType x)
-    x
-    (or (find-ns x) (throw (py/Exception (str "No namespace: " x " found"))))))
-
-(defn ns-name
-  "Returns the name of the namespace, a symbol."
-  {:added "1.0"
-   :static true}
-  [ns]
-  (symbol (.-__name__ (the-ns ns))))
-
-
-(defn take-nth
-  "Returns a lazy seq of every nth item in coll."
-  {:added "1.0"
-   :static true}
-  [n coll]
-    (lazy-seq
-     (when-let [s (seq coll)]
-       (cons (first s) (take-nth n (drop n s))))))
-
-(defn interleave
-  "Returns a lazy seq of the first item in each coll, then the second etc."
-  {:added "1.0"
-   :static true}
-  ([c1 c2]
-     (lazy-seq
-      (let [s1 (seq c1) s2 (seq c2)]
-        (when (and s1 s2)
-          (cons (first s1) (cons (first s2) 
-                                 (interleave (rest s1) (rest s2))))))))
-  ([c1 c2 & colls] 
-     (lazy-seq 
-      (let [ss (map seq (conj colls c2 c1))]
-        (when (every? identity ss)
-          (concat (map first ss) (apply interleave (map rest ss))))))))
-
-
-
-;redefine let and loop  with destructuring
+;;; redefine let, fn and loop with destructuring
 (defn destructure [bindings]
   (let [bents (partition 2 bindings)
         pb (fn pb [bvec b v]
@@ -2553,21 +2376,21 @@
           sigs (if (vector? (first sigs)) (list sigs) sigs)
           psig (fn* [sig]
                  (let [[params & body] sig
-                       conds (when (and (next body) (map? (first body))) 
+                       conds (when (and (next body) (map? (first body)))
                                            (first body))
                        body (if conds (next body) body)
                        conds (or conds (meta params))
                        pre (:pre conds)
-                       post (:post conds)                       
+                       post (:post conds)
                        body (if post
-                              `((let [~'% ~(if (< 1 (count body)) 
-                                            `(do ~@body) 
+                              `((let [~'% ~(if (< 1 (count body))
+                                            `(do ~@body)
                                             (first body))]
                                  ~@(map (fn* [c] `(assert ~c)) post)
                                  ~'%))
                               body)
                        body (if pre
-                              (concat (map (fn* [c] `(assert ~c)) pre) 
+                              (concat (map (fn* [c] `(assert ~c)) pre)
                                       body)
                               body)]
                    (maybe-destructured params body)))
@@ -2601,146 +2424,7 @@
                (let ~(vec (interleave bs gs))
                  ~@body)))))))
 
-
-(defn ^{:private true
-   :static true}
-  filter-key [keyfn pred amap]
-    (loop [ret {} es (seq amap)]
-      (if es
-        (if (pred (keyfn (first es)))
-          (recur (assoc ret (key (first es)) (val (first es))) (next es))
-          (recur ret (next es)))
-        ret)))
-
-(defn ns-map
-  "Returns a map of all the mappings for the namespace."
-  {:added "1.0"
-   :static true}
-  [ns]
-  (clojure.lang.rt/map (.-__dict__ (the-ns ns))))
-
-(defn ns-publics
-  "Returns a map of the public intern mappings for the namespace."
-  {:added "1.0"
-   :static true}
-  [ns]
-  (let [ns (the-ns ns)]
-    (filter-key val (fn [v] (and (instance? clojure.lang.var/Var v)
-                                 (= ns (.-ns v))
-                                 (.isPublic v)))
-                (ns-map ns))))
-
-(defn ns-imports
-  "Returns a map of the import mappings for the namespace."
-  {:added "1.0"
-   :static true}
-  [ns]
-  (filter-key val (partial instance? py/type) (ns-map ns)))
-
-(defn ns-interns
-  "Returns a map of the intern mappings for the namespace."
-  {:added "1.0"
-   :static true}
-  [ns]
-  (let [ns (the-ns ns)]
-    (filter-key val (fn [v] (and (instance? clojure.lang.var/Var v)
-                                 (= ns (.-ns v))))
-                (ns-map ns))))
-
-(defn refer-var
-    "Adds the var to the given namespace with the given name"
-    [ns nm v]
-    (py/setattr ns (name nm) v))
-
-(defn refer
-  "refers to all public vars of ns, subject to filters.
-  filters can include at most one each of:
-
-  :exclude list-of-symbols
-  :only list-of-symbols
-  :rename map-of-fromsymbol-tosymbol
-
-  For each public interned var in the namespace named by the symbol,
-  adds a mapping from the name of the var to the var to the current
-  namespace.  Throws an exception if name is already mapped to
-  something else in the current namespace. Filters can be used to
-  select a subset, via inclusion or exclusion, or to provide a mapping
-  to a symbol different from the var's name, in order to prevent
-  clashes. Use :use in the ns macro in preference to calling this directly."
-  {:added "1.0"}
-  [ns-sym & filters]
-    (let [ns (or (find-ns ns-sym) (throw (py/Exception (str "No namespace: " ns-sym))))
-          fs (apply hash-map filters)
-          nspublics (ns-publics ns)
-          rename (or (:rename fs) {})
-          exclude (set (:exclude fs))
-          to-do (or (:only fs) (keys nspublics))]
-      (doseq [sym to-do]
-        (when-not (exclude sym)
-          (let [v (nspublics sym)]
-            (when-not v
-              (throw (py/Exception
-                          (if (get (ns-interns ns) sym)
-                            (str sym " is not public")
-                            (str sym " does not exist")))))
-            (refer-var (the-ns __name__) 
-                       (or (rename sym) sym) 
-                       (get nspublics sym)))))))       
-
-(defmacro refer-clojure
-  "Same as (refer 'clojure.core <filters>)"
-  {:added "1.0"}
-  [& filters]
-  `(clojure.core/refer '~'clojure.core ~@filters))
-    
-(defn ns-refers
-  "Returns a map of the refer mappings for the namespace."
-  {:added "1.0"
-   :static true}
-  [ns]
-  (let [ns (the-ns ns)]
-    (filter-key val (fn [v] (and (instance? clojure.lang.var/Var v)
-                                 (not= ns (.-ns v))))
-                (ns-map ns))))
-
-
-(defn ns-aliases
-  "Returns a map of the aliases for the namespace."
-  {:added "1.0"
-   :static true}
-  [ns]
-  (let [ns (the-ns ns)]
-       (if (py/hasattr ns "__aliases__")
-           (.-__aliases__ ns)
-           {})))
-
-(defn alias
-  "Add an alias in the given namespace to another
-  namespace. Arguments are thre symbols: the alias to be used,
-  the symbolic name of the target namespace, and the destination namespace. 
-  Use :as in the ns macro in preference to calling this directly."
-  {:added "1.0"
-   :static true}
-  [alias namespace-sym to-ns]
-  (let [from-ns (the-ns namespace-sym)
-        to-ns (the-ns to-ns)]
-        (py/setattr to-ns 
-                    "__aliases__" 
-                    (assoc (ns-aliases to-ns)
-                           alias
-                           from-ns))))
-
-(defn ns-unalias
-  "Removes the alias for the symbol from the namespace."
-  {:added "1.0"
-   :static true}
-  [ns sym]
-  (let [to-ns (the-ns ns)]
-       (py/setattr to-ns
-                   "__aliases__"
-                   (dissoc (ns-aliases to-ns)
-                           sym))))
-
+;;; more macros with destructuring
 (defmacro when-first
   "bindings => x xs
 
@@ -2755,24 +2439,13 @@
        (let [~x (first ~xs)]
          ~@body))))
 
-(defmacro lazy-cat
-  "Expands to code which yields a lazy sequence of the concatenation
-  of the supplied colls.  Each coll expr is not evaluated until it is
-  needed. 
-
-  (lazy-cat xs ys zs) === (concat (lazy-seq xs) (lazy-seq ys) (lazy-seq zs))"
-  {:added "1.0"}
-  [& colls]
-  `(concat ~@(map #(list `lazy-seq %) colls)))
-
 (defmacro for
   "List comprehension. Takes a vector of one or more
-   binding-form/collection-expr pairs, each followed by zero or more
-   modifiers, and yields a lazy sequence of evaluations of expr.
-   Collections are iterated in a nested fashion, rightmost fastest,
-   and nested coll-exprs can refer to bindings created in prior
-   binding-forms.  Supported modifiers are: :let [binding-form expr ...],
-   :while test, :when test.
+  binding-form/collection-expr pairs, each followed by zero or more modifiers,
+  and yields a lazy sequence of evaluations of expr. Collections are iterated
+  in a nested fashion, rightmost fastest, and nested coll-exprs can refer to
+  bindings created in prior binding-forms.  Supported modifiers are: :let
+  [binding-form expr ...], :while test, :when test.
 
   (take 100 (for [x (range 100000000) y (range 1000000) :while (< y x)] [x y]))"
   {:added "1.0"}
@@ -2852,14 +2525,241 @@
     `(let [iter# ~(emit-bind (to-groups seq-exprs))]
         (iter# ~(second seq-exprs)))))
 
+;;; low-level imports
+(def
+  ^{:doc "Returns the name String of a string, symbol or keyword."
+    :static true}
+  name
+  clojure.lang.rt/name)
 
+(def
+  ^{:doc "Returns the namespace String of a symbol or keyword, or nil if not present."
+   :added "1.0"
+   :static true}
+  namespace
+  clojure.lang.rt/namespace)
 
-(defmacro defn-
-  "same as defn, yielding non-public def"
+(defmacro import*
+  ([module syms]
+    (let [module (.-name module)
+          copies (map #(list 'py.bytecode/STORE_GLOBAL
+                             (name %)
+                             (list 'py/getattr 'itms (name %)))
+                        syms)
+          symnames (list* (map name syms))]
+
+         `(let [~'itms (py/__import__ (name ~module)
+                                      (py/globals)
+                                      (py/locals)
+                                      (py/list (list ~@symnames))
+                                      -1)]
+            ~@copies ))))
+
+(defmacro import
+  "import-list => (package-symbol class-name-symbols*)
+
+  For each name in class-name-symbols, adds a mapping from name to the
+  class named by package.name to the current namespace. Use :import in the ns
+  macro in preference to calling this directly."
   {:added "1.0"}
-  [name & decls]
-    (list* `defn (with-meta name (assoc (meta name) :private true)) decls))
+  [& import-symbols-or-lists]
+  (let [specs (map #(if (and (seq? %) (= 'quote (first %))) (second %) %)
+                   import-symbols-or-lists)]
+   `(do ~@(map #(list 'clojure.core/import* (first %) (next %))
+                specs))))
 
+;;; ns-related
+(defn find-ns
+  "Returns the namespace named by the symbol or nil if it doesn't exist."
+  {:added "1.0"}
+  [sym] (clojure.lang.namespace/find sym))
+
+(defn create-ns
+  "Create a new namespace named by the symbol if one doesn't already
+  exist, returns it or the already-existing namespace of the same
+  name."
+  {:added "1.0"}
+  [sym] (clojure.lang.namespace/findOrCreate sym))
+
+(defn remove-ns
+  "Removes the namespace named by the symbol. Use with caution.
+  Cannot be used to remove the clojure namespace."
+  {:added "1.0"}
+  [sym] (clojure.lang.namespace/remove sym))
+
+(defn all-ns
+  "Returns a sequence of all namespaces."
+  {:added "1.0"
+   :static true}
+  [] (seq (py/tuple (.itervalues sys/modules))))
+
+(defn the-ns
+  "If passed a namespace, returns it. Else, when passed a symbol,
+  returns the namespace named by it, throwing an exception if not
+  found."
+  {:added "1.0"}
+  [x]
+  (if (instance? types/ModuleType x)
+    x
+    (or (find-ns x) (throw (py/Exception (str "No namespace: " x " found"))))))
+
+(defn ns-name
+  "Returns the name of the namespace, a symbol."
+  {:added "1.0"
+   :static true}
+  [ns]
+  (symbol (.-__name__ (the-ns ns))))
+(defn ns-map
+  "Returns a map of all the mappings for the namespace."
+  {:added "1.0"
+   :static true}
+  [ns]
+  (clojure.lang.rt/map (.-__dict__ (the-ns ns))))
+
+(defn- ^{:static true}
+  filter-key [keyfn pred amap]
+    (loop [ret {} es (seq amap)]
+      (if es
+        (if (pred (keyfn (first es)))
+          (recur (assoc ret (key (first es)) (val (first es))) (next es))
+          (recur ret (next es)))
+        ret)))
+
+(defn ns-publics
+  "Returns a map of the public intern mappings for the namespace."
+  {:added "1.0"
+   :static true}
+  [ns]
+  (let [ns (the-ns ns)]
+    (filter-key val (fn [v] (and (instance? clojure.lang.var/Var v)
+                                 (= ns (.-ns v))
+                                 (.isPublic v)))
+                (ns-map ns))))
+
+(defn ns-imports
+  "Returns a map of the import mappings for the namespace."
+  {:added "1.0"
+   :static true}
+  [ns]
+  (filter-key val (partial instance? py/type) (ns-map ns)))
+
+(defn ns-interns
+  "Returns a map of the intern mappings for the namespace."
+  {:added "1.0"
+   :static true}
+  [ns]
+  (let [ns (the-ns ns)]
+    (filter-key val (fn [v] (and (instance? clojure.lang.var/Var v)
+                                 (= ns (.-ns v))))
+                (ns-map ns))))
+
+(defn refer-var
+  "Adds the var to the given namespace with the given name"
+  [ns nm v]
+  (py/setattr ns (name nm) v))
+
+(defn refer
+  "refers to all public vars of ns, subject to filters.
+  filters can include at most one each of:
+
+  :exclude list-of-symbols
+  :only list-of-symbols
+  :rename map-of-fromsymbol-tosymbol
+
+  For each public interned var in the namespace named by the symbol, adds a
+  mapping from the name of the var to the var to the current namespace.  Throws
+  an exception if name is already mapped to something else in the current
+  namespace. Filters can be used to select a subset, via inclusion or
+  exclusion, or to provide a mapping to a symbol different from the var's name,
+  in order to prevent clashes. Use :use in the ns macro in preference to
+  calling this directly."
+  {:added "1.0"}
+  [ns-sym & filters]
+    (let [ns (or (find-ns ns-sym) (throw (py/Exception (str "No namespace: " ns-sym))))
+          fs (apply hash-map filters)
+          nspublics (ns-publics ns)
+          rename (or (:rename fs) {})
+          exclude (set (:exclude fs))
+          to-do (or (:only fs) (keys nspublics))]
+      (doseq [sym to-do]
+        (when-not (exclude sym)
+          (let [v (nspublics sym)]
+            (when-not v
+              (throw (py/Exception
+                          (if (get (ns-interns ns) sym)
+                            (str sym " is not public")
+                            (str sym " does not exist")))))
+            (refer-var (the-ns __name__)
+                       (or (rename sym) sym)
+                       (get nspublics sym)))))))
+
+(defmacro refer-clojure
+  "Same as (refer 'clojure.core <filters>)"
+  {:added "1.0"}
+  [& filters]
+  `(clojure.core/refer '~'clojure.core ~@filters))
+
+(defn ns-refers
+  "Returns a map of the refer mappings for the namespace."
+  {:added "1.0"
+   :static true}
+  [ns]
+  (let [ns (the-ns ns)]
+    (filter-key val (fn [v] (and (instance? clojure.lang.var/Var v)
+                                 (not= ns (.-ns v))))
+                (ns-map ns))))
+
+(defn ns-aliases
+  "Returns a map of the aliases for the namespace."
+  {:added "1.0"
+   :static true}
+  [ns]
+  (let [ns (the-ns ns)]
+       (if (py/hasattr ns "__aliases__")
+           (.-__aliases__ ns)
+           {})))
+
+(defn alias
+  "Add an alias in the given namespace to another
+  namespace. Arguments are thre symbols: the alias to be used,
+  the symbolic name of the target namespace, and the destination namespace.
+  Use :as in the ns macro in preference to calling this directly."
+  {:added "1.0"
+   :static true}
+  [alias namespace-sym to-ns]
+  (let [from-ns (the-ns namespace-sym)
+        to-ns (the-ns to-ns)]
+        (py/setattr to-ns
+                    "__aliases__"
+                    (assoc (ns-aliases to-ns)
+                           alias
+                           from-ns))))
+
+(defn ns-unalias
+  "Removes the alias for the symbol from the namespace."
+  {:added "1.0"
+   :static true}
+  [ns sym]
+  (let [to-ns (the-ns ns)]
+       (py/setattr to-ns
+                   "__aliases__"
+                   (dissoc (ns-aliases to-ns)
+                           sym))))
+
+(defn ns-resolve
+  "Returns the var or Class to which a symbol will be resolved in the
+  namespace (unless found in the environement), else nil.  Note that
+  if the symbol is fully qualified, the var/Class to which it resolves
+  need not be present in the namespace."
+  {:added "1.0"
+   :static true}
+  ([ns sym]
+    (clojure.lang.namespace/findItem (the-ns ns) sym)))
+
+(defmacro resolve
+  "same as (ns-resolve *ns* symbol) or (ns-resolve *ns* &env symbol)"
+  {:added "1.0"}
+  ([sym] `(ns-resolve ~'__name__ ~sym)))
 
 (defn format
   "Formats a string"
@@ -2875,7 +2775,6 @@
     (let [message (apply format fmt args)
           exception (py/Exception. message)]
       (throw exception))))
-
 
 (defn load-all
   "Loads a lib given its name and forces a load of any libs it directly or
@@ -2895,16 +2794,14 @@
                              false
                              exclude
                              (not (contains? exclude s))
-                             only 
+                             only
                              (contains? only s)
                              :else
                              true))]
           (doseq [x (filter filterfn (py/dir from-ns))]
-                 (py/setattr to-ns 
+                 (py/setattr to-ns
                              (name x)
                              (py/getattr from-ns (name x))))))
-                           
-          
 
 (defn load-lib
   "Loads a lib with options"
@@ -2916,18 +2813,17 @@
         filter-opts (select-keys opts '(:exclude :only :rename))]
        (load-all lib)
        (cond (not options)
-              (py/setattr (the-ns (name to-ns)) 
-                          (name lib) 
+              (py/setattr (the-ns (name to-ns))
+                          (name lib)
                           (load-all lib))
              as
               (alias (:as opts) lib to-ns)
-             :else 
+             :else
               (map-ns-vals lib to-ns opts))))
 
 (defmacro require
     [& options]
     `(load-lib ~'__name__ ~@options))
-
 
 (defmacro ns
   "Sets *ns* to the namespace named by name (unevaluated), creating it
@@ -2957,13 +2853,13 @@
        quote-args (fn [arg kname]
                   `(~(symbol "clojure.core" (clojure.core/name kname))
                     ~@(map #(list 'quote %) arg)))
-       
+
        process-reference
        (fn [[kname & args]]
            (if (vector? (first args))
                `(do ~@(map quote-args args (repeat kname)))
                (quote-args args kname)))
-               
+
         docstring  (when (string? (first references)) (first references))
         references (if docstring (next references) references)
         metadata   (when (map? (first references)) (first references))
@@ -2979,90 +2875,17 @@
        (~'ns* ~name)
        ~@(map process-reference references))))
 
-
 (def reduce reduce1)
-
-(defn empty?
-  "Returns true if coll has no items - same as (not (seq coll)).
-  Please use the idiom (seq x) rather than (not (empty? x))"
-  {:added "1.0"
-   :static true}
-  [coll] (not (seq coll)))
-
-(defn deref
-  "Also reader macro: @ref/@agent/@var/@atom/@delay/@future/@promise. Within a transaction,
-  returns the in-transaction-value of ref, else returns the
-  most-recently-committed value of ref. When applied to a var, agent
-  or atom, returns its current state. When applied to a delay, forces
-  it if not already forced. When applied to a future, will block if
-  computation not complete. When applied to a promise, will block
-  until a value is delivered.  The variant taking a timeout can be
-  used for blocking references (futures and promises), and will return
-  timeout-val if the timeout (in milliseconds) is reached before a
-  value is available. See also - realized?."
-  {:added "1.0"
-   :static true}
-  ([ref] (.deref ref))
-  ([ref timeout-ms timeout-val] (.deref ref timeout-ms timeout-val)))
-
-(defn ns-resolve
-  "Returns the var or Class to which a symbol will be resolved in the
-  namespace (unless found in the environement), else nil.  Note that
-  if the symbol is fully qualified, the var/Class to which it resolves
-  need not be present in the namespace."
-  {:added "1.0"
-   :static true}
-  ([ns sym]
-    (clojure.lang.namespace/findItem (the-ns ns) sym)))
-
-(defmacro resolve
-  "same as (ns-resolve *ns* symbol) or (ns-resolve *ns* &env symbol)"
-  {:added "1.0"}
-  ([sym] `(ns-resolve ~'__name__ ~sym)))
-
-                
-(defmacro comment
-  "Ignores body, yields nil"
-  {:added "1.0"}
-  [& body])
-
-(defn aclone
-  "Returns a clone of the Python list. Works on any type implementing slices and lists."
-  [l] (.__getitem__ l (py/slice 0 (py/len l))))
-
-(defn aset [l i item]
-  "Equivalent to l[i] = item in Pytyon"
-  (.__setitem__ l i item))
-
-(defn hash-combine
-  "Creates a new hash value from two other hashes"
-  [seed hash]
-  (bit-and 0xFFFFFFFF (bit-xor seed (+ hash 0x9e3779b9 (bit-shift-left seed 6) (bit-shift-left seed 2)))))
-
-(defn vary-meta
- "Returns an object of the same type and value as obj, with
-  (apply f (meta obj) args) as its metadata."
- {:added "1.0"
-   :static true}
- [obj f & args]
-  (with-meta obj (apply f (meta obj) args)))
-
-
-
-(require 'clojure.core-deftype :only ['deftype 'reify 'definterface 
-                                      'defprotocol 'defrecord 'extend-type])
 
 ; FIXME: Am I polluting the namespace by requiring those?!
 (require 'numbers :only ['Number])
-
-(defn number? [n]
-    "Returns true if n is a number. Works for int, long, Decimal, Fractions and anything else that implements the Number Abstract Base Class"
-    (instance? Number n))
-
-(defn boolean [x] (if x true false))
+(defn number?
+  "Returns true if n is a number. Works for int, long, Decimal, Fractions and
+  anything else that implements the Number Abstract Base Class"
+  [n] (instance? Number n))
 
 ;; ======================================================================
-;; Printing
+;;; Printing
 ;; newline, flush, pr, and prn, print, println.
 ;; It's in place for live IPrintable testing.
 ;;
@@ -3126,13 +2949,35 @@
   (newline))
 
 (defn debug [x]
-    (py/print x)
-    x)
+  (py/print x)
+  x)
+
+(defn println
+  "Pass through one string to Python print.  This is just for debugging,
+   and is not a proper final solution."
+  {}
+  [x] (py/print x))
 
 (defn println
   "unreadable-ishishly, newline follows"
   [& more]
   (apply print-prn more))
+
+;;; vars et al.
+(defn deref
+  "Also reader macro: @ref/@agent/@var/@atom/@delay/@future/@promise. Within a
+  transaction, returns the in-transaction-value of ref, else returns the
+  most-recently-committed value of ref. When applied to a var, agent or atom,
+  returns its current state. When applied to a delay, forces it if not already
+  forced. When applied to a future, will block if computation not complete.
+  When applied to a promise, will block until a value is delivered.  The
+  variant taking a timeout can be used for blocking references (futures and
+  promises), and will return timeout-val if the timeout (in milliseconds) is
+  reached before a value is available. See also - realized?."
+  {:added "1.0"
+   :static true}
+  ([ref] (.deref ref))
+  ([ref timeout-ms timeout-val] (.deref ref timeout-ms timeout-val)))
 
 (defmacro binding
   "binding => var-symbol init-expr
@@ -3161,36 +3006,119 @@
            (clojure.lang.var/popThreadBindings))))))
 
 (defmacro var
-    [itm]
-    `(clojure.lang.var/find (symbol ~'__name__ ~(name itm))))
+  [itm]
+  `(clojure.lang.var/find (symbol ~'__name__ ~(name itm))))
 
+(defn var?
+  "Return true if x is a Var"
+  {:static true}
+  [x] (instance? clojure.lang.var/Var x))
+
+(defn alter-var-root
+  "Atomically alters the root binding of var v by applying f to its current
+  value plus any args"
+  {:added "1.0"
+   :static true}
+  [v f & args] (.alterRoot v f args))
+
+(defn bound?
+  "Returns true if all of the vars provided as arguments have any bound value,
+  root or thread-local. Implies that deref'ing the provided vars will succeed.
+  Returns true if no vars are provided."
+  {:added "1.2"
+   :static true}
+  [& vars]
+  (every? #(.isBound %) vars))
+
+(defn thread-bound?
+  "Returns true if all of the vars provided as arguments have thread-local
+  bindings. Implies that set!'ing the provided vars will succeed.  Returns true
+  if no vars are provided."
+  {:added "1.2"
+   :static true}
+  [& vars]
+  (every? #(.getThreadBinding %) vars))
+
+;;; interactivity
+(import '(clojure.lang.lispreader readString))
+(defn read-string
+  "Reads one object from the string s"
+  {:added "1.0"}
+  [s] (readString s))
+
+(defn eval
+  "Evaluates the form data structure (not text!) and returns the result."
+  {:added "1.0"
+   :static true}
+  [form] (clojure.lang.compiler/evalForm form __name__))
 
 (defmacro doc
-    [itm]
-   `(let [itm# (clojure.core/var ~itm)]
-         (cond (and (meta itm#) (:doc (meta itm#)))
-                (py/print (:doc (meta itm#)))
-               (py/hasattr itm# "__doc__")
-                (py/print (py/getattr itm# "__doc__")))))
+  [itm]
+  `(let [itm# (clojure.core/var ~itm)]
+     (cond (and (meta itm#) (:doc (meta itm#)))
+             (py/print (:doc (meta itm#)))
+           (py/hasattr itm# "__doc__")
+             (py/print (py/getattr itm# "__doc__")))))
+
+(defmacro comment
+  "Ignores body, yields nil"
+  {:added "1.0"}
+  [& body])
+
+;(import '(time time))
+;(def pytime time)
+
+;(defmacro time
+;  "Evaluates expr and prints the time it took.  Returns the value of
+; expr."
+;  {:added "1.0"}
+;  [expr]
+;  `(let [start# (pytime)
+;         ret# ~expr]
+;     (py/print (str "Elapsed time: " (* (- (pytime) start#) 1000) " msecs"))
+;     ret#))
+
+;;; exceptions
+(defn assert
+  "Throws an error if val is not true"
+  [val]
+  (when-not val
+    (throw (py/AssertionError))))
+
+(def Exception py/Exception)
+
+;;; more binding forms
+(defmacro letfn
+  "fnspec ==> (fname [params*] exprs) or (fname ([params*] exprs)+)
+
+  Takes a vector of function specs and a body, and generates a set of bindings
+  of functions to their names. All of the names are available in all of the
+  definitions of the functions, as well as the body."
+  {:added "1.0", :forms '[(letfn [fnspecs*] exprs*)],
+   :special-form true, :url nil}
+  [fnspecs & body]
+  `(let ~(vec (interleave (map first fnspecs)
+                          (map #(cons `fn %) fnspecs)))
+      ~@body))
 
 (defn when-attr
-    "If attr exists on obj, it calls (apply (py/getattr obj attr) args) otherwise
-     nil is returned"
-    [obj attr & args]
-    (when (py/hasattr obj attr)
-          (apply (py/getattr obj attr) args)))
+  "If attr exists on obj, it calls (apply (py/getattr obj attr) args) otherwise
+  nil is returned"
+  [obj attr & args]
+  (when (py/hasattr obj attr)
+    (apply (py/getattr obj attr) args)))
 
 (defmacro with-open
   "bindings => [name init ...]
   First, with-open calls (.__enter__ name) on all bindings if the attribute
-  exists. Next it evaluates body in a try expression with names bound to the 
-  values of the inits, and a finally clause that calls (.__exit__ name) and/or 
+  exists. Next it evaluates body in a try expression with names bound to the
+  values of the inits, and a finally clause that calls (.__exit__ name) and/or
   (.close name) on each name in reverse order."
   {:added "1.0"}
   [bindings & body]
   (assert-args with-open
-     (vector? bindings) "a vector for its binding"
-     (even? (count bindings)) "an even number of forms in binding vector")
+    (vector? bindings) "a vector for its binding"
+    (even? (count bindings)) "an even number of forms in binding vector")
   (cond
     (= (count bindings) 0) `(do ~@body)
     (symbol? (bindings 0)) `(let ~(subvec bindings 0 2)
@@ -3202,9 +3130,24 @@
                                    (when-attr ~(bindings 0) "__exit__")
                                    (when-attr ~(bindings 0) "close")))))
     :else (throw (IllegalArgumentException.
-                   "with-open only allows Symbols in bindings"))))
+                    "with-open only allows Symbols in bindings"))))
 
+;;; protocols
+(defn extends?
+  {:static true}
+  [protocol atype]
+  (let [p (clojure.lang.protocol/getExactProtocol protocol)]
+    (if p
+      (.isExtendedBy p atype))
+      (py/issubclass protocol atype)))
 
+(defn satisfies?
+  "Returns true if x satisfies the protocol"
+  {:added "1.2"}
+  [protocol x]
+  (extends? (class x) protocol))
+
+;;; inheritance hierarchy
 (defn bases
   "Returns the immediate superclass and direct interfaces of c, if any"
   {:added "1.0"
@@ -3214,7 +3157,6 @@
     (seq (.-__bases__ c))))
 
 (require 'inspect)
-
 (defn supers
   "Returns the immediate and indirect superclasses and interfaces of c, if any"
   {:added "1.0"
@@ -3222,36 +3164,10 @@
   [class]
   (next (seq (inspect/getmro class))))
 
-(defn not-empty
-  "If coll is empty, returns nil, else coll"
-  {:added "1.0"
-   :static true}
-  [coll] (when (seq coll) coll))
-
-(defn alter-var-root
-  "Atomically alters the root binding of var v by applying f to its
-  current value plus any args"
-  {:added "1.0"
-   :static true}
-  [v f & args] (.alterRoot v f args))
-
-(defn bound?
-  "Returns true if all of the vars provided as arguments have any bound value, root or thread-local.
-   Implies that deref'ing the provided vars will succeed. Returns true if no vars are provided."
-  {:added "1.2"
-   :static true}
-  [& vars]
-  (every? #(.isBound %) vars))
-
-(defn thread-bound?
-  "Returns true if all of the vars provided as arguments have thread-local bindings.
-   Implies that set!'ing the provided vars will succeed.  Returns true if no vars are provided."
-  {:added "1.2"
-   :static true}
-  [& vars]
-  (every? #(.getThreadBinding %) vars))
-
-
+(defn class?
+  "Returns true if cls is an instance of ClassType"
+  [cls]
+  (py/isinstance cls types/TypeType))
 
 (defn make-hierarchy
   "Creates a hierarchy object for use with derive, isa? etc."
@@ -3261,18 +3177,6 @@
 
 (def ^{:private true}
      global-hierarchy (make-hierarchy))
-
-(defn class?
-  "Returns true if cls is an instance of ClassType"
-  [cls]
-  (py/isinstance cls types/TypeType))
-
-(defn assert
-  "Throws an error if val is not true"
-  [val]
-  (when-not val
-  	    (throw (py/AssertionError))))
-
 
 (defn isa?
   "Returns true if (= child parent), or child is directly or indirectly derived from
@@ -3295,88 +3199,26 @@
                 ret
                 (recur (isa? h (child i) (parent i)) (inc i))))))))
 
-(defn extends?
-  {:static true}
-  [protocol atype]
-       (let [p (clojure.lang.protocol/getExactProtocol protocol)]
-            (if p
-               (.isExtendedBy p atype))
-               (py/issubclass protocol atype)))
-
-(defn satisfies? 
-  "Returns true if x satisfies the protocol"
-  {:added "1.2"}
-  [protocol x]
-  (extends? (class x) protocol))
-
-(defn sequential?
- "Returns true if coll implements Sequential"
- {:added "1.0"
-  :static true}
-  [coll] (instance? clojure.lang/Sequential coll))
-
-(defmacro letfn 
-  "fnspec ==> (fname [params*] exprs) or (fname ([params*] exprs)+)
-
-  Takes a vector of function specs and a body, and generates a set of
-  bindings of functions to their names. All of the names are available
-  in all of the definitions of the functions, as well as the body."
-  {:added "1.0", :forms '[(letfn [fnspecs*] exprs*)],
-   :special-form true, :url nil}
-  [fnspecs & body] 
-  `(let ~(vec (interleave (map first fnspecs) 
-                             (map #(cons `fn %) fnspecs)))
-           ~@body))
-
-(defn rseq
-  "Returns, in constant time, a seq of the items in rev (which
-  can be a vector or sorted-map), in reverse order. If rev is empty returns nil"
-  {:added "1.0"
-   :static true}
-  [rev]
-    (. rev (rseq)))
-
-(defn map-indexed
-  "Returns a lazy sequence consisting of the result of applying f to 0
-  and the first item of coll, followed by applying f to 1 and the second
-  item in coll, etc, until coll is exhausted. Thus function f should
-  accept 2 arguments, index and item."
-  {:added "1.2"
-   :static true}
-  [f coll]
-  (letfn [(mapi [idx coll]
-            (lazy-seq
-             (when-let [s (seq coll)]
-               (if (chunked-seq? s)
-                 (let [c (chunk-first s)
-                       size (int (count c))
-                       b (chunk-buffer size)]
-                   (dotimes [i size]
-                     (chunk-append b (f (+ idx i) (.nth c i))))
-                   (chunk-cons (chunk b) (mapi (+ idx size) (chunk-rest s))))
-                 (cons (f idx (first s)) (mapi (inc idx) (rest s)))))))]
-    (mapi 0 coll)))
-
 (defn parents
-  "Returns the immediate parents of tag, either via a Java type
-  inheritance relationship or a relationship established via derive. h
-  must be a hierarchy obtained from make-hierarchy, if not supplied
-  defaults to the global hierarchy"
+  "Returns the immediate parents of tag, either via a Java type inheritance
+  relationship or a relationship established via derive. h must be a hierarchy
+  obtained from make-hierarchy, if not supplied defaults to the global
+  hierarchy"
   {:added "1.0"}
   ([tag] (parents global-hierarchy tag))
   ([h tag] (not-empty
             (let [tp (get (:parents h) tag)]
               (if (class? tag)
-              	(if tp
-              		(seq (.union (py/set (bases tag)) (py/set tp)))
-              		(bases tag))
+                (if tp
+                  (seq (.union (py/set (bases tag)) (py/set tp)))
+                  (bases tag))
                 tp)))))
 
 (defn ancestors
   "Returns the immediate and indirect parents of tag, either via a Java type
-  inheritance relationship or a relationship established via derive. h
-  must be a hierarchy obtained from make-hierarchy, if not supplied
-  defaults to the global hierarchy"
+  inheritance relationship or a relationship established via derive. h must be
+  a hierarchy obtained from make-hierarchy, if not supplied defaults to the
+  global hierarchy"
   {:added "1.0"}
   ([tag] (ancestors global-hierarchy tag))
   ([h tag] (not-empty
@@ -3389,11 +3231,10 @@
                 ta)))))
 
 (defn descendants
-  "Returns the immediate and indirect children of tag, through a
-  relationship established via derive. h must be a hierarchy obtained
-  from make-hierarchy, if not supplied defaults to the global
-  hierarchy. Note: does not work on Java type inheritance
-  relationships."
+  "Returns the immediate and indirect children of tag, through a relationship
+  established via derive. h must be a hierarchy obtained from make-hierarchy,
+  if not supplied defaults to the global hierarchy. Note: does not work on Java
+  type inheritance relationships."
   {:added "1.0"}
   ([tag] (descendants global-hierarchy tag))
   ([h tag] (if (class? tag)
@@ -3401,11 +3242,11 @@
              (not-empty (get (:descendants h) tag)))))
 
 (defn derive
-  "Establishes a parent/child relationship between parent and
-  tag. Parent must be a namespace-qualified symbol or keyword and
-  child can be either a namespace-qualified symbol or keyword or a
-  class. h must be a hierarchy obtained from make-hierarchy, if not
-  supplied defaults to, and modifies, the global hierarchy."
+  "Establishes a parent/child relationship between parent and tag. Parent must
+  be a namespace-qualified symbol or keyword and child can be either a
+  namespace-qualified symbol or keyword or a class. h must be a hierarchy
+  obtained from make-hierarchy, if not supplied defaults to, and modifies, the
+  global hierarchy."
   {:added "1.0"}
   ([tag parent]
    (assert (namespace parent))
@@ -3436,6 +3277,9 @@
          :descendants (tf (:descendants h) parent ta tag td)})
       h))))
 
+;;; multimethods
+(require 'clojure.core-deftype :only ['deftype 'reify 'definterface
+                                      'defprotocol 'defrecord 'extend-type])
 (require 'clojure.core-multimethod :only '[make-multi])
 
 (defn ^:private check-valid-options
@@ -3500,7 +3344,7 @@
 (defn remove-all-methods
   "Removes all of the methods of multimethod."
   {:added "1.2"
-   :static true} 
+   :static true}
  [multifn]
  (.reset multifn))
 
@@ -3512,7 +3356,7 @@
  (.removeMethod multifn dispatch-val))
 
 (defn prefer-method
-  "Causes the multimethod to prefer matches of dispatch-val-x over dispatch-val-y 
+  "Causes the multimethod to prefer matches of dispatch-val-x over dispatch-val-y
    when there is a conflict"
   {:added "1.0"
    :static true}
@@ -3538,38 +3382,40 @@
    :static true}
   [multifn] (.getPreferTable multifn))
 
-(def FunctionType (py/type (fn x [] "")))
-(defn fn?
-  "Returns true if x s a builtin function, i.e. is an object created via fn."
+;;; strings
+(defn subs
+  "Returns the substring of s beginning at start inclusive, and ending
+  at end (defaults to length of string), exclusive.  A negative end
+  counts backwards from the end of the string"
   {:added "1.0"
    :static true}
-  [x] (instance? FunctionType x))
+  ([s start] (.__getitem__ s (py/slice start nil)))
+  ([s start end] (.__getitem__ s (py/slice start end))))
 
 (require 're)
 (defn re-pattern
-  "Accepts a compiled regex or a string containing a regex pattern.
-  Returns a compiled Python Pattern object, for use, e.g. in
-  re-matcher."
+  "Accepts a compiled regex or a string containing a regex pattern. Returns a
+  compiled Python Pattern object, for use, e.g. in re-matcher."
   {:added "1.0"
    :static true}
   [s] (re/compile s))
 
 (defn re-matcher
-  "Accepts a compiled regex or a string containing a regex pattern.
-   Returns a Python MatchObject. If no match, returns nil."
+  "Accepts a compiled regex or a string containing a regex pattern. Returns a
+  Python MatchObject. If no match, returns nil."
   {:added "1.0"
    :static true}
   [re s] (re/search re s))
 
 (defn re-groups
-  "Returns the groups from the most recent match/find. If there are no
-  nested groups, returns a string of the entire match. If there are
-  nested groups, returns a vector of the groups, the first element
-  being the entire match. Can also take a string containing a regular
-  expression, instead of a compiled regex."
+  "Returns the groups from the most recent match/find. If there are no nested
+  groups, returns a string of the entire match. If there are nested groups,
+  returns a vector of the groups, the first element being the entire match. Can
+  also take a string containing a regular expression, instead of a compiled
+  regex."
   {:added "1.0"
    :static true}
-  [m] 
+  [m]
   (if (nil? m)
     []
     (let [gc (count (.groups m))]
@@ -3584,16 +3430,16 @@
   (re/finditer (re-pattern re) s))
 
 (defn re-finditer-next
-   "calls next on a Python Iterable returned from re.find, and returns the MatchObject, or nil if there are no more." 
+   "calls next on a Python Iterable returned from re.find, and returns the
+   MatchObject, or nil if there are no more."
    [iter]
-   (try 
+   (try
       (.next iter)
-      (catch py/StopIteration e nil))) 
+      (catch py/StopIteration e nil)))
 
 (defn re-seq
-  "Returns a lazy sequence of successive matches of pattern in string,
-  using Python re.finditer(), each such match processed with
-  re-groups."
+  "Returns a lazy sequence of successive matches of pattern in string, using
+  Python re.finditer(), each such match processed with re-groups."
   {:added "1.0"
    :static true}
   [re s]
@@ -3604,23 +3450,23 @@
            (cons (re-groups matcher) (lazy-seq (step)))))))))
 
 (defn re-matches
-  "Returns the match, if any, of string to pattern, using
-  re-matcher.  Uses re-groups to return the groups."
+  "Returns the match, if any, of string to pattern, using re-matcher.  Uses
+  re-groups to return the groups."
   {:added "1.0"
    :static true}
   [re s]
   (let [m (re-matcher re s)]
      (let [groups (re-groups m)]
-        (if (and (not (nil? groups)) 
+        (if (and (not (nil? groups))
                  (= s (first groups)))
              groups
              nil))))
 
 (defn re-find
-  "Given a Python find iterator as returned from finditer, 
-   returns the next regex match, if any, of string to 
-   pattern. Can also pass in a regex and string, and re-find
-   will call finditer itself. Uses re-groups to return the groups."
+  "Given a Python find iterator as returned from finditer, returns the next
+  regex match, if any, of string to pattern. Can also pass in a regex and
+  string, and re-find will call finditer itself. Uses re-groups to return the
+  groups."
   {:added "1.0"
    :static true}
   ([finditer]
@@ -3631,6 +3477,7 @@
    (let [finditer (re-finditer re s)]
      (re-find finditer))))
 
+;;; random numbers
 (require 'random)
 (defn rand
   "Returns a random floating point number between 0 (inclusive) and
@@ -3646,6 +3493,7 @@
    :static true}
   [n] (int (rand n)))
 
+;;; trees
 (defn tree-seq
   "Returns a lazy sequence of the nodes in a tree, via a depth-first walk.
   branch? must be a fn of one arg that returns true if passed a node
@@ -3675,40 +3523,15 @@
       #(map (partial os.path/join %) (os/listdir %))
      dir))
 
-(defn subs
-  "Returns the substring of s beginning at start inclusive, and ending
-  at end (defaults to length of string), exclusive.  A negative end
-  counts backwards from the end of the string"
-  {:added "1.0"
-   :static true}
-  ([s start] (.__getitem__ s (py/slice start nil)))
-  ([s start end] (.__getitem__ s (py/slice start end))))
+;;; Python-level lists & arrays
+(defn aclone
+  "Returns a clone of the Python list. Works on any type implementing slices
+  and lists."
+  [l] (.__getitem__ l (py/slice 0 (py/len l))))
 
-(defn max-key
-  "Returns the x for which (k x), a number, is greatest."
-  {:added "1.0"
-   :static true}
-  ([k x] x)
-  ([k x y] (if (> (k x) (k y)) x y))
-  ([k x y & more]
-   (reduce1 #(max-key k %1 %2) (max-key k x y) more)))
-
-(defn min-key
-  "Returns the x for which (k x), a number, is lesser."
-  {:added "1.0"
-   :static true}
-  ([k x] x)
-  ([k x y] (if (< (k x) (k y)) x y))
-  ([k x y & more]
-   (reduce1 #(min-key k %1 %2) (min-key k x y) more)))
-
-(defn into
-  "Returns a new coll consisting of to-coll with all of the items of
-  from-coll conjoined."
-  {:added "1.0"
-   :static true}
-  [to from]
-  (reduce conj to from))
+(defn aset [l i item]
+  "Equivalent to l[i] = item in Pytyon"
+  (.__setitem__ l i item))
 
 (require 'array)
 (defmacro make-type-array
@@ -3738,8 +3561,7 @@
 (make-type-array "int" "i" "1.0")
 (make-type-array "long" "l" "1.0")
 
-;;;;; STM stuff ;;;;
-
+;;; STM
 (defn ^{:private true}
   setup-reference [^clojure.lang.ARef r options]
   (let [opts (apply hash-map options)]
@@ -3774,9 +3596,74 @@
   ([x] (Atom x))
   ([x & options] (setup-reference (atom x) options)))
 
+;;; misc
 (defmacro declare
   "defs the supplied var names with no bindings, useful for making forward declarations."
   {:added "1.0"}
   [& names] `(do ~@(map #(list 'def (vary-meta % assoc :declared true)) names)))
 
-(def Exception py/Exception)
+(defn hash-combine
+  "Creates a new hash value from two other hashes"
+  [seed hash]
+  (bit-and 0xFFFFFFFF
+           (bit-xor seed
+                    (+ hash 0x9e3779b9 (bit-shift-left seed 6) (bit-shift-left seed 2)))))
+
+(defn identical?
+  "Tests if 2 arguments are the same object"
+  {:added "1.0"}
+  ([x y] (py.bytecode/COMPARE_OP "is" x y)))
+
+(defn into
+  "Returns a new coll consisting of to-coll with all of the items of
+  from-coll conjoined."
+  {:added "1.0"
+   :static true}
+  [to from]
+  (reduce conj to from))
+
+(defmacro lazy-cat
+  "Expands to code which yields a lazy sequence of the concatenation of the
+  supplied colls.  Each coll expr is not evaluated until it is needed.
+
+  (lazy-cat xs ys zs) === (concat (lazy-seq xs) (lazy-seq ys) (lazy-seq zs))"
+  {:added "1.0"}
+  [& colls]
+  `(concat ~@(map #(list `lazy-seq %) colls)))
+
+(defn map-indexed
+  "Returns a lazy sequence consisting of the result of applying f to 0 and the
+  first item of coll, followed by applying f to 1 and the second item in coll,
+  etc, until coll is exhausted. Thus function f should accept 2 arguments,
+  index and item."
+  {:added "1.2"
+   :static true}
+  [f coll]
+  (letfn [(mapi [idx coll]
+            (lazy-seq
+              (when-let [s (seq coll)]
+                (if (chunked-seq? s)
+                  (let [c (chunk-first s)
+                        size (int (count c))
+                        b (chunk-buffer size)]
+                    (dotimes [i size]
+                      (chunk-append b (f (+ idx i) (.nth c i))))
+                    (chunk-cons (chunk b) (mapi (+ idx size) (chunk-rest s))))
+                  (cons (f idx (first s)) (mapi (inc idx) (rest s)))))))]
+    (mapi 0 coll)))
+
+(defmacro memfn
+  "Expands into code that creates a fn that expects to be passed an object and
+  any args and calls the named instance method on the object passing the args.
+  Use when you want to treat a Java method as a first-class fn."
+  {:added "1.0"}
+  [name & args]
+  `(fn [target# ~@args]
+     (. target# (~name ~@args))))
+
+(defn rseq
+  "Returns, in constant time, a seq of the items in rev (which can be a vector
+  or sorted-map), in reverse order. If rev is empty returns nil"
+  {:added "1.0"
+   :static true}
+  [rev] (. rev (rseq)))
