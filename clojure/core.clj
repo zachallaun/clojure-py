@@ -444,13 +444,13 @@
   "Evaluates test. If logical true, evaluates body in an implicit do."
   {:added "1.0"}
   [test & body]
-  (list 'if test (cons 'do body)))
+  (list 'clojure.core/if test (cons 'do body)))
 
 (defmacro when-not
   "Evaluates test. If logical false, evaluates body in an implicit do."
   {:added "1.0"}
   [test & body]
-    (list 'if test nil (cons 'do body)))
+  (list 'clojure.core/if test nil (cons 'do body)))
 
 (defn false?
   "Returns true if x is the value false, false otherwise."
@@ -2167,6 +2167,12 @@
         (when (every? identity ss)
           (concat (map first ss) (apply interleave (map rest ss))))))))
 
+(defn interpose
+  "Returns a lazy seq of the elements of coll separated by sep"
+  {:added "1.0"
+   :static true}
+  [sep coll] (drop 1 (interleave (repeat sep) coll)))
+
 (defn max-key
   "Returns the x for which (k x), a number, is greatest."
   {:added "1.0"
@@ -2519,7 +2525,7 @@
     `(let [iter# ~(emit-bind (to-groups seq-exprs))]
         (iter# ~(second seq-exprs)))))
 
-;;; low-level imports
+;;; ns-related
 (def
   ^{:doc "Returns the name String of a string, symbol or keyword."
     :static true}
@@ -2562,7 +2568,6 @@
    `(do ~@(map #(list 'clojure.core/import* (first %) (next %))
                 specs))))
 
-;;; ns-related
 (defn find-ns
   "Returns the namespace named by the symbol or nil if it doesn't exist."
   {:added "1.0"}
@@ -2603,6 +2608,7 @@
    :static true}
   [ns]
   (symbol (.-__name__ (the-ns ns))))
+
 (defn ns-map
   "Returns a map of all the mappings for the namespace."
   {:added "1.0"
@@ -2647,7 +2653,15 @@
                                  (= ns (.-ns v))))
                 (ns-map ns))))
 
-(defn refer-var
+(defn intern
+  "Finds or creates a var named by the symbol name in the namespace ns (which
+  can be a symbol or a namespace), setting its root binding to val if supplied.
+  The namespace must exist. The var will adopt any metadata from the name
+  symbol.  Returns the var."
+  ([ns name] (clojure.lang.namespace/intern (the-ns ns) name))
+  ([ns name val] (.bindRoot (intern ns name) val)))
+
+(defn- refer-var
   "Adds the var to the given namespace with the given name"
   [ns nm v]
   (py/setattr ns (name nm) v))
@@ -2714,10 +2728,10 @@
            {})))
 
 (defn alias
-  "Add an alias in the given namespace to another
-  namespace. Arguments are thre symbols: the alias to be used,
-  the symbolic name of the target namespace, and the destination namespace.
-  Use :as in the ns macro in preference to calling this directly."
+  "Add an alias in the given namespace to another namespace. Arguments are thre
+  symbols: the alias to be used, the symbolic name of the target namespace, and
+  the destination namespace. Use :as in the ns macro in preference to calling
+  this directly."
   {:added "1.0"
    :static true}
   [alias namespace-sym to-ns]
@@ -2725,9 +2739,7 @@
         to-ns (the-ns to-ns)]
         (py/setattr to-ns
                     "__aliases__"
-                    (assoc (ns-aliases to-ns)
-                           alias
-                           from-ns))))
+                    (assoc (ns-aliases to-ns) alias from-ns))))
 
 (defn ns-unalias
   "Removes the alias for the symbol from the namespace."
@@ -2737,40 +2749,39 @@
   (let [to-ns (the-ns ns)]
        (py/setattr to-ns
                    "__aliases__"
-                   (dissoc (ns-aliases to-ns)
-                           sym))))
+                   (dissoc (ns-aliases to-ns) sym))))
 
 (defn ns-resolve
-  "Returns the var or Class to which a symbol will be resolved in the
-  namespace (unless found in the environement), else nil.  Note that
-  if the symbol is fully qualified, the var/Class to which it resolves
-  need not be present in the namespace."
+  "Returns the var or Class to which a symbol will be resolved in the namespace
+  (unless found in the environement), else nil.  Note that if the symbol is
+  fully qualified, the var/Class to which it resolves need not be present in
+  the namespace."
   {:added "1.0"
    :static true}
   ([ns sym]
     (clojure.lang.namespace/findItem (the-ns ns) sym)))
 
 (defmacro resolve
-  "same as (ns-resolve *ns* symbol) or (ns-resolve *ns* &env symbol)"
+  "same as (ns-resolve *ns* symbol) or (ns-resolve *ns* &env symbol)."
   {:added "1.0"}
   ([sym] `(ns-resolve ~'__name__ ~sym)))
 
 (defn format
-  "Formats a string"
+  "Formats a string."
   {:added "1.0"
    :static true}
   [fmt & args]
   (py.bytecode/BINARY_MODULO fmt args))
 
 (defn throw-if
-  "Throws an exception with a message if pred is true"
+  "Throws an exception with a message if pred is true."
   [pred fmt & args]
   (when pred
     (let [message (apply format fmt args)
           exception (py/Exception. message)]
       (throw exception))))
 
-(defn load-all
+(defn- load-all
   "Loads a lib given its name and forces a load of any libs it directly or
   indirectly loads. If need-ns, ensures that the associated namespace
   exists after loading. If require, records the load so any duplicate loads
@@ -2820,19 +2831,17 @@
     `(load-lib ~'__name__ ~@options))
 
 (defmacro ns
-  "Sets *ns* to the namespace named by name (unevaluated), creating it
-  if needed.  references can be zero or more of: (:refer-clojure ...)
-  (:require ...) (:use ...) (:import ...) (:load ...) (:gen-class)
-  with the syntax of refer-clojure/require/use/import/load/gen-class
-  respectively, except the arguments are unevaluated and need not be
-  quoted. (:gen-class ...), when supplied, defaults to :name
-  corresponding to the ns name, :main true, :impl-ns same as ns, and
-  :init-impl-ns true. All options of gen-class are
-  supported. The :gen-class directive is ignored when not
-  compiling. If :gen-class is not supplied, when compiled only an
-  nsname__init.class will be generated. If :refer-clojure is not used, a
-  default (refer 'clojure) is used.  Use of ns is preferred to
-  individual calls to in-ns/require/use/import:
+  "Sets *ns* to the namespace named by name (unevaluated), creating it if
+  needed.  references can be zero or more of: (:refer-clojure ...) (:require
+  ...) (:use ...) (:import ...) (:load ...) (:gen-class) with the syntax of
+  refer-clojure/require/use/import/load/gen-class respectively, except the
+  arguments are unevaluated and need not be quoted. (:gen-class ...), when
+  supplied, defaults to :name corresponding to the ns name, :main true,
+  :impl-ns same as ns, and :init-impl-ns true. All options of gen-class are
+  supported. The :gen-class directive is ignored when not compiling. If
+  :gen-class is not supplied, when compiled only an nsname__init.class will be
+  generated. If :refer-clojure is not used, a default (refer 'clojure) is used.
+  Use of ns is preferred to individual calls to in-ns/require/use/import:
 
   (ns foo.bar
     (:refer-clojure :exclude [ancestors printf])
