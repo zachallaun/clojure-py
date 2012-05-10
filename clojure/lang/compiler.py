@@ -6,6 +6,7 @@ import py_compile
 import re
 import sys
 import time
+import fractions
 
 from clojure.lang.cons import Cons
 from clojure.lang.cljexceptions import CompilerException, AbstractMethodCall
@@ -1412,6 +1413,8 @@ class Compiler(object):
             elif isinstance(itm, float):
                 c.append((LOAD_CONST, itm))
             elif isinstance(itm, long):
+                c.append((LOAD_CONST, itm))
+            elif isinstance(itm, fractions.Fraction):
                 c.append((LOAD_CONST, itm))
             elif isinstance(itm, IPersistentSet):
                 c.append((LOAD_CONST, itm))
