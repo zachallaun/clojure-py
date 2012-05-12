@@ -2342,8 +2342,7 @@
      (even? (count bindings)) "an even number of forms in binding vector")
   `(let* ~(destructure bindings) ~@body))
 
-(defn ^{:private true}
-  maybe-destructured
+(defn- maybe-destructured
   [params body]
   (if (every? symbol? params)
     (cons params body)
@@ -2593,9 +2592,8 @@
   [] (seq (py/tuple (.itervalues sys/modules))))
 
 (defn the-ns
-  "If passed a namespace, returns it. Else, when passed a symbol,
-  returns the namespace named by it, throwing an exception if not
-  found."
+  "If passed a namespace, returns it. Else, when passed a symbol, returns the
+  namespace named by it, throwing an exception if not found."
   {:added "1.0"}
   [x]
   (if (instance? types/ModuleType x)
@@ -2614,7 +2612,8 @@
   {:added "1.0"
    :static true}
   [ns]
-  (clojure.lang.rt/map (.-__dict__ (the-ns ns))))
+  (apply hash-map (mapcat (fn [[k v]] [(symbol k) v])
+                          (clojure.lang.rt/map (.-__dict__ (the-ns ns))))))
 
 (defn- ^{:static true}
   filter-key [keyfn pred amap]
@@ -3179,14 +3178,13 @@
   [] {:parents {} :descendants {} :ancestors {}})
 
 (def ^{:private true}
-     global-hierarchy (make-hierarchy))
+  global-hierarchy (make-hierarchy))
 
 (defn isa?
-  "Returns true if (= child parent), or child is directly or indirectly derived from
-  parent, either via a Java type inheritance relationship or a
-  relationship established via derive. h must be a hierarchy obtained
-  from make-hierarchy, if not supplied defaults to the global
-  hierarchy"
+  "Returns true if (= child parent), or child is directly or indirectly derived
+  from parent, either via a Java type inheritance relationship or a
+  relationship established via derive. h must be a hierarchy obtained from
+  make-hierarchy, if not supplied defaults to the global hierarchy"
   {:added "1.0"}
   ([child parent] (isa? global-hierarchy child parent))
   ([h child parent]
@@ -3285,7 +3283,7 @@
                                       'defprotocol 'defrecord 'extend-type])
 (require 'clojure.core-multimethod :only '[make-multi])
 
-(defn ^:private check-valid-options
+(defn- check-valid-options
   "Throws an exception if the given option map contains keys not listed
   as valid, else returns nil."
   [options & valid-keys]
@@ -3532,8 +3530,9 @@
   and lists."
   [l] (.__getitem__ l (py/slice 0 (py/len l))))
 
-(defn aset [l i item]
-  "Equivalent to l[i] = item in Pytyon"
+(defn aset
+  "Equivalent to l[i] = item in Python."
+  [l i item]
   (.__setitem__ l i item))
 
 (require 'array)
@@ -3565,8 +3564,7 @@
 (make-type-array "long" "l" "1.0")
 
 ;;; STM
-(defn ^{:private true}
-  setup-reference [^clojure.lang.ARef r options]
+(defn- setup-reference [^clojure.lang.ARef r options]
   (let [opts (apply hash-map options)]
     (when (:meta opts)
       (.resetMeta r (:meta opts)))
