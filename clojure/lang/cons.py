@@ -63,11 +63,8 @@ class Cons(ASeq):
 
     def __len__(self):
         """Return the number of items in this Cons."""
-        s = self.next()
-        c = 1
-        while s is not None:
-            if hasattr(s, "__len__"):
-                return c + len(s)
+        c = 0
+        while self is not None:
             c += 1
-            s = s.next()
+            self = self.next()
         return c
