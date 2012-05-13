@@ -3080,6 +3080,21 @@
 ;     (py/print (str "Elapsed time: " (* (- (pytime) start#) 1000) " msecs"))
 ;     ret#))
 
+(def ^:dynamic
+ ^{:doc "Bound in a repl thread to the most recent value printed."
+   :added "1.0"}
+ *1)
+
+(def ^:dynamic
+ ^{:doc "Bound in a repl thread to the second most recent value printed."
+   :added "1.0"}
+ *2)
+
+(def ^:dynamic
+ ^{:doc "Bound in a repl thread to the third most recent value printed."
+   :added "1.0"}
+ *3)
+
 ;;; exceptions
 (defn assert
   "Throws an error if val is not true"

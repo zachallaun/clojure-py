@@ -62,6 +62,13 @@ class Symbol(IObj, IPrintable, Named):
 
 
 def symbol(*args):
+    """Creates a Symbol.
+    
+    Valid calls:
+    - symbol(arg), where arg is a Symbol or a string representing a symbol
+    (ns-qualified or not).
+    - symbol(ns, sym)
+    """
     if len(args) == 1:
         a = args[0]
         if isinstance(a, Symbol):
@@ -70,7 +77,7 @@ def symbol(*args):
         if idx == -1 or a == "/":
             return Symbol(None, a)
         else:
-            return Symbol(a[idx:], a[:idx + 1])
+            return Symbol(a[:idx], a[idx + 1:])
     elif len(args) == 2:
         return Symbol(args[0], args[1])
     else:

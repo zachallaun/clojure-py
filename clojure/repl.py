@@ -10,7 +10,7 @@ import traceback
 from clojure.lang.globals import currentCompiler
 from clojure.lang.compiler import Compiler
 from clojure.lang.symbol import symbol
-from clojure.lang.var import Var, intern as internVar
+from clojure.lang.var import Var, intern as internVar, find as findVar
 from clojure.lang.lispreader import read
 from clojure.lang.fileseq import StringReader
 from clojure.main import VERSION
@@ -69,9 +69,7 @@ def run_repl(comp=None):
 
     while 1:
         for i, value in enumerate(last3, 1):
-            sym = symbol('*%s' % i)
-            v = internVar(comp.getNS(), sym)
-            v.setDynamic(True)
+            v = findVar(symbol("clojure.core", "*%s" % i))
             if isinstance(value, Var):
                 v.bindRoot(value.deref())
                 v.setMeta(value.meta())
