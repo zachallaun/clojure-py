@@ -1,7 +1,6 @@
-(ns clojure.core-multimethod)
-(clojure.core/refer-clojure)
-(require 'clojure.core-deftype)
-(refer 'clojure.core-deftype)
+(ns clojure.core-multimethod
+  (:require clojure.core-deftype)
+  (:refer clojure.core-deftype))
 
 (definterface IInitable
     (_init [self]))

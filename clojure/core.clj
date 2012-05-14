@@ -2755,13 +2755,12 @@
   the namespace."
   {:added "1.0"
    :static true}
-  ([ns sym]
-    (clojure.lang.namespace/findItem (the-ns ns) sym)))
+  ([ns sym] (clojure.lang.namespace/findItem (the-ns ns) sym)))
 
-(defmacro resolve
+(defn resolve
   "same as (ns-resolve *ns* symbol) or (ns-resolve *ns* &env symbol)."
   {:added "1.0"}
-  ([sym] `(ns-resolve ~'__name__ ~sym)))
+  ([sym] (ns-resolve *ns* sym)))
 
 (defn format
   "Formats a string."
@@ -2813,19 +2812,17 @@
         loaded (contains? sys/modules lib)
         need-ns (or as use)
         filter-opts (select-keys opts '(:exclude :only :rename))]
-       (load-all lib)
-       (cond (not options)
-              (py/setattr (the-ns (name to-ns))
-                          (name lib)
-                          (load-all lib))
-             as
-              (alias (:as opts) lib to-ns)
-             :else
-              (map-ns-vals lib to-ns opts))))
+    (load-all lib)
+    (cond (not options)
+            (py/setattr to-ns (name lib) (load-all lib))
+          as
+            (alias (:as opts) lib to-ns)
+          :else
+            (map-ns-vals lib to-ns opts))))
 
-(defmacro require
-    [& options]
-    `(load-lib ~'__name__ ~@options))
+(defn require
+  [& options]
+  (apply load-lib *ns* options))
 
 (defmacro ns
   "Sets *ns* to the namespace named by name (unevaluated), creating it if
@@ -2873,6 +2870,9 @@
         ]
     `(do
        (~'in-ns ~name)
+       ~@(when (and (not= name 'clojure.core)
+                     (not-any? #(= :refer-clojure (first %)) references))
+           `((refer '~'clojure.core)))
        ~@(map process-reference references))))
 
 (def reduce reduce1)
@@ -2995,7 +2995,7 @@
   (let [var-ize (fn [var-vals]
                   (loop [ret [] vvs (seq var-vals)]
                     (if vvs
-                      (recur  (conj (conj ret `(resolve (symbol ~(name (first vvs))))) (second vvs))
+                      (recur (conj (conj ret `(var ~(first vvs))) (second vvs))
                              (next (next vvs)))
                       (seq ret))))]
    `(let []
@@ -3050,7 +3050,7 @@
   "Evaluates the form data structure (not text!) and returns the result."
   {:added "1.0"
    :static true}
-  [form] (clojure.lang.compiler/evalForm form __name__))
+  [form] (clojure.lang.compiler/evalForm form (ns-name *ns*)))
 
 (defmacro doc
   [itm]
@@ -3292,9 +3292,12 @@
       h))))
 
 ;;; multimethods
-(require 'clojure.core-deftype :only ['deftype 'reify 'definterface
-                                      'defprotocol 'defrecord 'extend-type])
-(require 'clojure.core-multimethod :only '[make-multi])
+(require 'clojure.core-deftype)
+(doseq [to-add ['definterface 'deftype 'defprotocol 'defrecord
+                'extend-type 'reify]]
+  (intern *ns* to-add (.deref (ns-resolve 'clojure.core-deftype to-add))))
+(require 'clojure.core-multimethod)
+(intern *ns* 'make-multi clojure.core-multimethod/make-multi)
 
 (defn- check-valid-options
   "Throws an exception if the given option map contains keys not listed

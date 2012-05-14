@@ -23,7 +23,7 @@ def addDefaultImports(mod):
             continue
         setattr(mod, i, getattr(stdimps, i))
     if mod.__name__ == "clojure.core":
-        setattr(mod, "*ns*", Var(mod, "*ns*").setDynamic())
+        setattr(mod, "*ns*", Var(mod, "*ns*", mod).setDynamic())
     return mod
 
 def findOrCreateIn(module, parts):
