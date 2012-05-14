@@ -6,7 +6,7 @@
 ;   the terms of this license.
 ;   You must not remove this notice, or any other, from this software.
 
-(ns* ^{:doc "The core Clojure language."
+(in-ns ^{:doc "The core Clojure language."
        :author "Rich Hickey"}
   clojure.core)
 
@@ -2874,7 +2874,7 @@
         ;ns-effect (clojure.core/in-ns name)
         ]
     `(do
-       (~'ns* ~name)
+       (~'in-ns ~name)
        ~@(map process-reference references))))
 
 (def reduce reduce1)

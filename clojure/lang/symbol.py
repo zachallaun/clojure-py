@@ -67,7 +67,7 @@ def symbol(*args):
     Valid calls:
     - symbol(arg), where arg is a Symbol or a string representing a symbol
     (ns-qualified or not).
-    - symbol(ns, sym)
+    - symbol(ns, str).
     """
     if len(args) == 1:
         a = args[0]

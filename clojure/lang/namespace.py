@@ -7,6 +7,7 @@ from clojure.lang.cljexceptions import (InvalidArgumentException,
                                         IllegalArgumentException)
 import clojure.lang.rt as RT
 from clojure.lang.symbol import Symbol, symbol
+from clojure.lang.var import Var
 import sys, types
 
 namespaces = AtomicReference(EMPTY_MAP)
@@ -27,6 +28,8 @@ def addDefaultImports(mod):
             if i.startswith("_"):
                 continue
             setattr(mod, i, getattr(core, i))
+    if mod.__name__ == "clojure.core":
+        setattr(mod, "*ns*", Var(core, "*ns*").setDynamic())
     return mod
 
 def findOrCreateIn(module, parts):

@@ -24,7 +24,9 @@ from clojure.lang.persistentlist import PersistentList, EmptyList
 from clojure.lang.persistentvector import PersistentVector
 import clojure.lang.rt as RT
 from clojure.lang.symbol import Symbol, symbol
-from clojure.lang.var import Var, define, intern as internVar, var as createVar
+from clojure.lang.var import (
+    Var, define, intern as internVar, var as createVar,
+    pushThreadBindings, popThreadBindings)
 from clojure.util.byteplay import *
 import clojure.util.byteplay as byteplay
 import marshal
@@ -119,13 +121,16 @@ def register_builtin(sym):
     return inner
 
 
-@register_builtin("ns*")
+@register_builtin("in-ns")
 def compileNS(comp, form):
     rest = form.next()
     if len(rest) != 1:
         raise CompilerException("ns only supports one item", rest)
-    comp.setNS(rest.first())
-    return [(LOAD_CONST, None)]
+    ns = rest.first()
+    if not isinstance(ns, Symbol):
+        ns = comp.executeCode(comp.compile(ns))
+    comp.setNS(ns)
+    return [(LOAD_CONST, ns)]
 
 
 @register_builtin("def")
@@ -1356,9 +1361,6 @@ class Compiler(object):
         """ Compiles the symbol. First the compiler tries to compile it
             as an alias, then as a global """
             
-        if sym == _NS_:
-            return [(LOAD_CONST, self.getNS().__name__)]
-
         if sym in self.aliases:
             return self.compileAlias(sym)
 
@@ -1444,11 +1446,12 @@ class Compiler(object):
 
     def executeCode(self, code):
 
+        ns = self.getNS()
         if code == []:
             return None
         newcode = expandMetas(code, self)
         newcode.append((RETURN_VALUE, None))
-        c = Code(newcode, [], [], False, False, False, str(symbol(self.getNS().__name__, "<string>")), self.filename, 0, None)
+        c = Code(newcode, [], [], False, False, False, str(symbol(ns.__name__, "<string>")), self.filename, 0, None)
         try:
             c = c.to_code()
         except:
@@ -1461,8 +1464,11 @@ class Compiler(object):
         #with open("foo.cljs", "wb") as fl:
         #    f = write(c, fl)
 
-        retval = eval(c, self.getNS().__dict__)
+        pushThreadBindings(
+            {findItem(findOrCreateNamespace("clojure.core"), _NS_): ns})
+        retval = eval(c, ns.__dict__)
         self.getNS().__file__ = self.filename
+        popThreadBindings()
         return retval
 
     def pushPropertyAlias(self, mappings):
