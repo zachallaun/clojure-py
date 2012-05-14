@@ -58,6 +58,10 @@ def run_repl(comp=None):
         else:
             comp = curr
     comp.setNS(symbol("user"))
+    core = sys.modules["clojure.core"]
+    for i in dir(core):
+        if not i.startswith("_"):
+            setattr(comp.getNS(), i, getattr(core, i))
 
     last3 = [None, None, None]
 

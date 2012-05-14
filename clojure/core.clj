@@ -1481,7 +1481,7 @@
   [& pairs]
   `(do (when-not ~(first pairs)
          (throw (py/Exception
-                  (str (first ~'&form) " requires " ~(second pairs) " in " ~'__name__ ":" (:line (meta ~'&form))))))
+                  (str (first ~'&form) " requires " ~(second pairs) " in " ~'*ns* ":" (:line (meta ~'&form))))))
      ~(let [more (nnext pairs)]
         (when more
           (list* `assert-args more)))))
@@ -2696,9 +2696,7 @@
                           (if (get (ns-interns ns) sym)
                             (str sym " is not public")
                             (str sym " does not exist")))))
-            (refer-var (the-ns __name__)
-                       (or (rename sym) sym)
-                       (get nspublics sym)))))))
+            (refer-var *ns* (or (rename sym) sym) (get nspublics sym)))))))
 
 (defmacro refer-clojure
   "Same as (refer 'clojure.core <filters>)"

@@ -1,4 +1,5 @@
 (ns clojure.core-deftype)
+(clojure.core/refer-clojure)
 
 (defn parse-opts [s]
   (loop [opts {} [k v & rs :as s] s]
