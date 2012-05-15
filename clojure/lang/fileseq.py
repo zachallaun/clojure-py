@@ -2,11 +2,7 @@ from clojure.lang.aseq import ASeq
 from clojure.lang.cljexceptions import IllegalAccessError, ArityException, InvalidArgumentException
 
 def isReader(rdr):
-    if not hasattr(rdr, "read"):
-        return False
-    if not hasattr(rdr, "tell"):
-        return False
-    return True
+    return hasattr(rdr, "read") and hasattr(rdr, "tell")
 
 
 class FileSeq(ASeq):

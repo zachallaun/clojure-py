@@ -50,9 +50,8 @@ class ReaderException(Exception):
 class CompilerException(Exception):
     def __init__(self, reason, form):
         from lispreader import LINE_KEY
-        if hasattr(form, "meta") and form.meta() is not None:
-            msg = ("Compiler Exception " + reason + " at "
-                   + str(form.meta()[LINE_KEY]))
-        else:
-            msg = "Compiler Exception " + reason
+        msg = "Compiler exception {0}".format(reason)
+        at = getattr(form, "meta", lambda: {LINE_KEY: None})()[LINE_KEY]
+        if at:
+            msg += " at {0}".format(at)
         Exception.__init__(self, msg)

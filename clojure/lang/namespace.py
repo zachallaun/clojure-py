@@ -7,6 +7,7 @@ from clojure.lang.cljexceptions import (InvalidArgumentException,
                                         IllegalArgumentException)
 import clojure.lang.rt as RT
 from clojure.lang.symbol import Symbol, symbol
+from clojure.lang.var import Var
 import sys, types
 
 namespaces = AtomicReference(EMPTY_MAP)
@@ -21,12 +22,8 @@ def addDefaultImports(mod):
         if i.startswith("_"):
             continue
         setattr(mod, i, getattr(stdimps, i))
-    if "clojure.core" in sys.modules:
-        core = sys.modules["clojure.core"]
-        for i in dir(core):
-            if i.startswith("_"):
-                continue
-            setattr(mod, i, getattr(core, i))
+    if mod.__name__ == "clojure.core":
+        setattr(mod, "*ns*", Var(mod, "*ns*", mod).setDynamic())
     return mod
 
 def findOrCreateIn(module, parts):
@@ -67,43 +64,27 @@ def remove(name):
         raise IllegalArgumentException("Cannot remove clojure namespace");
     del sys.modules[name]
     return None
-            
-    
 
-def find(name, fromns = None):
-    from clojure.lang.symbol import Symbol
+def find(name, fromns=None):
     if isinstance(name, types.ModuleType):
         return name
-    if isinstance(name, Symbol):
-        name = name.name
-    
-    if not fromns is None:
-        if hasattr(fromns, "__aliases__"):
-            if fromns in fromns.__aliases__: 
-                return fromns.__aliases__[name]
-    return sys.modules[name]
+    if name in getattr(fromns, "__aliases__", {}):
+        return fromns.__aliases__[name]
+    return sys.modules.get(str(name))
 
 def findItem(ns, sym):
-    from clojure.lang.symbol import Symbol, symbol
-    if sym.ns is not None and  hasattr(ns, "__aliases__") and \
-        symbol(sym.ns) in ns.__aliases__:
+    if sym.ns is not None and symbol(sym.ns) in getattr(ns, "__aliases__", {}):
         sym = symbol(ns.__aliases__[symbol(sym.ns)].__name__, sym.name)
        
     if isinstance(sym, Symbol):
         if ns is None:
             ns = sys.modules["clojure.core"] # we need this to boostrap files
         if sym.ns == ns.__name__:
-            if not hasattr(ns, sym.name):
-                return None
-            return getattr(ns, sym.name)
+            return getattr(ns, sym.name, None)
         if sym.ns is not None:
             mod = find(sym.ns, ns)
-            if hasattr(mod, sym.name):
-                return getattr(mod, sym.name)
-            return None
-        if not hasattr(ns, str(sym)):
-            return None
-        return getattr(ns, str(sym))
+            return getattr(mod, sym.name, None)
+        return getattr(ns, str(sym), None)
     return getattr(ns, sym)
 
 def findModule(sym, module = None):
@@ -113,7 +94,7 @@ def findModule(sym, module = None):
         name = sym[0]
         if name not in sys.modules:
             return None
-        if len(parts):
+        if parts:
             return findModule(parts, sys.modules[name])
         return sys.modules[name]
 
@@ -121,7 +102,7 @@ def findModule(sym, module = None):
     parts = sym[1:]
     if not hasattr(module, name):
         return None
-    if len(parts):
+    if parts:
         return findModule(parts, getattr(module, name))
     return getattr(module, name)
 
@@ -133,13 +114,15 @@ def intern(ns, sym):
         sym = symbol(str)
 
     if sym.ns is not None:
-        raise InvalidArgumentException("Can't intern namespace-qualified symbol")
+        raise InvalidArgumentException(
+            "Can't intern namespace-qualified symbol")
 
     ns = find(ns)
     if hasattr(ns, str(sym)):
         v = getattr(ns, str(sym))
         if not isinstance(v, Var):
-            raise Exception("can't redefine " + str(v) + " as " + str(sym) + ": is not Var")
+            raise Exception(
+                "can't redefine {0} as {1}: is not Var".format(v, sym))
         if ns.__name__ == v.ns.__name__:
             return v
     v = Var(ns, sym)

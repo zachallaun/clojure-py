@@ -160,52 +160,11 @@
         (do (f) :ok)
         :no-test)))
 
-(defn rand
-  "Returns a random floating point number between 0 (inclusive) and
-  n (default 1) (exclusive)."
-  {:added "1.0"
-   :static true}
-  ([] (. Math (random)))
-  ([n] (* n (rand))))
-
-(defn rand-int
-  "Returns a random integer between 0 (inclusive) and n (exclusive)."
-  {:added "1.0"
-   :static true}
-  [n] (int (rand n)))
-
 (defmacro defn-
   "same as defn, yielding non-public def"
   {:added "1.0"}
   [name & decls]
     (list* `defn (with-meta name (assoc (meta name) :private true)) decls))
-
-(defn tree-seq
-  "Returns a lazy sequence of the nodes in a tree, via a depth-first walk.
-   branch? must be a fn of one arg that returns true if passed a node
-   that can have children (but may not).  children must be a fn of one
-   arg that returns a sequence of the children. Will only be called on
-   nodes for which branch? returns true. Root is the root node of the
-  tree."
-  {:added "1.0"
-   :static true}
-   [branch? children root]
-   (let [walk (fn walk [node]
-                (lazy-seq
-                 (cons node
-                  (when (branch? node)
-                    (mapcat walk (children node))))))]
-     (walk root)))
-
-(defn file-seq
-  "A tree seq on java.io.Files"
-  {:added "1.0"
-   :static true}
-  [dir]
-    (tree-seq
-     (fn [^java.io.File f] (. f (isDirectory)))
-     (fn [^java.io.File d] (seq (. d (listFiles))))
-     dir))
 
 (defn xml-seq
   "A tree seq on the xml elements as per xml/parse"
@@ -229,32 +188,6 @@
   {:added "1.0"
    :static true}
   [v] (instance? clojure.lang.Var v))
-
-(defn subs
-  "Returns the substring of s beginning at start inclusive, and ending
-  at end (defaults to length of string), exclusive."
-  {:added "1.0"
-   :static true}
-  (^String [^String s start] (. s (substring start)))
-  (^String [^String s start end] (. s (substring start end))))
-
-(defn max-key
-  "Returns the x for which (k x), a number, is greatest."
-  {:added "1.0"
-   :static true}
-  ([k x] x)
-  ([k x y] (if (> (k x) (k y)) x y))
-  ([k x y & more]
-   (reduce1 #(max-key k %1 %2) (max-key k x y) more)))
-
-(defn min-key
-  "Returns the x for which (k x), a number, is least."
-  {:added "1.0"
-   :static true}
-  ([k x] x)
-  ([k x y] (if (< (k x) (k y)) x y))
-  ([k x y & more]
-   (reduce1 #(min-key k %1 %2) (min-key k x y) more)))
 
 (defn distinct
   "Returns a lazy sequence of the elements of coll with duplicates removed"
@@ -386,12 +319,6 @@
    :static true}
   [x] (. clojure.lang.Util (hasheq x)))
 
-(defn interpose
-  "Returns a lazy seq of the elements of coll separated by sep"
-  {:added "1.0"
-   :static true}
-  [sep coll] (drop 1 (interleave (repeat sep) coll)))
-
 (defmacro definline
   "Experimental - like defmacro, except defines a named function whose
   body is the expansion, calls to which may be expanded inline as if
@@ -440,14 +367,6 @@
          (recur (unchecked-inc ~idx) ~expr)
          ~ret))))
 
-(defn float-array
-  "Creates an array of floats"
-  {:inline (fn [& args] `(. clojure.lang.Numbers float_array ~@args))
-   :inline-arities #{1 2}
-   :added "1.0"}
-  ([size-or-seq] (. clojure.lang.Numbers float_array size-or-seq))
-  ([size init-val-or-seq] (. clojure.lang.Numbers float_array size init-val-or-seq)))
-
 (defn boolean-array
   "Creates an array of booleans"
   {:inline (fn [& args] `(. clojure.lang.Numbers boolean_array ~@args))
@@ -456,60 +375,12 @@
   ([size-or-seq] (. clojure.lang.Numbers boolean_array size-or-seq))
   ([size init-val-or-seq] (. clojure.lang.Numbers boolean_array size init-val-or-seq)))
 
-(defn byte-array
-  "Creates an array of bytes"
-  {:inline (fn [& args] `(. clojure.lang.Numbers byte_array ~@args))
-   :inline-arities #{1 2}
-   :added "1.1"}
-  ([size-or-seq] (. clojure.lang.Numbers byte_array size-or-seq))
-  ([size init-val-or-seq] (. clojure.lang.Numbers byte_array size init-val-or-seq)))
-
-(defn char-array
-  "Creates an array of chars"
-  {:inline (fn [& args] `(. clojure.lang.Numbers char_array ~@args))
-   :inline-arities #{1 2}
-   :added "1.1"}
-  ([size-or-seq] (. clojure.lang.Numbers char_array size-or-seq))
-  ([size init-val-or-seq] (. clojure.lang.Numbers char_array size init-val-or-seq)))
-
-(defn short-array
-  "Creates an array of shorts"
-  {:inline (fn [& args] `(. clojure.lang.Numbers short_array ~@args))
-   :inline-arities #{1 2}
-   :added "1.1"}
-  ([size-or-seq] (. clojure.lang.Numbers short_array size-or-seq))
-  ([size init-val-or-seq] (. clojure.lang.Numbers short_array size init-val-or-seq)))
-
-(defn double-array
-  "Creates an array of doubles"
-  {:inline (fn [& args] `(. clojure.lang.Numbers double_array ~@args))
-   :inline-arities #{1 2}
-   :added "1.0"}
-  ([size-or-seq] (. clojure.lang.Numbers double_array size-or-seq))
-  ([size init-val-or-seq] (. clojure.lang.Numbers double_array size init-val-or-seq)))
-
 (defn object-array
   "Creates an array of objects"
   {:inline (fn [arg] `(. clojure.lang.rt object_array ~arg))
    :inline-arities #{1}
    :added "1.2"}
   ([size-or-seq] (. clojure.lang.rt object_array size-or-seq)))
-
-(defn int-array
-  "Creates an array of ints"
-  {:inline (fn [& args] `(. clojure.lang.Numbers int_array ~@args))
-   :inline-arities #{1 2}
-   :added "1.0"}
-  ([size-or-seq] (. clojure.lang.Numbers int_array size-or-seq))
-  ([size init-val-or-seq] (. clojure.lang.Numbers int_array size init-val-or-seq)))
-
-(defn long-array
-  "Creates an array of longs"
-  {:inline (fn [& args] `(. clojure.lang.Numbers long_array ~@args))
-   :inline-arities #{1 2}
-   :added "1.0"}
-  ([size-or-seq] (. clojure.lang.Numbers long_array size-or-seq))
-  ([size init-val-or-seq] (. clojure.lang.Numbers long_array size init-val-or-seq)))
 
 (definline booleans
   "Casts to boolean[]"
@@ -828,14 +699,6 @@
    :static true}
   [e]
   (clojure.lang.EnumerationSeq/create e))
-
-(defn format
-  "Formats a string using java.lang.String.format, see java.util.Formatter for format
-  string syntax"
-  {:added "1.0"
-   :static true}
-  ^String [fmt & args]
-  (String/format fmt (to-array args)))
 
 (defn printf
   "Prints formatted output, as per format"
@@ -1317,22 +1180,6 @@
          ret)))
   ([f & args]
      (trampoline #(apply f args))))
-
-(defn intern
-  "Finds or creates a var named by the symbol name in the namespace
-  ns (which can be a symbol or a namespace), setting its root binding
-  to val if supplied. The namespace must exist. The var will adopt any
-  metadata from the name symbol.  Returns the var."
-  {:added "1.0"
-   :static true}
-  ([ns ^clojure.lang.Symbol name]
-     (let [v (clojure.lang.Var/intern (the-ns ns) name)]
-       (when (meta name) (.setMeta v (meta name)))
-       v))
-  ([ns name val]
-     (let [v (clojure.lang.Var/intern (the-ns ns) name val)]
-       (when (meta name) (.setMeta v (meta name)))
-       v)))
 
 (defmacro while
   "Repeatedly executes body while test expression is true. Presumes

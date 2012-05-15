@@ -136,7 +136,7 @@ def extend(np, *args):
         tp = args[x]
         proto = getExactProtocol(tp)
         if not proto:
-            raise ProtocolExeception("Expected protocol, got " + str(x))
+            raise ProtocolExeception("Expected protocol, got {0}".format(x))
         if x + 1 >= len(args):
             raise ProtocolExeception("Expected even number of forms to extend")
         
@@ -205,7 +205,7 @@ def extendProtocolForClass(proto, tp):
             try:
                 pfn.extend(tp, getattr(tp, fn))
             except AttributeError as e:
-                print "Can't extend, got ", str(pfn), type(pfn)
+                print "Can't extend, got {0}".format(pfn), type(pfn)
                 raise
         
     proto.markImplementor(tp)

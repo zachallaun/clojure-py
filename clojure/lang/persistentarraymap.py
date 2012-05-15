@@ -103,7 +103,8 @@ def createWithCheck(self, init):
     for i in range(0, len(init), 2):
         for j in range(i+2, len(init), 2):
             if init[i] == init[j]:
-                raise InvalidArgumentException("Duplicate Key" + str(init[i]))
+                raise InvalidArgumentException(
+                    "Duplicate Key {0}".format(init[i]))
     return PersistentArrayMap(init)
 
 class Seq(ASeq, Counted):

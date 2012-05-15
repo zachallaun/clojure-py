@@ -56,9 +56,9 @@
 (defmacro definterface
     [name & sigs]
     (let [methods (zipmap (map #(clojure.core/name (first %)) sigs)
-                          (map #(identity `(~'fn ~(symbol (str name "_" (clojure.core/name (first %))))
-                                                 ~@'([self & args] 
-                                                 (throw (AbstractMethodCall self))))) sigs))]
+                          (map #(-> `(~'fn ~(symbol (str name "_" (clojure.core/name (first %))))
+                                      ~@'([self & args]
+                                          (throw (AbstractMethodCall self))))) sigs))]
                 `(do (def ~name (py/type ~(clojure.core/name name)
                                       (py/tuple [py/object])
                                       (.toDict ~methods))))))
@@ -69,14 +69,14 @@
     (let [docstr (when (string? (first sigs)) (first sigs))
           sigs (if docstr (next sigs) sigs)
           methods (zipmap (map #(clojure.core/name (first %)) sigs)
-                          (map #(identity `(~'fn ~(symbol (str name "_" (clojure.core/name (first %))))
-                                                 ~@'([self & args] 
-                                                 (throw (AbstractMethodCall self))))) sigs))
+                          (map #(-> `(~'fn ~(symbol (str name "_" (clojure.core/name (first %))))
+                                      ~@'([self & args]
+                                          (throw (AbstractMethodCall self))))) sigs))
           methods (assoc methods "__doc__" docstr)]
          (debug `(do (def ~name (py/type ~(clojure.core/name name)
                                       (py/tuple [py/object])
                                       (.toDict ~methods)))
-                     (clojure.lang.protocol/protocolFromType ~'__name__ ~name)
+                     (clojure.lang.protocol/protocolFromType (ns-name ~'*ns*) ~name)
                 ~@(for [s sigs :when (string? (last s))]
                     `(py/setattr (resolve ~(list 'quote (first s)))
                                  "__doc__"

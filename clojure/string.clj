@@ -1,4 +1,4 @@
-(ns  clojure.string
+(ns clojure.string
   (:require [re]))
 
 (defn reverse
