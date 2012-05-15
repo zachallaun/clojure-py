@@ -513,6 +513,12 @@
   [x]
   (clojure.lang.cljkeyword/keyword (symbol x)))
 
+(def
+  ^{:doc "Returns the name String of a string, symbol or keyword."
+    :static true}
+  name
+  clojure.lang.rt/name)
+
 (defmacro cond
   "Takes a set of test/expr pairs. It evaluates each test one at a time.  If a
   test returns logical true, cond evaluates and returns the value of the
@@ -2521,12 +2527,96 @@
     `(let [iter# ~(emit-bind (to-groups seq-exprs))]
         (iter# ~(second seq-exprs)))))
 
+;;; vars et al.
+(defn deref
+  "Also reader macro: @ref/@agent/@var/@atom/@delay/@future/@promise. Within a
+  transaction, returns the in-transaction-value of ref, else returns the
+  most-recently-committed value of ref. When applied to a var, agent or atom,
+  returns its current state. When applied to a delay, forces it if not already
+  forced. When applied to a future, will block if computation not complete.
+  When applied to a promise, will block until a value is delivered.  The
+  variant taking a timeout can be used for blocking references (futures and
+  promises), and will return timeout-val if the timeout (in milliseconds) is
+  reached before a value is available. See also - realized?."
+  {:added "1.0"
+   :static true}
+  ([ref] (.deref ref))
+  ([ref timeout-ms timeout-val] (.deref ref timeout-ms timeout-val)))
+
+(defmacro binding
+  "binding => var-symbol init-expr
+
+  Creates new bindings for the (already-existing) vars, with the
+  supplied initial values, executes the exprs in an implicit do, then
+  re-establishes the bindings that existed before.  The new bindings
+  are made in parallel (unlike let); all init-exprs are evaluated
+  before the vars are bound to their new values."
+  {:added "1.0"}
+  [bindings & body]
+  (assert-args binding
+    (vector? bindings) "a vector for its binding"
+    (even? (count bindings)) "an even number of forms in binding vector")
+  (let [var-ize (fn [var-vals]
+                  (loop [ret [] vvs (seq var-vals)]
+                    (if vvs
+                      (recur (conj (conj ret `(var ~(first vvs))) (second vvs))
+                             (next (next vvs)))
+                      (seq ret))))]
+   `(let []
+       (clojure.lang.var/pushThreadBindings (hash-map ~@(var-ize bindings)))
+       (~'try
+         (~'do ~@body)
+         (~'finally
+           (clojure.lang.var/popThreadBindings))))))
+
+(defmacro var
+  [itm]
+  `(clojure.lang.var/find (symbol ~'__name__ ~(name itm))))
+
+(defn var?
+  "Return true if x is a Var"
+  {:static true}
+  [x] (instance? clojure.lang.var/Var x))
+
+(defn alter-var-root
+  "Atomically alters the root binding of var v by applying f to its current
+  value plus any args"
+  {:added "1.0"
+   :static true}
+  [v f & args] (.alterRoot v f args))
+
+(defn bound?
+  "Returns true if all of the vars provided as arguments have any bound value,
+  root or thread-local. Implies that deref'ing the provided vars will succeed.
+  Returns true if no vars are provided."
+  {:added "1.2"
+   :static true}
+  [& vars]
+  (every? #(.isBound %) vars))
+
+(defn thread-bound?
+  "Returns true if all of the vars provided as arguments have thread-local
+  bindings. Implies that set!'ing the provided vars will succeed.  Returns true
+  if no vars are provided."
+  {:added "1.2"
+   :static true}
+  [& vars]
+  (every? #(.getThreadBinding %) vars))
+
 ;;; ns-related
-(def
-  ^{:doc "Returns the name String of a string, symbol or keyword."
-    :static true}
-  name
-  clojure.lang.rt/name)
+(defmacro defonce
+  "Defs name to have the root value of the expr iff the named var has no root
+  value, else expr is unevaluated."
+  {:added "1.0"}
+  [name expr]
+  `(let [v# (def ~name)]
+     (when-not (.hasRoot v#)
+       (def ~name ~expr))))
+
+(defonce ^:dynamic
+  ^{:private true
+    :doc "True while a verbose load is pending."}
+  *loading-verbosely* false)
 
 (def
   ^{:doc "Returns the namespace String of a symbol or keyword, or nil if not present."
@@ -2534,35 +2624,6 @@
    :static true}
   namespace
   clojure.lang.rt/namespace)
-
-(defmacro import*
-  ([module syms]
-    (let [module (.-name module)
-          copies (map #(list 'py.bytecode/STORE_GLOBAL
-                             (name %)
-                             (list 'py/getattr 'itms (name %)))
-                        syms)
-          symnames (list* (map name syms))]
-
-         `(let [~'itms (py/__import__ (name ~module)
-                                      (py/globals)
-                                      (py/locals)
-                                      (py/list (list ~@symnames))
-                                      -1)]
-            ~@copies ))))
-
-(defmacro import
-  "import-list => (package-symbol class-name-symbols*)
-
-  For each name in class-name-symbols, adds a mapping from name to the
-  class named by package.name to the current namespace. Use :import in the ns
-  macro in preference to calling this directly."
-  {:added "1.0"}
-  [& import-symbols-or-lists]
-  (let [specs (map #(if (and (seq? %) (= 'quote (first %))) (second %) %)
-                   import-symbols-or-lists)]
-   `(do ~@(map #(list 'clojure.core/import* (first %) (next %))
-                specs))))
 
 (defn find-ns
   "Returns the namespace named by the symbol or nil if it doesn't exist."
@@ -2627,17 +2688,23 @@
    :static true}
   [ns]
   (let [ns (the-ns ns)]
-    (filter-key val (fn [v] (and (instance? clojure.lang.var/Var v)
-                                 (= ns (.-ns v))
-                                 (.isPublic v)))
+    (filter-key val (fn [v] (and (var? v) (= ns (.-ns v)) (.isPublic v)))
                 (ns-map ns))))
 
 (defn ns-imports
-  "Returns a map of the import mappings for the namespace."
+  "Returns a map of the import mappings for the namespace, i.e. non-var names
+  that would be imported by 'import * from module.'"
   {:added "1.0"
    :static true}
   [ns]
-  (filter-key val (partial instance? py/type) (ns-map ns)))
+  (filter-key
+    identity
+    (fn [[k v]]
+      (and (not (var? v))
+           (if (py/hasattr ns "__all__")
+             (.__contains__ (.-__all__ ns) (name k)) ; use Python's "in"
+             (not (.startswith (name k) "_")))))
+    (ns-map ns)))
 
 (defn ns-interns
   "Returns a map of the intern mappings for the namespace."
@@ -2645,9 +2712,7 @@
    :static true}
   [ns]
   (let [ns (the-ns ns)]
-    (filter-key val (fn [v] (and (instance? clojure.lang.var/Var v)
-                                 (= ns (.-ns v))))
-                (ns-map ns))))
+    (filter-key val (fn [v] (and (var? v) (= ns (.-ns v)))) (ns-map ns))))
 
 (defn intern
   "Finds or creates a var named by the symbol name in the namespace ns (which
@@ -2657,17 +2722,16 @@
   ([ns name] (clojure.lang.namespace/intern (the-ns ns) name))
   ([ns name val] (.bindRoot (intern ns name) val)))
 
-(defn- refer-var
-  "Adds the var to the given namespace with the given name"
-  [ns nm v]
-  (py/setattr ns (name nm) v))
+(defn- map-one
+  "Adds the var/object to the given namespace with the given name."
+  [ns nm v] (py/setattr ns (name nm) v))
 
 (defn refer
   "refers to all public vars of ns, subject to filters.
   filters can include at most one each of:
 
   :exclude list-of-symbols
-  :only list-of-symbols
+  :only list-of-symbols (non-existent symbols will be ignored)
   :rename map-of-fromsymbol-tosymbol
 
   For each public interned var in the namespace named by the symbol, adds a
@@ -2679,24 +2743,60 @@
   calling this directly."
   {:added "1.0"}
   [ns-sym & filters]
-    (let [ns (or (find-ns ns-sym) (throw (py/Exception (str "No namespace: " ns-sym))))
-          fs (apply hash-map filters)
-          nspublics (ns-publics ns)
-          rename (or (:rename fs) {})
-          exclude (set (:exclude fs))
-          to-do (or (:only fs) (keys nspublics))]
-      (doseq [sym to-do]
-        (when-not (exclude sym)
-          (let [v (nspublics sym)]
-            (when-not v
-              (throw (py/Exception
-                          (if (get (ns-interns ns) sym)
-                            (str sym " is not public")
-                            (str sym " does not exist")))))
-            (refer-var *ns* (or (rename sym) sym) (get nspublics sym)))))))
+  (let [ns (or (find-ns ns-sym) (throw (py/Exception (str "No namespace: " ns-sym))))
+        fs (apply hash-map filters)
+        nspublics (ns-publics ns)
+        rename (or (:rename fs) {})
+        exclude (set (:exclude fs))
+        to-do (if (:only fs)
+                (filter (set (:only fs)) (keys nspublics))
+                (keys nspublics))]
+    (doseq [sym to-do]
+      (when-not (exclude sym)
+        (if-let [v (nspublics sym)]
+          (map-one *ns* (or (rename sym) sym) v)
+          (throw (py/Exception
+                   (if (get (ns-interns ns) sym)
+                     (str sym " is not public")
+                     (str sym " does not exist")))))))))
+
+(defn import
+  "imports to all public names of ns (i.e., non-var names that would be
+  imported by 'import * from ns'), subject to filters.
+  filters can include at most one each of:
+
+  :exclude list-of-symbols
+  :only list-of-symbols (non-existent symbols will be ignored)
+  :rename map-of-fromsymbol-tosymbol
+
+  For each public name in the namespace named by the symbol, adds a mapping
+  from the name of the object to the object to the current namespace.  Throws
+  an exception if name is already mapped to something else in the current
+  namespace. Filters can be used to select a subset, via inclusion or
+  exclusion, or to provide a mapping to a symbol different from the object's
+  name, in order to prevent clashes. Use :use in the ns macro in preference to
+  calling this directly."
+  {:added "1.0"}
+  [ns-sym & filters]
+  (let [ns (or (find-ns ns-sym) (throw (py/Exception (str "No namespace: " ns-sym))))
+        fs (apply hash-map filters)
+        nsimports (ns-imports ns)
+        rename (or (:rename fs) {})
+        exclude (set (:exclude fs))
+        to-do (if (:only fs)
+                (filter (set (:only fs)) (keys nsimports))
+                (keys nsimports))]
+    (doseq [sym to-do]
+      (when-not (exclude sym)
+        (if (contains? nsimports sym)
+          (map-one *ns* (or (rename sym) sym) (nsimports sym))
+          (throw (py/Exception
+                   (if (get (ns-map ns) sym)
+                     (str sym " is not public")
+                     (str sym " does not exist")))))))))
 
 (defmacro refer-clojure
-  "Same as (refer 'clojure.core <filters>)"
+  "Same as (refer 'clojure.core <filters>)."
   {:added "1.0"}
   [& filters]
   `(clojure.core/refer '~'clojure.core ~@filters))
@@ -2718,18 +2818,15 @@
   [ns] (py/getattr (the-ns ns) "__aliases__" {}))
 
 (defn alias
-  "Add an alias in the given namespace to another namespace. Arguments are thre
-  symbols: the alias to be used, the symbolic name of the target namespace, and
-  the destination namespace. Use :as in the ns macro in preference to calling
-  this directly."
+  "Add an alias in the current namespace to another namespace. Arguments are
+  two symbols: the alias to be used, and the symbolic name of the target
+  namespace. Use :as in the ns macro in preference to calling this directly."
   {:added "1.0"
    :static true}
-  [alias namespace-sym to-ns]
-  (let [from-ns (the-ns namespace-sym)
-        to-ns (the-ns to-ns)]
-        (py/setattr to-ns
-                    "__aliases__"
-                    (assoc (ns-aliases to-ns) alias from-ns))))
+  [alias namespace-sym]
+  (py/setattr *ns*
+              "__aliases__"
+              (assoc (ns-aliases *ns*) alias (the-ns namespace-sym))))
 
 (defn ns-unalias
   "Removes the alias for the symbol from the namespace."
@@ -2737,9 +2834,7 @@
    :static true}
   [ns sym]
   (let [to-ns (the-ns ns)]
-       (py/setattr to-ns
-                   "__aliases__"
-                   (dissoc (ns-aliases to-ns) sym))))
+    (py/setattr to-ns "__aliases__" (dissoc (ns-aliases to-ns) sym))))
 
 (defn ns-resolve
   "Returns the var or Class to which a symbol will be resolved in the namespace
@@ -2760,7 +2855,7 @@
   {:added "1.0"
    :static true}
   [fmt & args]
-  (py.bytecode/BINARY_MODULO fmt args))
+  (py.bytecode/BINARY_MODULO fmt (if (nil? args) [] args)))
 
 (defn throw-if
   "Throws an exception with a message if pred is true."
@@ -2770,65 +2865,168 @@
           exception (py/Exception. message)]
       (throw exception))))
 
-(defn- load-all
-  "Loads a lib given its name and forces a load of any libs it directly or
-  indirectly loads. If need-ns, ensures that the associated namespace
-  exists after loading. If require, records the load so any duplicate loads
-  can be skipped."
-  [lib]
-  (py/__import__ (name lib)))
+(defn- libspec?
+  "Returns true if x is a libspec."
+  [x]
+  (or (symbol? x)
+      (and (vector? x)
+           (or
+            (nil? (second x))
+            (keyword? (second x))))))
 
-(defn map-ns-vals [from to opts]
-    (let [from-ns (the-ns from)
-          to-ns (the-ns to)
-          only (if (:only opts) (set (map name (:only opts))))
-          exclude (if (:exclude opts) (set (map name (:exclude opts))))
-          filterfn (fn filterfn [s]
-                       (cond (.startswith (name s) "_")
-                             false
-                             exclude
-                             (not (contains? exclude s))
-                             only
-                             (contains? only s)
-                             :else
-                             true))]
-          (doseq [x (filter filterfn (py/dir from-ns))]
-                 (py/setattr to-ns
-                             (name x)
-                             (py/getattr from-ns (name x))))))
+(defn- prependss
+  "Prepends a symbol or a seq to coll."
+  [x coll]
+  (if (symbol? x)
+    (cons x coll)
+    (concat x coll)))
 
-(defn load-lib
-  "Loads a lib with options"
-  [to-ns lib & options]
-  (let [opts (apply hash-map options)
-        {:keys [as reload reload-all require use verbose]} opts
-        loaded (contains? sys/modules lib)
+(defn- load-one
+  "Loads a lib given its name. If need-ns, ensures that the associated
+  namespace exists after loading. If reload, force a reload if the lib is
+  already loaded."
+  [lib need-ns reload]
+  (if (and reload (find-ns lib))
+    (do (when *loading-verbosely*
+          (py/print (str "py/reload " lib)))
+        (py/reload (find-ns lib)))
+    (do (when *loading-verbosely*
+          (py/print (str "py/import " lib)))
+        (py/__import__ (name lib))))
+  (throw-if (and need-ns (not (find-ns lib)))
+            "namespace '%s' not found after loading '%s'"
+            lib lib))
+
+(defn- load-lib
+  "Loads a lib with options."
+  [prefix lib & options]
+  (throw-if (and prefix (pos? (.find (name lib) \.)))
+            "lib names inside prefix lists must not contain periods")
+  (let [lib (if prefix (symbol (str prefix \. lib)) lib)
+        opts (apply hash-map options)
+        {:keys [as reload use verbose]} opts
         need-ns (or as use)
-        filter-opts (select-keys opts '(:exclude :only :rename))]
-    (load-all lib)
-    (cond (not options)
-            (py/setattr to-ns (name lib) (load-all lib))
-          as
-            (alias (:as opts) lib to-ns)
-          :else
-            (map-ns-vals lib to-ns opts))))
+        filter-opts (select-keys opts '(:exclude :import :only :rename :refer))]
+    (binding [*loading-verbosely* (or *loading-verbosely* verbose)]
+      (load-one lib need-ns reload)
+      (throw-if (and need-ns (not (find-ns lib)))
+                (str "namespace " lib " not found"))
+      (when (and need-ns *loading-verbosely*)
+        (py/print (str "(clojure.core/in-ns '" (ns-name *ns*) ")")))
+      (when as
+        (when *loading-verbosely*
+          (py/print (str "(clojure.core/alias '" as " '" lib ")")))
+        (alias as lib))
+      (when (or use (:refer filter-opts))
+        (when *loading-verbosely*
+          (kwapply py/print {"end" ""} (str "(clojure.core/refer '" lib))
+          (doseq [opt filter-opts]
+            (kwapply py/print {"end" ""} (str " " (key opt) " '" (val opt))))
+          (py/print ")"))
+        (apply refer lib (mapcat seq filter-opts)))
+      (when (or use (:import filter-opts))
+        (when *loading-verbosely*
+          (kwapply py/print {"end" ""} (str "(clojure.core/import '" lib))
+          (doseq [opt filter-opts]
+            (kwapply py/print {"end" ""} (str " " (key opt) " '" (val opt))))
+          (py/print ")"))
+        (apply import lib (mapcat seq filter-opts))))))
+
+(defn- load-libs
+  "Loads libs, interpreting libspecs, prefix lists, and flags for forwarding to
+  load-lib."
+  [& args]
+  (let [flags (filter keyword? args)
+        opts (interleave flags (repeat true))
+        args (filter (complement keyword?) args)]
+    ; check for unsupported options
+    (let [supported #{:as :import :reload :reload-all :require :use :verbose :refer}
+          unsupported (seq (remove supported flags))]
+      (throw-if unsupported
+                (apply str "Unsupported option(s) supplied: "
+                       (interpose \, unsupported))))
+    ; check a load target was specified
+    (throw-if (not (seq args)) "Nothing specified to load")
+    (doseq [arg args]
+      (if (libspec? arg)
+        (apply load-lib nil (prependss arg opts))
+        (let [[prefix & args] arg]
+          (throw-if (nil? prefix) "prefix cannot be nil")
+          (doseq [arg args]
+            (apply load-lib prefix (prependss arg opts))))))))
 
 (defn require
-  [& options]
-  (apply load-lib *ns* options))
+  "Loads libs, skipping any that are already loaded. Each argument is either a
+  libspec that identifies a lib, a prefix list that identifies multiple libs
+  whose names share a common prefix, or a flag that modifies how all the
+  identified libs are loaded. Use :require in the ns macro in preference to
+  calling this directly.
 
+  Libs
+
+  A 'lib' is a named set of resources in sys.path whose contents define a
+  library of Clojure code. Lib names are symbols and each lib is associated
+  with a Clojure namespace and a Python module/package that share its name. A
+  lib's name is resolved into a Python absolute or relative import. All
+  definitions a lib makes should be in its associated namespace.
+
+  Libspecs
+
+  A libspec is a lib name or a vector containing a lib name followed by options
+  expressed as sequential keywords and arguments.
+
+  Recognized options:
+  :as takes a symbol as its argument and makes that symbol an alias to the
+    lib's namespace in the current namespace.
+  :refer takes a list of var symbols to refer from the namespace.
+  :import takes a list of Python names to refer from the namespace.
+
+  Prefix Lists
+
+  It's common for Clojure code to depend on several libs whose names have the
+  same prefix. When specifying libs, prefix lists can be used to reduce
+  repetition. A prefix list contains the shared prefix followed by libspecs
+  with the shared prefix removed from the lib names. After removing the prefix,
+  the names that remain must not contain any periods.
+
+  Flags
+
+  A flag is a keyword.
+  Recognized flags: :reload, :reload-all, :verbose
+  :reload forces loading of all the identified libs even if they are already
+    loaded.
+  :verbose triggers printing information about each operation.
+
+  Example:
+
+  The following would load the libraries clojure.zip and clojure.set
+  abbreviated as 's'.
+
+  (require '(clojure zip [set :as s]))"
+  {:added "1.0"}
+  [& args]
+  (apply load-libs :require args))
+
+(defn use
+  "Like 'require, but also refers to each lib's namespace using
+  clojure.core/refer and clojure.core/import. Use :use in the ns macro in
+  preference to calling this directly.
+
+  'use accepts additional options in libspecs: :exclude, :only, :rename.
+  The arguments and semantics for :exclude, :only, and :rename are the same
+  as those documented for clojure.core/refer and clojure.core/import."
+  {:added "1.0"}
+  [& args] (apply load-libs :require :use :import args))
+
+;; FIXME load is not supported yet
 (defmacro ns
   "Sets *ns* to the namespace named by name (unevaluated), creating it if
-  needed.  references can be zero or more of: (:refer-clojure ...) (:require
-  ...) (:use ...) (:import ...) (:load ...) (:gen-class) with the syntax of
-  refer-clojure/require/use/import/load/gen-class respectively, except the
-  arguments are unevaluated and need not be quoted. (:gen-class ...), when
-  supplied, defaults to :name corresponding to the ns name, :main true,
-  :impl-ns same as ns, and :init-impl-ns true. All options of gen-class are
-  supported. The :gen-class directive is ignored when not compiling. If
-  :gen-class is not supplied, when compiled only an nsname__init.class will be
-  generated. If :refer-clojure is not used, a default (refer 'clojure) is used.
-  Use of ns is preferred to individual calls to in-ns/require/use/import:
+  needed. references can be zero or more of: (:refer-clojure ...) (:require
+  ...) (:use ...) (:import ...) (:load ...) with the syntax of
+  refer-clojure/require/use/import/load respectively, except the arguments are
+  unevaluated and need not be quoted. If :refer-clojure is not used, a default
+  (refer-clojure) is used. Use of ns is preferred to individual calls to
+  in-ns/require/use/import:
 
   (ns foo.bar
     (:refer-clojure :exclude [ancestors printf])
@@ -2839,43 +3037,36 @@
   {:arglists '([name docstring? attr-map? references*])
    :added "1.0"}
   [name & references]
-  (let [
-       quote-args (fn [arg kname]
-                  `(~(symbol "clojure.core" (clojure.core/name kname))
-                    ~@(map #(list 'quote %) arg)))
-
-       process-reference
-       (fn [[kname & args]]
-           (if (vector? (first args))
-               `(do ~@(map quote-args args (repeat kname)))
-               (quote-args args kname)))
-
+  (let [process-reference
+        (fn [[kname & args]]
+          `(~(symbol "clojure.core" (clojure.core/name kname))
+             ~@(map #(list 'quote %) args)))
         docstring  (when (string? (first references)) (first references))
         references (if docstring (next references) references)
+        name (if docstring
+               (vary-meta name assoc :doc docstring)
+               name)
         metadata   (when (map? (first references)) (first references))
         references (if metadata (next references) references)
-        gen-class-clause (first (filter #(= :gen-class (first %)) references))
-        gen-class-call
-          (when gen-class-clause
-            (list* `gen-class :name (.replace (str name) "-" "_") :impl-ns name :main true (next gen-class-clause)))
-        references (remove #(= :gen-class (first %)) references)
-        ;ns-effect (clojure.core/in-ns name)
-        ]
+        name (if metadata
+               (vary-meta name merge metadata)
+               name)
+        references (remove #(= :gen-class (first %)) references)]
     `(do
        (~'in-ns ~name)
-       ~@(when (and (not= name 'clojure.core)
-                     (not-any? #(= :refer-clojure (first %)) references))
-           `((refer '~'clojure.core)))
+       ~(when (and (not= name 'clojure.core)
+                   (not-any? #(= :refer-clojure (first %)) references))
+          `(refer-clojure))
        ~@(map process-reference references))))
 
 (def reduce reduce1)
 
 ; FIXME: Am I polluting the namespace by requiring those?!
-(require 'numbers :only ['Number])
+(require 'numbers)
 (defn number?
   "Returns true if n is a number. Works for int, long, Decimal, Fractions and
   anything else that implements the Number Abstract Base Class"
-  [n] (instance? Number n))
+  [n] (instance? numbers/Number n))
 
 ;; ======================================================================
 ;;; Printing
@@ -2956,88 +3147,12 @@
   [& more]
   (apply print-prn more))
 
-;;; vars et al.
-(defn deref
-  "Also reader macro: @ref/@agent/@var/@atom/@delay/@future/@promise. Within a
-  transaction, returns the in-transaction-value of ref, else returns the
-  most-recently-committed value of ref. When applied to a var, agent or atom,
-  returns its current state. When applied to a delay, forces it if not already
-  forced. When applied to a future, will block if computation not complete.
-  When applied to a promise, will block until a value is delivered.  The
-  variant taking a timeout can be used for blocking references (futures and
-  promises), and will return timeout-val if the timeout (in milliseconds) is
-  reached before a value is available. See also - realized?."
-  {:added "1.0"
-   :static true}
-  ([ref] (.deref ref))
-  ([ref timeout-ms timeout-val] (.deref ref timeout-ms timeout-val)))
-
-(defmacro binding
-  "binding => var-symbol init-expr
-
-  Creates new bindings for the (already-existing) vars, with the
-  supplied initial values, executes the exprs in an implicit do, then
-  re-establishes the bindings that existed before.  The new bindings
-  are made in parallel (unlike let); all init-exprs are evaluated
-  before the vars are bound to their new values."
-  {:added "1.0"}
-  [bindings & body]
-  (assert-args binding
-    (vector? bindings) "a vector for its binding"
-    (even? (count bindings)) "an even number of forms in binding vector")
-  (let [var-ize (fn [var-vals]
-                  (loop [ret [] vvs (seq var-vals)]
-                    (if vvs
-                      (recur (conj (conj ret `(var ~(first vvs))) (second vvs))
-                             (next (next vvs)))
-                      (seq ret))))]
-   `(let []
-       (clojure.lang.var/pushThreadBindings (hash-map ~@(var-ize bindings)))
-       (~'try
-         (~'do ~@body)
-         (~'finally
-           (clojure.lang.var/popThreadBindings))))))
-
-(defmacro var
-  [itm]
-  `(clojure.lang.var/find (symbol ~'__name__ ~(name itm))))
-
-(defn var?
-  "Return true if x is a Var"
-  {:static true}
-  [x] (instance? clojure.lang.var/Var x))
-
-(defn alter-var-root
-  "Atomically alters the root binding of var v by applying f to its current
-  value plus any args"
-  {:added "1.0"
-   :static true}
-  [v f & args] (.alterRoot v f args))
-
-(defn bound?
-  "Returns true if all of the vars provided as arguments have any bound value,
-  root or thread-local. Implies that deref'ing the provided vars will succeed.
-  Returns true if no vars are provided."
-  {:added "1.2"
-   :static true}
-  [& vars]
-  (every? #(.isBound %) vars))
-
-(defn thread-bound?
-  "Returns true if all of the vars provided as arguments have thread-local
-  bindings. Implies that set!'ing the provided vars will succeed.  Returns true
-  if no vars are provided."
-  {:added "1.2"
-   :static true}
-  [& vars]
-  (every? #(.getThreadBinding %) vars))
-
 ;;; interactivity
-(import '(clojure.lang.lispreader readString))
+(require 'clojure.lang.lispreader)
 (defn read-string
   "Reads one object from the string s"
   {:added "1.0"}
-  [s] (readString s))
+  [s] (clojure.lang.lispreader/readString s))
 
 (defn eval
   "Evaluates the form data structure (not text!) and returns the result."

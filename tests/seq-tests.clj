@@ -1,6 +1,6 @@
 (ns tests.seq-tests
     (:require [tests.assertions :as assertions])
-    (:require [tests.utils :only [deftest]]))
+    (:use [tests.utils :only [deftest]]))
 
 (deftest list-tests
     (assertions/assert-equal (list 1 2 3) (py/list [1 2 3]))

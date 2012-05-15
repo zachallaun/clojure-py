@@ -59,7 +59,7 @@ def remove(name):
     if isinstance(name, Symbol):
         name = name.name
     if name not in sys.modules:
-        raise KeyError("module " + name + " not found")
+        raise KeyError("module {} not found".format(name))
     if name == "clojure.core":
         raise IllegalArgumentException("Cannot remove clojure namespace");
     del sys.modules[name]
