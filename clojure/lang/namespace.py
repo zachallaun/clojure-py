@@ -64,21 +64,13 @@ def remove(name):
         raise IllegalArgumentException("Cannot remove clojure namespace");
     del sys.modules[name]
     return None
-            
-    
 
-def find(name, fromns = None):
-    from clojure.lang.symbol import Symbol
+def find(name, fromns=None):
     if isinstance(name, types.ModuleType):
         return name
-    if isinstance(name, Symbol):
-        name = name.name
-    
-    if not fromns is None:
-        if hasattr(fromns, "__aliases__"):
-            if fromns in fromns.__aliases__: 
-                return fromns.__aliases__[name]
-    return sys.modules[name]
+    if name in getattr(fromns, "__aliases__", {}):
+        return fromns.__aliases__[name]
+    return sys.modules.get(str(name))
 
 def findItem(ns, sym):
     from clojure.lang.symbol import Symbol, symbol
