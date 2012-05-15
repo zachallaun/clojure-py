@@ -229,20 +229,23 @@ def compileKWApply(comp, form):
 @register_builtin("loop*")
 def compileLoopStar(comp, form):
     if len(form) < 3:
-        raise CompilerException("loop* takes at least two args")
+        raise CompilerException("loop* takes at least two args", form)
     form = form.next()
     if not isinstance(form.first(), PersistentVector):
-        raise CompilerException("loop* takes a vector as it's first argument")
+        raise CompilerException(
+            "loop* takes a vector as it's first argument", form)
     s = form.first()
     args = []
     code = []
     idx = 0
     while idx < len(s):
         if len(s) - idx < 2:
-            raise CompilerException("loop* takes a even number of bindings")
+            raise CompilerException(
+                "loop* takes a even number of bindings", form)
         local = s[idx]
         if not isinstance(local, Symbol) or local.ns is not None:
-            raise CompilerException("bindings must be non-namespaced symbols")
+            raise CompilerException(
+                "bindings must be non-namespaced symbols", form)
 
         idx += 1
 
@@ -275,20 +278,23 @@ def compileLoopStar(comp, form):
 @register_builtin("let*")
 def compileLetStar(comp, form):
     if len(form) < 3:
-        raise CompilerException("let* takes at least two args")
+        raise CompilerException("let* takes at least two args", form)
     form = form.next()
     if not isinstance(form.first(), IPersistentVector):
-        raise CompilerException("let* takes a vector as it's first argument")
+        raise CompilerException(
+            "let* takes a vector as it's first argument", form)
     s = form.first()
     args = []
     code = []
     idx = 0
     while idx < len(s):
         if len(s) - idx < 2:
-            raise CompilerException("let* takes a even number of bindings")
+            raise CompilerException(
+                "let* takes a even number of bindings", form)
         local = s[idx]
         if not isinstance(local, Symbol) or local.ns is not None:
-            raise CompilerException("bindings must be non-namespaced symbols")
+            raise CompilerException(
+                "bindings must be non-namespaced symbols", form)
 
         idx += 1
 
@@ -326,7 +332,7 @@ def compileDot(comp, form):
         args = []
     elif isinstance(member, ISeq):
         if not isinstance(member.first(), Symbol):
-            raise CompilerException("Member name must be symbol")
+            raise CompilerException("Member name must be symbol", form)
         attr = member.first().name
         args = []
         if len(member) > 1:
@@ -425,7 +431,9 @@ def unpackArgs(form):
             lastisargs = True
             continue
         if lastisargs and argsname is not None:
-            raise CompilerException("variable length argument must be the last in the function")
+            raise CompilerException(
+                "variable length argument must be the last in the function",
+                form)
         if lastisargs:
             argsname = x
         if not isinstance(x, Symbol) or x.ns is not None:
@@ -787,7 +795,8 @@ def compileLetMacro(comp, form):
         syms.append(sym)
         s = s.next()
         if s is None:
-            raise CompilerException("let-macro takes a even number of bindings")
+            raise CompilerException(
+                "let-macro takes a even number of bindings", form)
         macro = s.first()
         comp.pushAlias(sym, LocalMacro(sym, macro))
         s = s.next()
@@ -1367,10 +1376,10 @@ class Compiler(object):
         return self.compileAccessList(sym)
 
     def compileAlias(self, sym):
-        """ Compiles the given symbol as an alias. """
+        """ Compiles the given symbol as an alias."""
         alias = self.getAlias(sym)
         if alias is None:
-            raise CompilerException("Unknown Local " + str(sym))
+            raise CompilerException("Unknown Local {0}".format(sym), None)
         return alias.compile(self)
 
     def closureList(self):
