@@ -30,9 +30,9 @@ def pushThreadBindings(bindings):
     for v in bindings:
         value = bindings[v]
         if not v.dynamic:
-            raise IllegalStateException("Can't dynamically bind non-dynamic "
-                                        "var: " + str(v.ns) + "/"
-                                        + str(v.sym))
+            raise IllegalStateException(
+                "Can't dynamically bind non-dynamic var: {0}/{1}".
+                format(v.ns, v.sym))
         v.validate(v.getValidator(), value)
         v.threadBound = True
         bmap = bmap.assoc(v, TBox(currentThread(), value))
@@ -89,13 +89,14 @@ class Var(ARef, Settable, IFn, IPrintable):
         b = self.getThreadBinding()
         if b is not None:
             if currentThread() != b.thread:
-                raise IllegalStateException("Can't set!: " + str(self.sym) +
-                                            " from non-binding thread")
+                raise IllegalStateException(
+                    "Can't set!: {0} from non-binding thread".format(self.sym))
             b.val = val
             return self
 
-        raise IllegalStateException("Can't change/establish root binding "
-                                    "of: %s with set" % str(self.sym))
+        raise IllegalStateException(
+            "Can't change/establish root binding of: {0} with set".
+            format(self.sym))
         
     def alterRoot(self, fn, args):
         return self.root.mutate(lambda old: fn(old, *(args if args else ())))
@@ -144,10 +145,8 @@ class Var(ARef, Settable, IFn, IPrintable):
 
     def __repr__(self):
         if self.ns is not None:
-            return "#'" + str(self.ns.__name__) + "/" + str(self.sym)
-        return ("#<Var: " +
-                (str(self.sym)
-                 if self.sym is not None else "--unnamed--") + ">")
+            return "#'{0}/{1}".format(self.ns.__name__, self.sym)
+        return "#<Var: {0}>".format(self.sym or "--unnamed--")
 
 
 def var(root=UKNOWN):
@@ -185,7 +184,7 @@ def find(sym):
         raise InvalidArgumentException("Symbol must be namespace-qualified")
     ns = findNamespace(symbol(sym.ns))
     if ns is None:
-        raise InvalidArgumentException("No such namespace " + str(sym.ns))
+        raise InvalidArgumentException("No such namespace {0}".format(sym.ns))
     return getattr(ns, sym.name)
 
 
@@ -221,10 +220,11 @@ class Unbound(IFn):
         self.v = v
 
     def __repr__(self):
-        return "Unbound" + str(self.v)
+        return "Unbound {0}".format(self.v)
 
     def __call__(self, *args, **kwargs):
-        raise ArityException("Attempting to call unbound fn:" + str(self.v))
+        raise ArityException(
+            "Attempting to call unbound fn: {0}".format(self.v))
 
 
 class Frame(object):

@@ -61,9 +61,8 @@ def requireClj(filename, stopafter=None):
             try:
                 res = comp.compile(s)
                 comp.executeCode(res)
-                if stopafter is not None:
-                    if hasattr(comp.getNS(), stopafter):
-                        break
+                if stopafter is not None and hasattr(comp.getNS(), stopafter):
+                    break
             except Exception as exp:
                 print s, filename
                 raise

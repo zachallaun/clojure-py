@@ -174,24 +174,25 @@ def compileDef(comp, form):
 def compileBytecode(comp, form):
     codename = form.first().name
     if not hasattr(byteplay, codename):
-        raise CompilerException("bytecode " + codename + " unknown", form)
+        raise CompilerException("bytecode {0} unknown".format(codename), form)
     bc = getattr(byteplay, codename)
     hasarg = bc in byteplay.hasarg
     form = form.next()
     arg = None
     if hasarg:
         arg = form.first()
-        if not isinstance(arg, (int, str, unicode)) \
-           and bc is not LOAD_CONST:
-            raise CompilerException("first argument to " + codename + " must be int, unicode, or str", form)
+        if not isinstance(arg, (int, str, unicode)) and bc is not LOAD_CONST:
+            raise CompilerException(
+                "first argument to {0} must be int, unicode, or str".format(codename),
+                form)
 
         arg = evalForm(arg, comp.getNS().__name__)
         form = form.next()
 
     se = byteplay.getse(bc, arg)
-    if form != None and se[0] != 0:
-        if (se[0] != len(form) or se[1] > 1):
-            raise CompilerException("literal bytecode " + codename + " not supported", form)
+    if form != None and se[0] != 0 and (se[0] != len(form) or se[1] > 1):
+        raise CompilerException(
+            "literal bytecode {0} not supported".format(codename), form)
     s = form
     code = []
     while s is not None:
@@ -251,7 +252,7 @@ def compileLoopStar(comp, form):
 
         body = s[idx]
         if local in comp.aliases:
-            newlocal = symbol(str(local)+"_"+str(RT.nextID()))
+            newlocal = symbol("{0}_{1}".format(local, RT.nextID()))
             code.extend(comp.compile(body))
             comp.pushAlias(local, RenamedLocal(newlocal))
             args.append(local)
@@ -301,7 +302,7 @@ def compileLetStar(comp, form):
         body = s[idx]
         if comp.getAlias(local) is not None:
             code.extend(comp.compile(body))
-            newlocal = symbol(str(local)+"_"+str(RT.nextID()))
+            newlocal = symbol("{0}_{1}".format(local, RT.nextID()))
             comp.pushAlias(local, RenamedLocal(newlocal))
             args.append(local)
         else:
@@ -437,8 +438,9 @@ def unpackArgs(form):
         if lastisargs:
             argsname = x
         if not isinstance(x, Symbol) or x.ns is not None:
-            raise CompilerException("fn* arguments must be non namespaced symbols " +
-                                    " got " + str(form) + " instead", form)
+            raise CompilerException(
+                "fn* arguments must be non namespaced symbols, got {0} instead".
+                format(form), form)
         locals[x] = RT.list(x)
         args.append(x.name)
     return locals, args, lastisargs, argsname
@@ -562,7 +564,9 @@ def compileMultiFn(comp, name, form):
         s = s.next()
     argdefs = sorted(argdefs, lambda x, y: len(x.args) < len(y.args))
     if len(filter(lambda x: x.lastisargs, argdefs)) > 1:
-        raise CompilerException("Only one function overload may have variable number of arguments", form)
+        raise CompilerException(
+            "Only one function overload may have variable number of arguments",
+            form)
 
     code = []
     if len(argdefs) == 1 and not argdefs[0].lastisargs:
@@ -780,13 +784,14 @@ def compileBuiltin(comp, form):
 def getBuiltin(name):
     if hasattr(__builtin__, name):
         return getattr(__builtin__, name)
-    raise CompilerException("Python builtin not found " + name, name)
+    raise CompilerException("Python builtin {0} not found".format(name), name)
 
 
 @register_builtin("let-macro")
 def compileLetMacro(comp, form):
     if len(form) < 3:
-        raise CompilerException("alias-properties takes at least two args", form)
+        raise CompilerException(
+            "alias-properties takes at least two args", form)
     form = form.next()
     s = RT.seq(form.first())
     syms = []
@@ -844,52 +849,55 @@ def compileTry(comp, form):
         name = subform.first()
         if name in (symbol("catch"), symbol("except")):
             if len(subform) != 4:
-                raise CompilerException("try " + str(name) +
-                                        "blocks must be 4 items long", form)
+                raise CompilerException(
+                    "try {0} blocks must be 4 items long".format(name), form)
 
             # Exception is second, val is third
             exception = subform.next().first()
             if not isinstance(exception, Symbol):
-                raise CompilerException("exception passed to " + str(name) +
-                                        "block must be a symbol", form)
+                raise CompilerException(
+                    "exception passed to {0} block must be a symbol".
+                    format(name), form)
             for ex, _, _ in catch:
                 if ex == exception:
-                    raise CompilerException("try cannot catch duplicate" +
-                                            " exceptions", form)
+                    raise CompilerException(
+                        "try cannot catch duplicate exceptions", form)
 
             var = subform.next().next().first()
             if not isinstance(var, Symbol):
-                raise CompilerException("variable name for " + str(name) +
-                                        "block must be a symbol", form)
+                raise CompilerException(
+                    "variable name for {0} block must be a symbol".
+                    format(name), form)
             val = subform.next().next().next().first()
             catch.append((exception, var, val))
         elif name == symbol("else"):
             if len(subform) != 2:
-                raise CompilerException("try else blocks must be 2 items",
-                                        form)
+                raise CompilerException(
+                    "try else blocks must be 2 items", form)
             elif els:
                 raise CompilerException(
                     "try cannot have multiple els blocks", form)
             els = subform.next().first()
         elif name == symbol("finally"):
             if len(subform) != 2:
-                raise CompilerException("try finally blocks must be 2 items",
-                                        form)
+                raise CompilerException(
+                    "try finally blocks must be 2 items", form)
             elif fin:
                 raise CompilerException(
                     "try cannot have multiple finally blocks", form)
             fin = subform.next().first()
         else:
-            raise CompilerException("try does not accept any symbols apart " +
-                                    "from catch/except/else/finally, got" + str(form), form)
+            raise CompilerException(
+                "try does not accept any symbols apart from "
+                "catch/except/else/finally, got {0}".format(form), form)
 
     if fin and not catch and not els:
         return compileTryFinally(comp.compile(body), comp.compile(fin))
     elif catch and not fin and not els:
         return compileTryCatch(comp, comp.compile(body), catch)
     elif not fin and not catch and els:
-        raise CompilerException("Try does not accept else statements on " +\
-                                    "their own", form)
+        raise CompilerException(
+            "try does not accept else statements on their own", form)
 
     if fin and catch and not els:
         return compileTryCatchFinally(comp, comp.compile(body), catch,
@@ -902,7 +910,7 @@ def compileTryFinally(body, fin):
     """
     finallyLabel = Label("TryFinally")
 
-    ret_val = "__ret_val_" + str(RT.nextID())
+    ret_val = "__ret_val_{0}".format(RT.nextID())
 
     code = [(SETUP_FINALLY, finallyLabel)]
     code.extend(body)
@@ -925,12 +933,12 @@ def compileTryCatch(comp, body, catches):
     """
     assert len(catches), "Calling compileTryCatch with empty catches list"
 
-    catch_labels = [Label("TryCatch_" + str(ex)) for ex, _, _ in catches]
+    catch_labels = [Label("TryCatch_{0}".format(ex)) for ex, _, _ in catches]
     endLabel = Label("TryCatchEnd")
     endFinallyLabel = Label("TryCatchEndFinally")
     firstExceptLabel = Label("TryFirstExcept")
 
-    ret_val = "__ret_val_" + str(RT.nextID())
+    ret_val = "__ret_val_{0}".format(RT.nextID())
 
     code = [(SETUP_EXCEPT, firstExceptLabel)] # First catch label
     code.extend(body)
@@ -982,13 +990,13 @@ def compileTryCatchFinally(comp, body, catches, fin):
     """
     assert len(catches), "Calling compileTryCatch with empty catches list"
 
-    catch_labels = [Label("TryCatch_" + str(ex)) for ex, _, _ in catches]
+    catch_labels = [Label("TryCatch_{0}".format(ex)) for ex, _, _ in catches]
     finallyLabel = Label("TryCatchFinally")
     notCaughtLabel = Label("TryCatchFinally2")
     firstExceptLabel = Label("TryFirstExcept")
     normalEndLabel = Label("NoExceptionLabel")
 
-    ret_val = "__ret_val_" + str(RT.nextID())
+    ret_val = "__ret_val_{0}".format(RT.nextID())
 
     code = [
         (SETUP_FINALLY, finallyLabel),
@@ -1176,14 +1184,11 @@ def ismacro(macro):
             and (hasattr(macro, "meta")
             and macro.meta()
             and macro.meta()[_MACRO_])
-            or (hasattr(macro, "macro?")
-                and getattr(macro, "macro?")))
+            or getattr(macro, "macro?", False))
 
 
 def meta(form):
-    if hasattr(form, "meta"):
-        return form.meta()
-    return None
+    return getattr(form, "meta", lambda: None)()
 
 
 def macroexpand(form, comp, one = False):
@@ -1202,14 +1207,11 @@ def macroexpand(form, comp, one = False):
             macro = dreffed
             args = RT.seqToTuple(form.next())
 
-            macroform = macro
-            if hasattr(macro, "_macro-form"):
-                macroform = getattr(macro, "_macro-form")
+            macroform = getattr(macro, "_macro-form", macro)
 
             mresult = macro(macroform, None, *args)
 
-            if hasattr(mresult, "withMeta") \
-               and hasattr(form, "meta"):
+            if hasattr(mresult, "withMeta") and hasattr(form, "meta"):
                 mresult = mresult.withMeta(form.meta())
             mresult = comp.compile(mresult)
             return mresult, True
@@ -1275,7 +1277,7 @@ class Compiler(object):
 
     def getNamesString(self, markused=True):
         if self.names is None:
-            return "fn_"+str(RT.nextID())
+            return "fn_{0}".format(RT.nextID())
         s = str(self.names)
         if markused and self.names is not None:
             self.names.isused = True
@@ -1284,7 +1286,8 @@ class Compiler(object):
     def compileMethodAccess(self, form):
         attrname = form.first().name[1:]
         if len(form) < 2:
-            raise CompilerException("Method access must have at least one argument", form)
+            raise CompilerException(
+                "Method access must have at least one argument", form)
         c = self.compile(form.next().first())
         c.append((LOAD_ATTR, attrname))
         s = form.next().next()
@@ -1297,7 +1300,8 @@ class Compiler(object):
     def compilePropertyAccess(self, form):
         attrname = form.first().name[2:]
         if len(form) != 2:
-            raise CompilerException("Property access must have at only one argument", form)
+            raise CompilerException(
+                "Property access must have at only one argument", form)
         c = self.compile(form.next().first())
         c.append((LOAD_ATTR, attrname))
         return c
@@ -1339,26 +1343,30 @@ class Compiler(object):
             if self.getNS() is None:
                 raise CompilerException("no namespace has been defined", None)
             if not hasattr(self.getNS(), RT.name(sym)):
-                raise CompilerException("could not resolve '" + str(sym) + "', '" \
-                                        + RT.name(sym) + "' not found in " + self.getNS().__name__ +
-                                        " reference " + str(self.getNamesString(False)), None)
+                raise CompilerException(
+                    "could not resolve '{0}', '{1}' not found in {2} reference {3}".
+                    format(sym, RT.name(sym), self.getNS().__name__,
+                           self.getNamesString(False)),
+                    None)
             var = getattr(self.getNS(), RT.name(sym))
             return [GlobalPtr(self.getNS(), RT.name(sym))]
 
-        if hasattr(self.getNS(), "__aliases__") and \
-            symbol(sym.ns) in self.getNS().__aliases__:
+        if symbol(sym.ns) in getattr(self.getNS(), "__aliases__", {}):
             sym = symbol(self.getNS().__aliases__[symbol(sym.ns)].__name__, RT.name(sym))
 
         splt = []
         if sym.ns is not None:
             module = findNamespace(sym.ns)
             if not hasattr(module, RT.name(sym)):
-                raise CompilerException(str(module) + " does not define " + RT.name(sym), None)
+                raise CompilerException(
+                    "{0} does not define {1}".format(module, RT.name(sym)),
+                    None)
             return [GlobalPtr(module, RT.name(sym))]
 
         code = LOAD_ATTR if sym.ns else LOAD_GLOBAL
         #if not sym.ns and RT.name(sym).find(".") != -1 and RT.name(sym) != "..":
-        raise CompilerException("unqualified dotted forms not supported: " + str(sym), sym)
+        raise CompilerException(
+            "unqualified dotted forms not supported: {0}".format(sym), sym)
 
         if len(RT.name(sym).replace(".", "")):
             splt.extend((code, attr) for attr in RT.name(sym).split("."))
@@ -1394,7 +1402,7 @@ class Compiler(object):
         try:
             c = []
             lineset = False
-            if hasattr(itm, "meta") and itm.meta() is not None:
+            if getattr(itm, "meta", lambda: None)() is not None:
                 line = itm.meta()[LINE_KEY]
                 if line is not None and line > self.lastlineno:
                     lineset = True
@@ -1432,14 +1440,14 @@ class Compiler(object):
             elif isinstance(itm, type(re.compile(""))):
                 c.append((LOAD_CONST, itm))
             else:
-                raise CompilerException(" don't know how to compile "
-                                        + str(type(itm)), None)
+                raise CompilerException(
+                    " don't know how to compile {0}".format(type(itm)), None)
 
             if len(c) < 2 and lineset:
                 return []
             return c
         except:
-            print "Compiling " + str(itm)
+            print "Compiling {0}".format(itm)
             raise
 
 

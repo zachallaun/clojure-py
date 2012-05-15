@@ -14,9 +14,9 @@ class MultiMethod(object):
         
     def addMethod(self, value, fn):
         if value in self.fns:
-            raise MultiMethodException("Method already exists for value " + str(value))
+            raise MultiMethodException("Method already exists for value {0}".format(value))
         if value == default and self.default is not none:
-            raise MultiMethodException("Method already exists for value " + str(value))
+            raise MultiMethodException("Method already exists for value {0}".format(value))
 
         if value == default:
             self.default = fn
@@ -31,7 +31,7 @@ class MultiMethod(object):
         except KeyError:
             if not self.default:
                 return self.default(*args)
-            raise MultiMethodException("No match for dispatch value " + str(value))
+            raise MultiMethodException("No match for dispatch value {0}".format(value))
         
         return fn(*args)
 

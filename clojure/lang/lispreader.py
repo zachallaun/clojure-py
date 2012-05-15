@@ -392,7 +392,7 @@ def interpretToken(s):
         return INTERPRET_TOKENS[s]
     ret = matchSymbol(s)
     if ret is None:
-        raise ReaderException("Unknown symbol " + str(s))
+        raise ReaderException("Unknown symbol {0}".format(s))
     return ret
 
 
@@ -559,8 +559,8 @@ def unmatchedClosingDelimiterReader(rdr, un):
     un -- the stray delimiter
 
     This will be called if un has no matching opening delimiter in rdr."""
-    raise ReaderException("Unmatched Delimiter " + un + " at "
-                          + str(rdr.lineCol()))
+    raise ReaderException(
+        "Unmatched Delimiter {0} at {1}".format(un, rdr.lineCol()))
 
 
 def readDelimitedList(delim, rdr, isRecursive):
@@ -579,8 +579,8 @@ def readDelimitedList(delim, rdr, isRecursive):
         while ch in whiteSpace:
             ch = read1(rdr)
         if ch == "":
-            raise ReaderException("EOF while reading starting at line "
-                                  + str(firstline))
+            raise ReaderException(
+                "EOF while reading starting at line {0}".format(firstline))
 
         if ch == delim:
             break
@@ -950,7 +950,7 @@ class SyntaxQuoteReader(object):
                     raise ReaderException("Gensym literal not in syntax-quote, before", self.rdr)
                 gs = gmap[sym]
                 if gs is None:
-                    gs = symbol(None, sym.name[:-1] + "__" + str(RT.nextID()) + "__auto__")
+                    gs = symbol(None, "{0}__{1}__auto__".format(sym.name[:-1], RT.nextID()))
                     GENSYM_ENV.set(gmap.assoc(sym, gs))
                 sym = gs
             elif sym.ns is None and sym.name.endswith("."):
@@ -997,7 +997,7 @@ class SyntaxQuoteReader(object):
                 ret = form
             else:
                 ret = RT.list(_QUOTE_, form)
-        if hasattr(form, "meta") and form.meta() is not None:
+        if getattr(form, "meta", lambda: None)() is not None:
             newMeta = form.meta().without(LINE_KEY)
             if len(newMeta) > 0:
                 return RT.list(_WITH_META_, ret, self.syntaxQuote(form.meta()))#FIXME: _WITH_META_ undefined
@@ -1028,8 +1028,8 @@ class SyntaxQuoteReader(object):
 
 
 def garg(n):
-    return symbol(None,  "rest" if n == -1 else  ("p" + str(n)) + "__" +
-                  str(RT.nextID()) + "#")
+    return symbol(None,
+                  "rest" if n == -1 else "p{0}__{1}#".format(n, RT.nextID()))
 
 
 def derefNotImplemented(rdr, _):

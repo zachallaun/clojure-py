@@ -177,12 +177,12 @@
    :static true}
  nnext (fn nnext [x] (next (next x))))
 
-(def nil?
+(def
  ^{:tag Boolean
    :doc "Returns true if x is nil, false otherwise."
    :added "1.0"
    :static true}
-  (fn nil? [x] (is? x nil)))
+ nil? (fn nil? [x] (is? x nil)))
 
 (def
  ^{:arglists '([& args])
@@ -226,20 +226,17 @@
  ^{:arglists '([obj])
    :doc "Returns the metadata of obj, returns nil if there is no metadata."
    :added "1.0"}
- meta (fn meta [x]
-        (py/if (py/hasattr x "meta")
-          (.meta x))))
+ meta (fn meta [x] ((py/getattr x "meta" (fn [] nil)))))
 
 (def
  ^{:arglists '([obj m])
    :doc "Returns an object of the same type and value as obj, with map m as its
   metadata."
    :added "1.0"}
- with-meta (fn with-meta [x m]
-             (. x (withMeta m))))
+ with-meta (fn with-meta [x m] (.withMeta x m)))
 
 (def ^{:private true :dynamic true}
-  assert-valid-fdecl (fn [fdecl]))
+ assert-valid-fdecl (fn [fdecl]))
 
 (def ^{:private true}
  sigs
@@ -2718,11 +2715,7 @@
   "Returns a map of the aliases for the namespace."
   {:added "1.0"
    :static true}
-  [ns]
-  (let [ns (the-ns ns)]
-       (if (py/hasattr ns "__aliases__")
-           (.-__aliases__ ns)
-           {})))
+  [ns] (py/getattr (the-ns ns) "__aliases__" {}))
 
 (defn alias
   "Add an alias in the given namespace to another namespace. Arguments are thre
@@ -3055,10 +3048,8 @@
 (defmacro doc
   [itm]
   `(let [itm# (clojure.core/var ~itm)]
-     (cond (and (meta itm#) (:doc (meta itm#)))
-             (py/print (:doc (meta itm#)))
-           (py/hasattr itm# "__doc__")
-             (py/print (py/getattr itm# "__doc__")))))
+     (py/print (or (:doc (meta itm#))
+                   (py/getattr itm# "__doc__" "")))))
 
 (defmacro comment
   "Ignores body, yields nil"
@@ -3120,8 +3111,7 @@
   "If attr exists on obj, it calls (apply (py/getattr obj attr) args) otherwise
   nil is returned"
   [obj attr & args]
-  (when (py/hasattr obj attr)
-    (apply (py/getattr obj attr) args)))
+  (apply (py/getattr obj attr (constantly nil)) args))
 
 (defmacro with-open
   "bindings => [name init ...]

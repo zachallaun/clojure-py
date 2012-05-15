@@ -38,7 +38,7 @@ class Keyword(IFn, Named, IPrintable):
         return obj[self]
 
     def __repr__(self):
-        return ":" + str(self.sym)
+        return ":{0}".format(self.sym)
 
 def keyword(*args):
     if len(args) == 1:

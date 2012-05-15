@@ -16,9 +16,7 @@ class Obj(IObj, object):
     instances are compared, their meta data should be disregarded."""
     def meta(self):
         """Return a PersistentHashMap or None if no meta data attached."""
-        if not hasattr(self, "_meta"):
-            return None
-        return self._meta
+        return getattr(self, "_meta", None)
 
     def withMeta(self, meta):
         """Attach meta data to a subclass instance.

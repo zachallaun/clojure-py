@@ -307,10 +307,10 @@ def _extendIPrintableForManuals():
     # #<function name at 0x21d20c8>
     protocols.writeAsString.extend(
         pyFuncType,
-        lambda obj, writer: writer.write('#{0}'.format(str(obj))))
+        lambda obj, writer: writer.write('#{0}'.format(obj)))
     protocols.writeAsReplString.extend(
         pyFuncType,
-        lambda obj, writer: writer.write('#{0}'.format(repr(obj))))
+        lambda obj, writer: writer.write('#{0!r}'.format(obj)))
     # default
     # This *should* allow pr and family to handle anything not specified
     # above.
