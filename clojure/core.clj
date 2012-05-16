@@ -3685,7 +3685,7 @@
         comp  (if (.isBound current-comp-var)
                 (.deref current-comp-var)
                 (let [comp (.Compiler (.-compiler clojure/lang))]
-                  (.setNS comp __name__) ; should be *ns*, not __name__
+                  (.setNS comp (.-__name__ *ns*))
                   comp))]
     (first (.macroexpand (.-compiler clojure/lang) form comp true))))
 
