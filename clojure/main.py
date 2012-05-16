@@ -11,7 +11,6 @@ from clojure.util.byteplay import *
 # Create a PEP 302 import hook
 class MetaImporter(object):
     def find_module(self, fullname, path=None):
-        import os.path, sys
         lastname = fullname.rsplit('.', 1)[-1]
         for d in (path or (["."] + sys.path)):
             clj = os.path.join(d, lastname + '.clj')
@@ -21,7 +20,14 @@ class MetaImporter(object):
         return None
 
     def load_module(self, name):
-        requireClj(self.path)
+        if name not in sys.modules:
+            sys.modules[name] = None # avoids circular imports
+            try:
+                requireClj(self.path)
+            except:
+                del sys.modules[name]
+                raise ImportError
+            sys.modules[name].__loader__ = self
         return sys.modules[name]
 
 sys.meta_path = [MetaImporter()]

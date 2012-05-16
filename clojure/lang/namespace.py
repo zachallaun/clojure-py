@@ -8,6 +8,7 @@ from clojure.lang.cljexceptions import (InvalidArgumentException,
 import clojure.lang.rt as RT
 from clojure.lang.symbol import Symbol, symbol
 from clojure.lang.var import Var
+import clojure.standardimports as stdimps
 import sys, types
 
 namespaces = AtomicReference(EMPTY_MAP)
@@ -15,9 +16,14 @@ namespaces = AtomicReference(EMPTY_MAP)
 def areDifferentInstancesOfSameClassName(o1, o2):
     return o1.__class__ is o2.__class__
 
-def addDefaultImports(mod):
-    import clojure.lang.rt as RT
-    import clojure.standardimports as stdimps
+def create(name):
+    """Creates a namespace with a given name and adds standard imports to it.
+    
+    clojure.core is special-cased: being the first created module, some
+    specific Vars must be added "by hand".
+    """
+    mod = types.ModuleType(name)
+    mod.__file__ = "<interactive namespace>"
     for i in dir(stdimps):
         if i.startswith("_"):
             continue
@@ -36,32 +42,25 @@ def findOrCreateIn(module, parts):
     mod = types.ModuleType(module.__name__ + "." + part)
     setattr(module, part, mod)
     return findOrCreateIn(mod, parts)
-    
-
 
 def findOrCreate(name):
-    from clojure.lang.symbol import Symbol
+    """Returns a namespace with a given name, creating it if it doesn't exist.
+    """
     if isinstance(name, Symbol):
         name = name.name
-    if name in sys.modules:
-        return sys.modules[name]
-
-    mod = types.ModuleType(name)
-    sys.modules[name] = mod
-
-    addDefaultImports(mod)
-    return mod
+    if not sys.modules.get(name):
+        sys.modules[name] = create(name)
+    return sys.modules[name]
 
 def remove(name):
-
     if isinstance(name, types.ModuleType):
         name = name.__name__
     if isinstance(name, Symbol):
         name = name.name
     if name not in sys.modules:
-        raise KeyError("module {} not found".format(name))
+        raise KeyError("Module {} not found".format(name))
     if name == "clojure.core":
-        raise IllegalArgumentException("Cannot remove clojure namespace");
+        raise IllegalArgumentException("Cannot remove clojure.core namespace")
     del sys.modules[name]
     return None
 
@@ -107,9 +106,6 @@ def findModule(sym, module = None):
     return getattr(module, name)
 
 def intern(ns, sym):
-    from clojure.lang.var import Var
-
-
     if isinstance(sym, str):
         sym = symbol(str)
 
@@ -128,5 +124,4 @@ def intern(ns, sym):
     v = Var(ns, sym)
     setattr(ns, sym.name, v)
     return v
-    
 

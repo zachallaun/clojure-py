@@ -3004,8 +3004,7 @@
 
   (require '(clojure zip [set :as s]))"
   {:added "1.0"}
-  [& args]
-  (apply load-libs :require args))
+  [& args] (apply load-libs :require args))
 
 (defn use
   "Like 'require, but also refers to each lib's namespace using
