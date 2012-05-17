@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import sys
+import imp
 import os.path
 import traceback
 
@@ -12,9 +13,13 @@ from clojure.util.byteplay import *
 class MetaImporter(object):
     def find_module(self, fullname, path=None):
         lastname = fullname.rsplit('.', 1)[-1]
-        for d in (path or (["."] + sys.path)):
-            clj = os.path.join(d, lastname + '.clj')
-            if os.path.exists(clj):
+        for d in path or sys.path:
+            clj = os.path.join(d, lastname + ".clj")
+            pkg = os.path.join(d, lastname, "__init__.py")
+            pkgc = getattr(imp, "cache_from_source",
+                           lambda path: path + "c")(pkg)
+            if (os.path.exists(clj) and
+                not (os.path.exists(pkg) or os.path.exists(pkgc))):
                 self.path = clj
                 return self
         return None
@@ -28,9 +33,10 @@ class MetaImporter(object):
                 del sys.modules[name]
                 raise ImportError
             sys.modules[name].__loader__ = self
+        if sys.modules[name] == None:
+            del sys.modules[name]
+            raise ImportError
         return sys.modules[name]
-
-sys.meta_path = [MetaImporter()]
 
 from clojure.lang.lispreader import read
 from clojure.lang.fileseq import StringReader
@@ -44,6 +50,7 @@ import cPickle
 VERSION = "0.2.4"
 
 
+sys.meta_path.append(MetaImporter())
 
 
 def requireClj(filename, stopafter=None):
