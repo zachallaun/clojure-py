@@ -1,20 +1,20 @@
+import contextlib
+import types
+
 from clojure.lang.iref import IRef
 from clojure.lang.ifn import IFn
 from clojure.lang.settable import Settable
 from clojure.lang.aref import ARef
 from clojure.lang.cljexceptions import (ArityException,
-                                           InvalidArgumentException,
-                                           IllegalStateException)
+                                        InvalidArgumentException,
+                                        IllegalStateException)
 from clojure.lang.persistenthashmap import EMPTY
 from clojure.lang.threadutil import ThreadLocal, currentThread
 from clojure.lang.symbol import symbol
 from clojure.lang.cljkeyword import keyword
 from clojure.lang.iprintable import IPrintable
-
 from clojure.lang.atomicreference import AtomicReference
-
 import persistentarraymap
-import types
 
 privateKey = keyword(symbol("private"))
 macrokey = keyword(symbol("macro"))
@@ -44,6 +44,15 @@ def popThreadBindings():
     if f.prev is None:
         raise IllegalStateException("Pop without matching push")
     dvals.set(f.prev)
+
+
+@contextlib.contextmanager
+def threadBindings(bindings):
+    pushThreadBindings(bindings)
+    try:
+        yield
+    finally:
+        popThreadBindings()
 
 
 class Var(ARef, Settable, IFn, IPrintable):

@@ -25,8 +25,7 @@ from clojure.lang.persistentvector import PersistentVector
 import clojure.lang.rt as RT
 from clojure.lang.symbol import Symbol, symbol
 from clojure.lang.var import (
-    Var, define, intern as internVar, var as createVar,
-    pushThreadBindings, popThreadBindings)
+    Var, define, intern as internVar, var as createVar, threadBindings)
 from clojure.util.byteplay import *
 import clojure.util.byteplay as byteplay
 import marshal
@@ -1480,11 +1479,10 @@ class Compiler(object):
         #with open("foo.cljs", "wb") as fl:
         #    f = write(c, fl)
 
-        pushThreadBindings(
-            {findItem(findOrCreateNamespace("clojure.core"), _NS_): ns})
-        retval = eval(c, ns.__dict__)
-        self.getNS().__file__ = self.filename
-        popThreadBindings()
+        with threadBindings(
+            {findItem(findOrCreateNamespace("clojure.core"), _NS_): ns}):
+            retval = eval(c, ns.__dict__)
+            self.getNS().__file__ = self.filename
         return retval
 
     def pushPropertyAlias(self, mappings):

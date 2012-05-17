@@ -1,28 +1,25 @@
+"""Contains enhancements to the REPL that do not belong in the core language.
 """
-Contains enhancements to the REPL that do not belong in the core language.
-"""
-
 import atexit
 import os
 import sys
 import traceback
 
-from clojure.lang.globals import currentCompiler
 from clojure.lang.compiler import Compiler
+from clojure.lang.fileseq import StringReader
+from clojure.lang.globals import currentCompiler
+from clojure.lang.lispreader import read
 from clojure.lang.symbol import symbol
 from clojure.lang.var import Var, intern as internVar, find as findVar
-from clojure.lang.lispreader import read
-from clojure.lang.fileseq import StringReader
+import clojure.lang.rt as RT
 from clojure.main import VERSION
-import clojure.lang.rt as RT    # for printTo
 
 
 def enable_readline():
-    """
-    Imports the `readline` module to enable advanced repl text manipulation,
+    """Imports the `readline` module to enable advanced REPL text manipulation
     and command history navigation.
 
-    Returns True if success, otherwise False.
+    Returns True on success, otherwise False.
     """
     try:
         import readline
@@ -33,7 +30,7 @@ def enable_readline():
     if not os.path.isfile(histfile):
         with open(histfile, 'a'):
             os.utime(histfile, None)
-        os.chmod(histfile, int('640',8))
+        os.chmod(histfile, int('640', 8))
     try:
         readline.read_history_file(histfile)
     except IOError:
@@ -43,9 +40,9 @@ def enable_readline():
     atexit.register(readline.write_history_file, histfile)
     return True
 
+
 def run_repl(comp=None):
-    """
-    Starts the repl. Assumes that RT.init has allready be called.
+    """Starts the REPL. Assumes that RT.init has already be called.
     """
     print "clojure-py", VERSION
     print "Python", sys.version
@@ -100,12 +97,12 @@ def run_repl(comp=None):
                 break
 
             try:
-                new_line = '\n' + raw_input('.' * len(comp.getNS().__name__) + '.. ')
+                new_line = raw_input('.' * len(comp.getNS().__name__) + '.. ')
             except EOFError:
                 break
 
             if not new_line.strip().startswith(';'):
-                line += new_line
+                line += "\n" + new_line
 
         if invalid:
             print "Invalid input"
@@ -125,8 +122,7 @@ def run_repl(comp=None):
             RT.printTo(out)
 
 def unbalanced(line):
-    """
-    Returns true if the parentheses in the line are unbalanced.
+    """Returns true if the parentheses in the line are unbalanced.
     """
     open = ("(", "[", "{")
     close = (")", "]", "}")

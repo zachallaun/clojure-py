@@ -21,7 +21,7 @@ import clojure.lang.persistenthashset
 from clojure.lang.persistenthashset import createWithCheck
 import clojure.lang.rt as RT
 from clojure.lang.symbol import Symbol, symbol
-from clojure.lang.var import Var, pushThreadBindings, popThreadBindings, var
+from clojure.lang.var import Var, threadBindings, var
 import clojure.lang.namespace as namespace
 
 _AMP_ = symbol("&")
@@ -894,25 +894,23 @@ def fnReader(rdr, lparen):
     Return an IPersistentList"""
     if ARG_ENV.deref() is not None:
         raise IllegalStateException("Nested #()s are not allowed")
-    pushThreadBindings(RT.map(ARG_ENV, EMPTY_MAP))
-    rdr.back()
-    form = read(rdr, True, None, True)
-    drefed = ARG_ENV.deref()
-    sargs = sorted(list(filter(lambda x: x != -1, drefed)))
-    args = []
-    if len(sargs):
-        for x in range(1, int(str(sargs[-1])) + 1):
-            if x in drefed:
-                args.append(drefed[x])
-            else:
-                args.append(garg(x))
-        retsym = drefed[-1]
-        if retsym is not None:
-            args.append(_AMP_)
-            args.append(retsym)
-
-    vargs = RT.vector(*args)
-    popThreadBindings()
+    with threadBindings(RT.map(ARG_ENV, EMPTY_MAP)):
+        rdr.back()
+        form = read(rdr, True, None, True)
+        drefed = ARG_ENV.deref()
+        sargs = sorted(list(filter(lambda x: x != -1, drefed)))
+        args = []
+        if len(sargs):
+            for x in range(1, int(str(sargs[-1])) + 1):
+                if x in drefed:
+                    args.append(drefed[x])
+                else:
+                    args.append(garg(x))
+            retsym = drefed[-1]
+            if retsym is not None:
+                args.append(_AMP_)
+                args.append(retsym)
+        vargs = RT.vector(*args)
     return RT.list(_FN_, vargs, form)
 
 
@@ -928,13 +926,10 @@ def isUnquoteSplicing(form):
 
 class SyntaxQuoteReader(object):
     def __call__(self, r, backquote):
-        pushThreadBindings(RT.map(GENSYM_ENV, EMPTY_MAP))
-        try:
+        with threadBindings(RT.map(GENSYM_ENV, EMPTY_MAP)):
             self.rdr = r
             form = read(r, True, None, True)
             return self.syntaxQuote(form)
-        finally:
-            popThreadBindings()
 
     def syntaxQuote(self, form):
         # compiler uses this module, so import it lazily
