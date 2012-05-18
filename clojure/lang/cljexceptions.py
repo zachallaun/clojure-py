@@ -53,3 +53,8 @@ class CompilerException(Exception):
         if at:
             msg += " at {0}".format(at)
         Exception.__init__(self, msg)
+
+
+class NoNamespaceException(ImportError):
+    def __init__(self, lib, ns):
+        msg = "Importing {0} did not create namespace {1}.".format(lib, ns)

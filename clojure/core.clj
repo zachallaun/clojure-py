@@ -2882,20 +2882,18 @@
     (concat x coll)))
 
 (defn- load-one
-  "Loads a lib given its name. If need-ns, ensures that the associated
-  namespace exists after loading. If reload, force a reload if the lib is
-  already loaded."
-  [lib need-ns reload]
+  "Loads a lib given its name. If reload, force a reload if the lib is already
+  loaded."
+  [lib reload]
   (if (and reload (find-ns lib))
     (do (when *loading-verbosely*
           (py/print (str "py/reload " lib)))
         (py/reload (find-ns lib)))
     (do (when *loading-verbosely*
           (py/print (str "py/import " lib)))
-        (py/__import__ (name lib))))
-  (throw-if (and need-ns (not (find-ns lib)))
-            "namespace '%s' not found after loading '%s'"
-            lib lib))
+        (try
+          (py/__import__ (name lib))
+          (catch NoNamespaceException e nil)))))
 
 (defn- load-lib
   "Loads a lib with options."
@@ -2908,9 +2906,9 @@
         need-ns (or as use)
         filter-opts (select-keys opts '(:exclude :import :only :rename :refer))]
     (binding [*loading-verbosely* (or *loading-verbosely* verbose)]
-      (load-one lib need-ns reload)
+      (load-one lib reload)
       (throw-if (and need-ns (not (find-ns lib)))
-                (str "namespace " lib " not found"))
+                "namespace %s not found after loading '%s'" lib lib)
       (when (and need-ns *loading-verbosely*)
         (py/print (str "(clojure.core/in-ns '" (ns-name *ns*) ")")))
       (when as

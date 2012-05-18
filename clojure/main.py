@@ -8,6 +8,7 @@ import imp
 import os.path
 import sys
 
+from clojure.lang.cljexceptions import NoNamespaceException
 from clojure.lang.compiler import Compiler
 from clojure.lang.fileseq import StringReader
 from clojure.lang.globals import currentCompiler
@@ -41,20 +42,20 @@ class MetaImporter(object):
     def load_module(self, name):
         """Loads a clj file, returns the corresponding namespace if it exists.
         
-        If the file did not create the corresponding namespace, ImportError is
-        raised.
+        If the file did not create the corresponding namespace,
+        NoNamespaceException (a subclass of ImportError) is raised.
         """
         if name not in sys.modules:
             sys.modules[name] = None # avoids circular imports
             try:
                 requireClj(self.path)
-            except:
+            except Exception as exc:
                 del sys.modules[name]
-                raise ImportError
+                raise ImportError("requireClj raised an exception.", exc)
+            if sys.modules[name] == None:
+                del sys.modules[name]
+                raise NoNamespaceException(self.path, name)
             sys.modules[name].__loader__ = self
-        if sys.modules[name] == None:
-            del sys.modules[name]
-            raise ImportError
         return sys.modules[name]
 
 
