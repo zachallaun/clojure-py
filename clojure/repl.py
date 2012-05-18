@@ -10,7 +10,7 @@ from clojure.lang.fileseq import StringReader
 from clojure.lang.globals import currentCompiler
 from clojure.lang.lispreader import read
 from clojure.lang.symbol import symbol
-from clojure.lang.var import Var, intern as internVar, find as findVar
+from clojure.lang.var import Var, find as findVar
 import clojure.lang.rt as RT
 from clojure.main import VERSION
 
@@ -42,7 +42,10 @@ def enable_readline():
 
 
 def run_repl(comp=None):
-    """Starts the REPL. Assumes that RT.init has already be called.
+    """Initializes and runs the REPL. Assumes that RT.init has been called.
+
+    Repeatedly prompts the user for input and evaluates well-formed forms.
+    Exits on EOF.
     """
     print "clojure-py", VERSION
     print "Python", sys.version
@@ -62,13 +65,7 @@ def run_repl(comp=None):
 
     last3 = [None, None, None]
 
-    def execute(string):
-        r = StringReader(string)
-        s = read(r, False, None, True)
-        res = comp.compile(s)
-        return comp.executeCode(res)
-
-    while 1:
+    while True:
         for i, value in enumerate(last3, 1):
             v = findVar(symbol("clojure.core", "*%s" % i))
             if isinstance(value, Var):
@@ -86,34 +83,21 @@ def run_repl(comp=None):
         if not line:
             continue
 
-        invalid = False
-        while 1:
-            unbalance = unbalanced(line)
-
-            if unbalance == -1:
-                invalid = True
-                break
-            elif unbalance is False:
-                break
-
-            try:
-                new_line = raw_input('.' * len(comp.getNS().__name__) + '.. ')
-            except EOFError:
-                break
-
-            if not new_line.strip().startswith(';'):
-                line += "\n" + new_line
-
-        if invalid:
-            print "Invalid input"
+        try:
+            while unbalanced(line):
+                line += "\n" + raw_input("." * len(comp.getNS().__name__) + "..")
+        except BracketsException as exc:
+            print exc
             continue
-
-        # Propogate break from above loop.
-        if unbalanced(line):
+        except EOFError:
+            print
             break
 
         try:
-            out = execute(line)
+            r = StringReader(line)
+            s = read(r, False, None, True)
+            res = comp.compile(s)
+            out = comp.executeCode(res)
         except Exception:
             traceback.print_exc()
         else:
@@ -121,43 +105,42 @@ def run_repl(comp=None):
             last3.insert(0, out)
             RT.printTo(out)
 
-def unbalanced(line):
-    """Returns true if the parentheses in the line are unbalanced.
+
+class BracketsException(Exception):
+    """Raised in case of non-matching brackets in a line.
+    
+    Takes a single argument, the unmatched bracket.
     """
-    open = ("(", "[", "{")
-    close = (")", "]", "}")
+    def __str__(self):
+        return "Unmatched delimiter '{0}'".format(self.args[0])
+
+
+def unbalanced(line):
+    """Returns whether the brackets in the line are unbalanced.
+
+    Raises BracketsError in case of matching error.
+    """
+    ignore_pairs = '""', ";\n"
+    ignore_closer = ""
+    bracket_pairs = "()", "[]", "{}"
     stack = []
 
-    open_ignore = ("\"", ";")
-    close_ignore = ("\"", "\n")
-    ignore = -1
     for c in line:
-        if ignore != -1:
-            if c == close_ignore[ignore]:
-                ignore = -1
+        if ignore_closer:
+            if c == ignore_closer:
+                ignore_closer = ""
             else:
                 continue
         else:
-            for i, o in enumerate(open_ignore):
-                if o == c:
-                    ignore = i
-                if ignore != -1:
+            for op, cl in ignore_pairs:
+                if c == op:
+                    ignore_closer = cl
                     continue
-
-        found = False
-        for t in open:
-            if c == t:
-                stack.append(c)
-                found = True
-        if found:
-            continue
-
-        found = False
-        for i, t in enumerate(close):
-            if c == t:
-                if not stack or stack[-1] != open[i]:
-                    # User error, return -1
-                    return -1
-                else:
-                    stack.pop()
-    return len(stack) != 0
+        for op, cl in bracket_pairs:
+            if c == op:
+                stack.append(cl)
+                continue
+            if c == cl:
+                if not stack or stack.pop() != c:
+                    raise BracketsException(c)
+    return bool(stack)
