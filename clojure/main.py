@@ -5,6 +5,7 @@ define main().
 
 import cPickle
 import imp
+from optparse import OptionParser
 import os.path
 import sys
 
@@ -13,11 +14,15 @@ from clojure.lang.compiler import Compiler
 from clojure.lang.fileseq import StringReader
 from clojure.lang.globals import currentCompiler
 from clojure.lang.lispreader import read
+from clojure.lang.namespace import (
+    findItem, findOrCreate as findOrCreateNamespace)
 import clojure.lang.rt as RT
+from clojure.lang.symbol import symbol
 from clojure.lang.var import threadBindings
 
 
 VERSION = "0.2.4"
+VERSION_MSG = "clojure-py {0}\nPython {1}".format(VERSION, sys.version)
 
 
 class MetaImporter(object):
@@ -95,24 +100,57 @@ def requireClj(filename, stopafter=None):
             pass
 
 
-import clojure.core
-
-
 def main():
-    """Runs clj files given in sys.argv or starts a REPL if none was given.
+    """Main entry point to clojure-py.
     """
+
+    def gobble(option, opt_str, value, parser):
+        """Interprets all the remaining arguments as a single argument.
+        """
+        setattr(parser.values, option.dest, " ".join(parser.rargs))
+        del parser.rargs[:]
+
+    parser = OptionParser(
+        usage="%prog [options] ... [-c cmd | file | -] [arg] ...",
+        version=VERSION_MSG)
+    parser.add_option("-c",
+        action="callback", dest="cmd", default="", callback=gobble,
+        help="program passed in as a string (terminates option list)")
+    parser.add_option("-i", action="store_true", dest="interactive",
+        help="inspect interactively after running script")
+    parser.add_option("-q", action="store_true", dest="quiet",
+        help="don't print version message on interactive startup")
+    # fooling OptionParser
+    parser.add_option("--\b\bfile", action="store_true",
+        help="    program read from script file")
+    parser.add_option("--\b\b-", action="store_true",
+        help="    program read from stdin (default; interactive mode if a tty)")
+    parser.add_option("--\b\barg ...", action="store_true",
+        help="    arguments passed to program in *command-line-args*")
+    args = sys.argv[1:]
+    try:
+        i = args.index("-")
+    except ValueError:
+        i = len(args)
+    dash_and_post = args[i:]
+    opts, command_line_args = parser.parse_args(args[:i])
+    source = command_line_args.pop(0) if command_line_args else None
+    command_line_args.extend(dash_and_post)
+    opts.command_line_args = command_line_args
+
     RT.init()
     comp = Compiler()
 
-    with threadBindings({currentCompiler: comp}):
-        if not sys.argv[1:]:
+    command_line_args_sym = findItem(findOrCreateNamespace("clojure.core"),
+                                     symbol("*command-line-args*"))
+    with threadBindings({currentCompiler: comp,
+                         command_line_args_sym: command_line_args}):
+        if source:
+            requireClj(source)
+        if opts.interactive or not source and not opts.cmd:
             import clojure.repl
             clojure.repl.enable_readline()
-            clojure.repl.run_repl(comp)
-        else:
-            for x in sys.argv[1:]:
-                if x.endswith('.clj'):
-                    requireClj(x)
+            clojure.repl.run_repl(opts, comp)
 
 
 if __name__ == "__main__":

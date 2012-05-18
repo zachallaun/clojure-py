@@ -1,5 +1,6 @@
 """Contains enhancements to the REPL that do not belong in the core language.
 """
+
 import atexit
 import os
 import sys
@@ -12,7 +13,7 @@ from clojure.lang.lispreader import read
 from clojure.lang.symbol import symbol
 from clojure.lang.var import Var, find as findVar
 import clojure.lang.rt as RT
-from clojure.main import VERSION
+from clojure.main import VERSION_MSG
 
 
 def enable_readline():
@@ -41,14 +42,15 @@ def enable_readline():
     return True
 
 
-def run_repl(comp=None):
+def run_repl(opts, comp=None):
     """Initializes and runs the REPL. Assumes that RT.init has been called.
 
-    Repeatedly prompts the user for input and evaluates well-formed forms.
-    Exits on EOF.
+    Repeatedly reads well-formed forms from stdin (with an interactive prompt
+    if a tty) and evaluates them (and prints the result if a tty). Exits on
+    EOF.
     """
-    print "clojure-py", VERSION
-    print "Python", sys.version
+    if not opts.quiet and os.isatty(0):
+        print VERSION_MSG
 
     if comp is None:
         curr = currentCompiler.get(lambda: None)
@@ -63,47 +65,49 @@ def run_repl(comp=None):
         if not i.startswith("_"):
             setattr(comp.getNS(), i, getattr(core, i))
 
+    line = opts.cmd
     last3 = [None, None, None]
 
+    def firstLinePrompt():
+        return comp.getNS().__name__ + "=> " if os.isatty(0) else ""
+
+    def continuationLinePrompt():
+        return "." * len(comp.getNS().__name__) + ".. " if os.isatty(0) else ""
+
     while True:
-        for i, value in enumerate(last3, 1):
-            v = findVar(symbol("clojure.core", "*%s" % i))
-            if isinstance(value, Var):
-                v.bindRoot(value.deref())
-                v.setMeta(value.meta())
+        # Evaluating before prompting caters for initially given forms.
+        r = StringReader(line)
+        while True:
+            try:
+                s = read(r, False, None, True)
+                if s is None:
+                    break
+                res = comp.compile(s)
+                out = comp.executeCode(res)
+            except Exception:
+                traceback.print_exc()
             else:
-                v.bindRoot(value)
-
+                if os.isatty(0):
+                    RT.printTo(out)
+                last3.pop()
+                last3.insert(0, out)
+                for i, value in enumerate(last3, 1):
+                    v = findVar(symbol("clojure.core", "*%s" % i))
+                    if isinstance(value, Var):
+                        v.bindRoot(value.deref())
+                        v.setMeta(value.meta())
+                    else:
+                        v.bindRoot(value)
         try:
-            line = raw_input(comp.getNS().__name__ + "=> ")
-        except EOFError:
-            print
-            break
-
-        if not line:
-            continue
-
-        try:
+            line = raw_input(firstLinePrompt())
             while unbalanced(line):
-                line += "\n" + raw_input("." * len(comp.getNS().__name__) + "..")
+                line += "\n" + raw_input(continuationLinePrompt())
         except BracketsException as exc:
             print exc
             continue
         except EOFError:
             print
             break
-
-        try:
-            r = StringReader(line)
-            s = read(r, False, None, True)
-            res = comp.compile(s)
-            out = comp.executeCode(res)
-        except Exception:
-            traceback.print_exc()
-        else:
-            last3.pop()
-            last3.insert(0, out)
-            RT.printTo(out)
 
 
 class BracketsException(Exception):

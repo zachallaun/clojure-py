@@ -20,7 +20,8 @@ def create(name):
     """Creates a namespace with a given name and adds standard imports to it.
     
     clojure.core is special-cased: being the first created module, some
-    specific Vars must be added "by hand".
+    specific Vars must be added "by hand" (currently: *ns*,
+    *command-line-args*).
     """
     mod = types.ModuleType(name)
     mod.__file__ = "<interactive namespace>"
@@ -30,6 +31,8 @@ def create(name):
         setattr(mod, i, getattr(stdimps, i))
     if mod.__name__ == "clojure.core":
         setattr(mod, "*ns*", Var(mod, "*ns*", mod).setDynamic())
+        setattr(mod, "*command-line-args*",
+                Var(mod, "*command-line-args*", None).setDynamic())
     return mod
 
 def findOrCreateIn(module, parts):
