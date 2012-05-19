@@ -18,8 +18,6 @@ class Symbol(IObj, IPrintable, Named):
             self.name = args[2]
         else:
             raise ArityException()
-        if isinstance(self.ns, types.ModuleType):
-            pass
 
     def getNamespace(self):
         return self.ns

@@ -599,6 +599,11 @@
   ([x y & more]
    (not (apply = x y more))))
 
+(defn identical?
+  "Tests if 2 arguments are the same object"
+  {:added "1.0"}
+  ([x y] (py.bytecode/COMPARE_OP "is" x y)))
+
 ;;; private defs
 (defmacro defn-
   "same as defn, yielding non-public def"
@@ -3155,7 +3160,7 @@
   "Evaluates the form data structure (not text!) and returns the result."
   {:added "1.0"
    :static true}
-  [form] (clojure.lang.compiler/evalForm form (ns-name *ns*)))
+  [form] (clojure.lang.compiler/evalForm form *ns*))
 
 (defmacro doc
   [itm]
@@ -3727,11 +3732,6 @@
   (bit-and 0xFFFFFFFF
            (bit-xor seed
                     (+ hash 0x9e3779b9 (bit-shift-left seed 6) (bit-shift-left seed 2)))))
-
-(defn identical?
-  "Tests if 2 arguments are the same object"
-  {:added "1.0"}
-  ([x y] (py.bytecode/COMPARE_OP "is" x y)))
 
 (defn into
   "Returns a new coll consisting of to-coll with all of the items of

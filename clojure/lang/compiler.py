@@ -124,12 +124,25 @@ def register_builtin(sym):
 def compileNS(comp, form):
     rest = form.next()
     if len(rest) != 1:
-        raise CompilerException("ns only supports one item", rest)
+        raise CompilerException("in-ns only supports one item", rest)
     ns = rest.first()
-    if not isinstance(ns, Symbol):
-        ns = comp.executeCode(comp.compile(ns))
-    comp.setNS(ns)
-    return [(LOAD_CONST, ns)]
+    code = [(LOAD_CONST, comp),
+            (LOAD_ATTR, "setNS")]
+    if isinstance(ns, Symbol):
+        code.append((LOAD_CONST, ns))
+    else:
+        code.extend(comp.compile(ns))
+    code.append((CALL_FUNCTION, 1))
+    set_NS_ = [(LOAD_CONST, comp),
+               (LOAD_ATTR, "_NS_"),
+               (LOAD_ATTR, "set"),
+               (LOAD_CONST, comp),
+               (LOAD_ATTR, "ns"),
+               (CALL_FUNCTION, 1),
+               (LOAD_CONST, comp),
+               (LOAD_ATTR, "ns")]
+    code.extend(set_NS_)
+    return code
 
 
 @register_builtin("def")
@@ -182,10 +195,10 @@ def compileBytecode(comp, form):
         arg = form.first()
         if not isinstance(arg, (int, str, unicode)) and bc is not LOAD_CONST:
             raise CompilerException(
-                "first argument to {0} must be int, unicode, or str".format(codename),
-                form)
+                "first argument to {0} must be int, unicode, or str".
+                format(codename), form)
 
-        arg = evalForm(arg, comp.getNS().__name__)
+        arg = evalForm(arg, comp.getNS())
         form = form.next()
 
     se = byteplay.getse(bc, arg)
@@ -1172,10 +1185,9 @@ class Name(object):
 
 def evalForm(form, ns):
     comp = Compiler()
-    comp.setNS(ns)
     code = comp.compile(form)
     code = expandMetas(code, comp)
-    return comp.executeCode(code)
+    return comp.executeCode(code, ns)
 
 
 def ismacro(macro):
@@ -1190,7 +1202,7 @@ def meta(form):
     return getattr(form, "meta", lambda: None)()
 
 
-def macroexpand(form, comp, one = False):
+def macroexpand(form, comp, one=False):
     if isinstance(form.first(), Symbol):
         if form.first().ns == 'py' or form.first().ns == "py.bytecode":
             return form, False
@@ -1212,7 +1224,8 @@ def macroexpand(form, comp, one = False):
 
             if hasattr(mresult, "withMeta") and hasattr(form, "meta"):
                 mresult = mresult.withMeta(form.meta())
-            mresult = comp.compile(mresult)
+            if not one:
+                mresult = comp.compile(mresult)
             return mresult, True
 
     return form, False
@@ -1222,10 +1235,11 @@ class Compiler(object):
     def __init__(self):
         self.recurPoint = RT.list()
         self.names = None
-        self.ns = None
+        self.ns = clojure_core = findOrCreateNamespace("clojure.core")
         self.lastlineno = -1
         self.aliases = {}
         self.filename = "<unknown>"
+        self._NS_ = findItem(clojure_core, _NS_)
 
     def setFile(self, filename):
         self.filename = filename
@@ -1448,7 +1462,6 @@ class Compiler(object):
             print "Compiling {0}".format(itm)
             raise
 
-
     def compileNone(self, itm):
         return [(LOAD_CONST, None)]
 
@@ -1456,17 +1469,16 @@ class Compiler(object):
         self.ns = findOrCreateNamespace(ns)
 
     def getNS(self):
-        if self.ns is not None:
-            return self.ns
+        return self.ns
 
-    def executeCode(self, code):
-
-        ns = self.getNS()
+    def executeCode(self, code, ns=None):
+        ns = ns or self.getNS()
         if code == []:
             return None
         newcode = expandMetas(code, self)
         newcode.append((RETURN_VALUE, None))
-        c = Code(newcode, [], [], False, False, False, str(symbol(ns.__name__, "<string>")), self.filename, 0, None)
+        c = Code(newcode, [], [], False, False, False,
+                 str(symbol(ns.__name__, "<string>")), self.filename, 0, None)
         try:
             c = c.to_code()
         except:
@@ -1479,10 +1491,8 @@ class Compiler(object):
         #with open("foo.cljs", "wb") as fl:
         #    f = write(c, fl)
 
-        with threadBindings(
-            {findItem(findOrCreateNamespace("clojure.core"), _NS_): ns}):
+        with threadBindings({self._NS_: ns}):
             retval = eval(c, ns.__dict__)
-            self.getNS().__file__ = self.filename
         return retval
 
     def pushPropertyAlias(self, mappings):
@@ -1510,7 +1520,8 @@ class Compiler(object):
 
     def executeModule(self, code):
         code.append((RETURN_VALUE, None))
-        c = Code(code, [], [], False, False, False, str(symbol(self.getNS().__name__, "<string>")), self.filename, 0, None)
+        c = Code(code, [], [], False, False, False,
+                 str(symbol(self.getNS().__name__, "<string>")), self.filename, 0, None)
 
         dis.dis(c)
         codeobject = c.to_code()
