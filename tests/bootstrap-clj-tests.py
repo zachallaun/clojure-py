@@ -3,15 +3,15 @@ import sys
 import unittest
 sys.path = [os.path.dirname(__file__)+"../"] + sys.path
 
-from clojure.lang.cljkeyword import keyword
+from clojure.lang.cljkeyword import Keyword
 from clojure.lang.namespace import (findItem,
                                     findOrCreate as findOrCreateNamespace)
 from clojure.lang.var import Var, threadBindings
-from clojure.lang.symbol import symbol
+from clojure.lang.symbol import Symbol
 from clojure.main import requireClj
 
 
-_NS_ = findItem(findOrCreateNamespace("clojure.core"), symbol("*ns*"))
+_NS_ = findItem(findOrCreateNamespace("clojure.core"), Symbol("*ns*"))
 
 
 def mapTest(ns, var):
@@ -38,6 +38,6 @@ for x in os.listdir(os.path.dirname(__file__)):
             var = getattr(module, idx)
             if isinstance(var, Var) and str(var).endswith("tests"):
                 meta = var.meta()
-                if meta and meta[keyword("test")]:
+                if meta and meta[Keyword("test")]:
                     mapTest(ns, var) 
 

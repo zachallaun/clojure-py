@@ -10,18 +10,18 @@ from clojure.lang.cljexceptions import (ArityException,
                                         IllegalStateException)
 from clojure.lang.persistenthashmap import EMPTY
 from clojure.lang.threadutil import ThreadLocal, currentThread
-from clojure.lang.symbol import symbol
-from clojure.lang.cljkeyword import keyword
+from clojure.lang.symbol import Symbol
+from clojure.lang.cljkeyword import Keyword
 from clojure.lang.iprintable import IPrintable
 from clojure.lang.atomicreference import AtomicReference
 import persistentarraymap
 
-privateKey = keyword(symbol("private"))
-macrokey = keyword(symbol("macro"))
-STATIC_KEY = keyword(symbol("static"))
+privateKey = Keyword("private")
+macrokey = Keyword("macro")
+STATIC_KEY = Keyword("static")
 dvals = ThreadLocal()
 privateMeta = persistentarraymap.create([privateKey, True])
-UKNOWN = symbol("UNKNOWN")
+UNKNOWN = Symbol("UNKNOWN")
 
 
 def pushThreadBindings(bindings):
@@ -56,25 +56,23 @@ def threadBindings(bindings):
 
 
 class Var(ARef, Settable, IFn, IPrintable):
-    def __init__(self, ns, sym, root=UKNOWN):
+    def __init__(self, *args):
+        """Var initializer
 
-        self.ns = ns
-        self.sym = sym
+        Valid calls:
+        - Var(namespace, symbol, root)
+        - Var(namespace, symbol) -- unbound Var
+        - Var(root) -- anonymous Var
+        - Var() -- anonymous, unbound Var
+        """
+        self.ns = args[0] if len(args) >= 2 else None
+        self.sym = args[1] if len(args) >= 2 else None
+        root = args[-1] if len(args) % 2 else UNKNOWN
+        self.root = AtomicReference(root if root != UNKNOWN else Unbound(self))
         self.threadBound = False
-        
-        if root == UKNOWN:
-            self.root = AtomicReference(Unbound(self))
-        else:
-            self.root = AtomicReference(root)
-            
         self._meta = EMPTY
-        self.rev = 0
         self.dynamic = False
         self.public = True
-
-        
-        if isinstance(self.root.get(), Unbound):
-            self.rev += 1
 
     def setDynamic(self, val=True):
         self.dynamic = val
@@ -117,7 +115,6 @@ class Var(ARef, Settable, IFn, IPrintable):
         self.validate(self.getValidator(), root)
         oldroot = self.root.get()
         self.root.set(root)
-        self.rev += 1
         return self
 
     def __call__(self, *args, **kw):
@@ -158,13 +155,6 @@ class Var(ARef, Settable, IFn, IPrintable):
         return "#<Var: {0}>".format(self.sym or "--unnamed--")
 
 
-def var(root=UKNOWN):
-    if root is not UKNOWN:
-        return Var(None, None, root)
-    else:
-        return Var(None, None)
-
-
 def getThreadBindingFrame():
     f = Val.dvals.get(lambda: Frame())#FIXME: Val undefined
     return f
@@ -191,7 +181,7 @@ def find(sym):
     from clojure.lang.namespace import find as findNamespace
     if sym.ns is None:
         raise InvalidArgumentException("Symbol must be namespace-qualified")
-    ns = findNamespace(symbol(sym.ns))
+    ns = findNamespace(Symbol(sym.ns))
     if ns is None:
         raise InvalidArgumentException("No such namespace {0}".format(sym.ns))
     return getattr(ns, sym.name)
@@ -202,7 +192,7 @@ def intern(ns, name):
     
     if isinstance(ns, types.ModuleType):
         return nsintern(ns, name)
-    ns = findOrCreate(symbol(ns))
+    ns = findOrCreate(Symbol(ns))
     return nsintern(ns, name)
     
 def define(ns, name, root):
@@ -212,8 +202,8 @@ def define(ns, name, root):
 
 
 def internPrivate(nsName, sym):
-    ns = Namespace.findOrCreate(symbol(nsName))#FIXME: undefined Namespace
-    ret = intern(ns, symbol(sym))
+    ns = Namespace.findOrCreate(Symbol(nsName))#FIXME: undefined Namespace
+    ret = intern(ns, Symbol(sym))
     ret.setMeta(Var.privateMeta)
     return ret
 

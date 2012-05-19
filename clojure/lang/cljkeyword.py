@@ -1,4 +1,4 @@
-from clojure.lang.symbol import Symbol, symbol
+from clojure.lang.symbol import Symbol
 from clojure.lang.persistenthashmap import EMPTY as EMPTY_MAP
 from clojure.lang.atomicreference import AtomicReference
 from clojure.lang.cljexceptions import InvalidArgumentException, ArityException
@@ -7,24 +7,25 @@ import weakref
 from clojure.lang.ifn import IFn
 from clojure.lang.named import Named
 
-interned = AtomicReference(EMPTY_MAP)
 
 class Keyword(IFn, Named, IPrintable):
-    def getNamespace(self):
-        return self.sym.getNamespace()
+    interned = AtomicReference(EMPTY_MAP)
 
-    def getName(self):
-        return self.sym.getName()
+    def __new__(cls, *args):
+        """Keyword constructor.
         
-    def writeAsString(self, writer):
-        writer.write(repr(self))
-
-    def writeAsReplString(self, writer):
-        writer.write(repr(self))
-
-    def __init__(self, sym):
-        self.sym = sym
-        self.hash = hash(sym) + 0x9e3779b9
+        Argument(s) will be passed to Symbol() first.  If the keyword was
+        already interned, it will be returned.
+        """
+        sym = Symbol(*args).withMeta(None)
+        if sym in Keyword.interned.get():
+            return Keyword.interned.get()[sym]
+        obj = super(Keyword, cls).__new__(cls)
+        Keyword.interned.mutate(
+            lambda old: old if sym in old else old.assoc(sym, obj))
+        obj.sym = sym
+        obj.hash = hash(sym) + 0x9e3779b9
+        return obj
 
     def __hash__(self):
         return self.hash
@@ -40,37 +41,30 @@ class Keyword(IFn, Named, IPrintable):
     def __repr__(self):
         return ":{0}".format(self.sym)
 
-def keyword(*args):
-    if len(args) == 1:
-        if isinstance(args[0], Symbol):
-            sym = args[0]
-            if sym.meta() is not None:
-                sym = sym.withMeta(None)
-            k = Keyword(sym)
+    def getNamespace(self):
+        return self.sym.getNamespace()
 
-            interned.mutate(lambda old: old if sym in old else old.assoc(sym,k))
+    def getName(self):
+        return self.sym.getName()
 
-            return interned.get()[sym]
-        elif isinstance(args[0], (str, unicode)):
-            return keyword(symbol(args[0]))
-        else:
-            raise InvalidArgumentException()
-    elif len(args) == 2:
-        return keyword(symbol(*args))
-    else:
-        raise ArityException()
+    def writeAsString(self, writer):
+        writer.write(repr(self))
+
+    def writeAsReplString(self, writer):
+        writer.write(repr(self))
+
 
 def find(self, *args):
     if len(args) == 1:
         if isinstance(args[0], Symbol):
             return interned.val()[args[0]]()
         if isinstance(args[0], str):
-            return Keyword.find(symbol(args[0]))
+            return Keyword.find(Symbol(args[0]))
     if len(args) == 2:
-        return Keyword.find(symbol(*args))
+        return Keyword.find(Symbol(*args))
     raise ArityException()
 
 
-LINE_KEY = keyword(None, "line")
-TAG_KEY = keyword(None, "tag")
-T = keyword(None, "T")
+LINE_KEY = Keyword("line")
+TAG_KEY = Keyword("tag")
+T = Keyword("T")

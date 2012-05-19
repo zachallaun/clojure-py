@@ -6,7 +6,7 @@ from clojure.lang.cljexceptions import (InvalidArgumentException,
                                         ArityException,
                                         IllegalArgumentException)
 import clojure.lang.rt as RT
-from clojure.lang.symbol import Symbol, symbol
+from clojure.lang.symbol import Symbol
 from clojure.lang.var import Var
 import clojure.standardimports as stdimps
 import sys, types
@@ -75,8 +75,8 @@ def find(name, fromns=None):
     return sys.modules.get(str(name))
 
 def findItem(ns, sym):
-    if sym.ns is not None and symbol(sym.ns) in getattr(ns, "__aliases__", {}):
-        sym = symbol(ns.__aliases__[symbol(sym.ns)].__name__, sym.name)
+    if sym.ns is not None and Symbol(sym.ns) in getattr(ns, "__aliases__", {}):
+        sym = Symbol(ns.__aliases__[Symbol(sym.ns)].__name__, sym.name)
        
     if isinstance(sym, Symbol):
         if ns is None:
@@ -110,7 +110,7 @@ def findModule(sym, module = None):
 
 def intern(ns, sym):
     if isinstance(sym, str):
-        sym = symbol(str)
+        sym = Symbol(str)
 
     if sym.ns is not None:
         raise InvalidArgumentException(

@@ -17,7 +17,7 @@ from clojure.lang.lispreader import read
 from clojure.lang.namespace import (
     findItem, findOrCreate as findOrCreateNamespace)
 import clojure.lang.rt as RT
-from clojure.lang.symbol import symbol
+from clojure.lang.symbol import Symbol
 from clojure.lang.var import threadBindings
 
 
@@ -142,7 +142,7 @@ def main():
     comp = Compiler()
 
     command_line_args_sym = findItem(findOrCreateNamespace("clojure.core"),
-                                     symbol("*command-line-args*"))
+                                     Symbol("*command-line-args*"))
     with threadBindings({currentCompiler: comp,
                          command_line_args_sym: command_line_args}):
         if source:

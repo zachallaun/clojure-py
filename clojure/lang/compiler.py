@@ -10,7 +10,7 @@ import fractions
 
 from clojure.lang.cons import Cons
 from clojure.lang.cljexceptions import CompilerException, AbstractMethodCall
-from clojure.lang.cljkeyword import Keyword, keyword
+from clojure.lang.cljkeyword import Keyword
 from clojure.lang.ipersistentvector import IPersistentVector
 from clojure.lang.ipersistentmap import IPersistentMap
 from clojure.lang.ipersistentset import IPersistentSet
@@ -23,16 +23,15 @@ from clojure.lang.namespace import (findItem,
 from clojure.lang.persistentlist import PersistentList, EmptyList
 from clojure.lang.persistentvector import PersistentVector
 import clojure.lang.rt as RT
-from clojure.lang.symbol import Symbol, symbol
-from clojure.lang.var import (
-    Var, define, intern as internVar, var as createVar, threadBindings)
+from clojure.lang.symbol import Symbol
+from clojure.lang.var import Var, define, intern as internVar, threadBindings
 from clojure.util.byteplay import *
 import clojure.util.byteplay as byteplay
 import marshal
 import types
 
-_MACRO_ = keyword(symbol("macro"))
-_NS_ = symbol("*ns*")
+_MACRO_ = Keyword("macro")
+_NS_ = Symbol("*ns*")
 version = (sys.version_info[0] * 10) + sys.version_info[1]
 
 PTR_MODE_GLOBAL = "PTR_MODE_GLOBAL"
@@ -109,13 +108,13 @@ def emitLanding(label):
 builtins = {}
 
 def register_builtin(sym):
-    """
-    A decorator to register a new builtin macro. Pass the symbol that the macro
-    represents as the argument. If the argument is a string, it will be
-    converted to a symbol.
+    """A decorator to register a new builtin macro.
+    
+    Takes the symbol that the macro represents as argument. If the argument is
+    a string, it will be converted to a symbol.
     """
     def inner(func):
-        builtins[sym if isinstance(sym, Symbol) else symbol(sym)] = func
+        builtins[Symbol(sym)] = func
         return func
     return inner
 
@@ -171,7 +170,7 @@ def compileDef(comp, form):
            and value.first().getName() == 'fn' \
            and sym.meta() is not None:
             try:
-                compiledValue[0][1].__doc__ = sym.meta()[keyword('doc')]
+                compiledValue[0][1].__doc__ = sym.meta()[Keyword('doc')]
             except AttributeError:
                 pass
         code.extend(compiledValue)
@@ -264,7 +263,7 @@ def compileLoopStar(comp, form):
 
         body = s[idx]
         if local in comp.aliases:
-            newlocal = symbol("{0}_{1}".format(local, RT.nextID()))
+            newlocal = Symbol("{0}_{1}".format(local, RT.nextID()))
             code.extend(comp.compile(body))
             comp.pushAlias(local, RenamedLocal(newlocal))
             args.append(local)
@@ -314,7 +313,7 @@ def compileLetStar(comp, form):
         body = s[idx]
         if comp.getAlias(local) is not None:
             code.extend(comp.compile(body))
-            newlocal = symbol("{0}_{1}".format(local, RT.nextID()))
+            newlocal = Symbol("{0}_{1}".format(local, RT.nextID()))
             comp.pushAlias(local, RenamedLocal(newlocal))
             args.append(local)
         else:
@@ -359,7 +358,7 @@ def compileDot(comp, form):
         code = alias.compile(comp)
         code.append((LOAD_ATTR, attr))
     else:
-        code = comp.compile(symbol(clss, attr))
+        code = comp.compile(Symbol(clss, attr))
 
     for x in args:
         code.extend(x)
@@ -374,7 +373,7 @@ def compileQuote(comp, form):
     return [(LOAD_CONST, form.next().first())]
 
 
-@register_builtin(symbol("py", "if"))
+@register_builtin("py/if")
 def compilePyIf(comp, form):
     if len(form) != 3 and len(form) != 4:
         raise CompilerException("if takes 2 or 3 args", form)
@@ -480,7 +479,7 @@ def compileFn(comp, name, form, orgform):
     recurlabel = Label("recurLabel")
 
     recur = {"label": recurlabel,
-    "args": map(lambda x: comp.getAlias(symbol(x)).compileSet(comp), args)}
+    "args": map(lambda x: comp.getAlias(Symbol(x)).compileSet(comp), args)}
 
     code.append((recurlabel, None))
     comp.pushRecur(recur)
@@ -491,7 +490,7 @@ def compileFn(comp, name, form, orgform):
 
     clist = map(lambda x: RT.name(x.sym), comp.closureList())
     code = expandMetas(code, comp)
-    c = Code(code, clist, args, lastisargs, False, True, str(symbol(comp.getNS().__name__, name.name)), comp.filename, 0, None)
+    c = Code(code, clist, args, lastisargs, False, True, str(Symbol(comp.getNS().__name__, name.name)), comp.filename, 0, None)
     if not clist:
         c = types.FunctionType(c.to_code(), comp.ns.__dict__, name.name)
 
@@ -553,7 +552,7 @@ class MultiFn(object):
         recurlabel = Label("recurLabel")
 
         recur = {"label": recurlabel,
-        "args": map(lambda x: comp.getAlias(symbol(x)).compileSet(comp), self.args)}
+        "args": map(lambda x: comp.getAlias(Symbol(x)).compileSet(comp), self.args)}
 
         bodycode = [(recurlabel, None)]
         comp.pushRecur(recur)
@@ -598,7 +597,7 @@ def compileMultiFn(comp, name, form):
 
     clist = map(lambda x: RT.name(x.sym), comp.closureList())
     code = expandMetas(code, comp)
-    c = Code(code, clist, argslist, hasvararg, False, True, str(symbol(comp.getNS().__name__, name.name)), comp.filename, 0, None)
+    c = Code(code, clist, argslist, hasvararg, False, True, str(Symbol(comp.getNS().__name__, name.name)), comp.filename, 0, None)
     if not clist:
         c = types.FunctionType(c.to_code(), comp.ns.__dict__, name.name)
     return [(LOAD_CONST, c)], c
@@ -642,7 +641,7 @@ def compileFNStar(comp, form):
         pushed = True
         form = form.next()
 
-    name = symbol(name)
+    name = Symbol(name)
 
     # This is fun stuff here. The idea is that we want closures to be able
     # to call themselves. But we can't get a pointer to a closure until after
@@ -693,13 +692,13 @@ def compileFNStar(comp, form):
         code.append((DUP_TOP, None))
         code.extend(selfalias.compileSet(comp))
 
-    comp.popAlias(symbol(name)) #closure
+    comp.popAlias(Symbol(name)) #closure
     return code
 
 
 def compileVector(comp, form):
     code = []
-    code.extend(comp.compile(symbol("clojure.lang.rt", "vector")))
+    code.extend(comp.compile(Symbol("clojure.lang.rt", "vector")))
     for x in form:
         code.extend(comp.compile(x))
     code.append((CALL_FUNCTION, len(form)))
@@ -743,7 +742,7 @@ def compileMap(comp, form):
     s = form.seq()
     c = 0
     code = []
-    code.extend(comp.compile(symbol("clojure.lang.rt", "map")))
+    code.extend(comp.compile(Symbol("clojure.lang.rt", "map")))
     while s is not None:
         kvp = s.first()
         code.extend(comp.compile(kvp.getKey()))
@@ -833,7 +832,7 @@ def compileTry(comp, form):
     """
     Compiles the try macro.
     """
-    assert form.first() == symbol("try")
+    assert form.first() == Symbol("try")
     form = form.next()
 
     if not form:
@@ -859,7 +858,7 @@ def compileTry(comp, form):
         if not len(subform):
             raise CompilerException("try arguments must not be empty", form)
         name = subform.first()
-        if name in (symbol("catch"), symbol("except")):
+        if name in (Symbol("catch"), Symbol("except")):
             if len(subform) != 4:
                 raise CompilerException(
                     "try {0} blocks must be 4 items long".format(name), form)
@@ -882,7 +881,7 @@ def compileTry(comp, form):
                     format(name), form)
             val = subform.next().next().next().first()
             catch.append((exception, var, val))
-        elif name == symbol("else"):
+        elif name == Symbol("else"):
             if len(subform) != 2:
                 raise CompilerException(
                     "try else blocks must be 2 items", form)
@@ -890,7 +889,7 @@ def compileTry(comp, form):
                 raise CompilerException(
                     "try cannot have multiple els blocks", form)
             els = subform.next().first()
-        elif name == symbol("finally"):
+        elif name == Symbol("finally"):
             if len(subform) != 2:
                 raise CompilerException(
                     "try finally blocks must be 2 items", form)
@@ -1118,7 +1117,7 @@ class RenamedLocal(AAlias):
     def __init__(self, sym, rest = None):
         AAlias.__init__(self, rest)
         self.sym = sym
-        self.newsym = symbol(RT.name(sym) + str(RT.nextID()))
+        self.newsym = Symbol(RT.name(sym) + str(RT.nextID()))
     def compile(self, comp):
         return [(LOAD_FAST, RT.name(self.newsym))]
     def compileSet(self, comp):
@@ -1363,8 +1362,8 @@ class Compiler(object):
             var = getattr(self.getNS(), RT.name(sym))
             return [GlobalPtr(self.getNS(), RT.name(sym))]
 
-        if symbol(sym.ns) in getattr(self.getNS(), "__aliases__", {}):
-            sym = symbol(self.getNS().__aliases__[symbol(sym.ns)].__name__, RT.name(sym))
+        if Symbol(sym.ns) in getattr(self.getNS(), "__aliases__", {}):
+            sym = Symbol(self.getNS().__aliases__[Symbol(sym.ns)].__name__, RT.name(sym))
 
         splt = []
         if sym.ns is not None:
@@ -1478,7 +1477,7 @@ class Compiler(object):
         newcode = expandMetas(code, self)
         newcode.append((RETURN_VALUE, None))
         c = Code(newcode, [], [], False, False, False,
-                 str(symbol(ns.__name__, "<string>")), self.filename, 0, None)
+                 str(Symbol(ns.__name__, "<string>")), self.filename, 0, None)
         try:
             c = c.to_code()
         except:
@@ -1521,7 +1520,7 @@ class Compiler(object):
     def executeModule(self, code):
         code.append((RETURN_VALUE, None))
         c = Code(code, [], [], False, False, False,
-                 str(symbol(self.getNS().__name__, "<string>")), self.filename, 0, None)
+                 str(Symbol(self.getNS().__name__, "<string>")), self.filename, 0, None)
 
         dis.dis(c)
         codeobject = c.to_code()

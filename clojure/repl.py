@@ -10,7 +10,7 @@ from clojure.lang.compiler import Compiler
 from clojure.lang.fileseq import StringReader
 from clojure.lang.globals import currentCompiler
 from clojure.lang.lispreader import read
-from clojure.lang.symbol import symbol
+from clojure.lang.symbol import Symbol
 from clojure.lang.var import Var, find as findVar
 import clojure.lang.rt as RT
 from clojure.main import VERSION_MSG
@@ -59,7 +59,7 @@ def run_repl(opts, comp=None):
             currentCompiler.set(comp)
         else:
             comp = curr
-    comp.setNS(symbol("user"))
+    comp.setNS(Symbol("user"))
     core = sys.modules["clojure.core"]
     for i in dir(core):
         if not i.startswith("_"):
@@ -92,7 +92,7 @@ def run_repl(opts, comp=None):
                 last3.pop()
                 last3.insert(0, out)
                 for i, value in enumerate(last3, 1):
-                    v = findVar(symbol("clojure.core", "*%s" % i))
+                    v = findVar(Symbol("clojure.core", "*%s" % i))
                     if isinstance(value, Var):
                         v.bindRoot(value.deref())
                         v.setMeta(value.meta())

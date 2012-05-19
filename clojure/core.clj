@@ -59,6 +59,7 @@
     c. Returns true or false"
    :added "1.0"}
  instance? (fn instance? [c x] (py/isinstance x c)))
+
 (def
  ^{:arglists '([x])
    :doc "Return true if x implements ISeq"
@@ -324,7 +325,7 @@
                     (assoc m :inline
                       (cons
                         ifn
-                        (cons (clojure.lang.symbol/symbol
+                        (cons (clojure.lang.symbol/Symbol
                                 (.concat (.getName name) "__inliner"))
                               (next inline))))
                     m))
@@ -495,8 +496,8 @@
   "Returns a Symbol with the given namespace and name."
   {:tag clojure.lang.Symbol
    :added "1.0"}
-  ([name] (py/if (symbol? name) name (clojure.lang.symbol/symbol name)))
-  ([ns name] (clojure.lang.symbol/symbol ns name)))
+  ([name] (clojure.lang.symbol/Symbol name))
+  ([ns name] (clojure.lang.symbol/Symbol ns name)))
 
 (defn gensym
   "Returns a new symbol with a unique name. If a prefix string is supplied, the
@@ -505,13 +506,12 @@
   {:added "1.0"}
   ([] (gensym "G__"))
   ([prefix-string]
-    (. clojure.lang.symbol
-       (symbol (str prefix-string (py/str (. clojure.lang.rt (nextID))))))))
+    (symbol (str prefix-string (py/str (. clojure.lang.rt (nextID)))))))
 
 (defn keyword
   "Returns a keyword for the given string"
   [x]
-  (clojure.lang.cljkeyword/keyword (symbol x)))
+  (clojure.lang.cljkeyword/Keyword x))
 
 (def
   ^{:doc "Returns the name String of a string, symbol or keyword."
@@ -638,7 +638,7 @@
 (defn prop-wrap-fn
   [name members f]
   (list 'fn
-    (clojure.lang.symbol/symbol (str name "_" (first f)))
+    (symbol (str name "_" (first f)))
     (second f)
     (list* 'let-macro
       (make-props members
@@ -647,7 +647,7 @@
 
 (defn prop-wrap-multi
   [name members f]
-  (let [name (clojure.lang.symbol/symbol (str name "_" (first f)))
+  (let [name (symbol (str name "_" (first f)))
         f (next f)
         wrapped (loop [remain f
                        wr []]
