@@ -8,14 +8,14 @@ import imp
 from optparse import OptionParser
 import os.path
 import sys
+import traceback
 
 from clojure.lang.cljexceptions import NoNamespaceException
 from clojure.lang.compiler import Compiler
 from clojure.lang.fileseq import StringReader
 from clojure.lang.globals import currentCompiler
 from clojure.lang.lispreader import read
-from clojure.lang.namespace import (
-    findItem, findOrCreate as findOrCreateNamespace)
+from clojure.lang.namespace import Namespace, findItem
 import clojure.lang.rt as RT
 from clojure.lang.symbol import Symbol
 from clojure.lang.var import threadBindings
@@ -56,7 +56,8 @@ class MetaImporter(object):
                 requireClj(self.path)
             except Exception as exc:
                 del sys.modules[name]
-                raise ImportError("requireClj raised an exception.", exc)
+                traceback.print_exc()
+                raise ImportError("requireClj raised an exception.")
             if sys.modules[name] == None:
                 del sys.modules[name]
                 raise NoNamespaceException(self.path, name)
@@ -141,7 +142,7 @@ def main():
     RT.init()
     comp = Compiler()
 
-    command_line_args_sym = findItem(findOrCreateNamespace("clojure.core"),
+    command_line_args_sym = findItem(Namespace("clojure.core"),
                                      Symbol("*command-line-args*"))
     with threadBindings({currentCompiler: comp,
                          command_line_args_sym: command_line_args}):

@@ -1,19 +1,19 @@
 import contextlib
 import types
 
-from clojure.lang.iref import IRef
-from clojure.lang.ifn import IFn
-from clojure.lang.settable import Settable
 from clojure.lang.aref import ARef
+from clojure.lang.atomicreference import AtomicReference
 from clojure.lang.cljexceptions import (ArityException,
                                         InvalidArgumentException,
                                         IllegalStateException)
-from clojure.lang.persistenthashmap import EMPTY
-from clojure.lang.threadutil import ThreadLocal, currentThread
-from clojure.lang.symbol import Symbol
 from clojure.lang.cljkeyword import Keyword
+from clojure.lang.ifn import IFn
 from clojure.lang.iprintable import IPrintable
-from clojure.lang.atomicreference import AtomicReference
+from clojure.lang.iref import IRef
+from clojure.lang.persistenthashmap import EMPTY
+from clojure.lang.settable import Settable
+from clojure.lang.symbol import Symbol
+from clojure.lang.threadutil import ThreadLocal, currentThread
 import persistentarraymap
 
 privateKey = Keyword("private")
@@ -167,45 +167,6 @@ def cloneThreadBindingFrame():
 
 def resetThreadBindingFrame(val):
     Var.dvals.set(val)
-
-
-def internWithRoot(ns, sym, root, replaceRoot=True):
-    from namespace import intern as namespaceIntern
-    dvout = namespaceIntern(ns, sym)
-    if not dvout.hasRoot() or replaceRoot:
-        dvout.bindRoot(root)
-    return dvout
-
-
-def find(sym):
-    from clojure.lang.namespace import find as findNamespace
-    if sym.ns is None:
-        raise InvalidArgumentException("Symbol must be namespace-qualified")
-    ns = findNamespace(Symbol(sym.ns))
-    if ns is None:
-        raise InvalidArgumentException("No such namespace {0}".format(sym.ns))
-    return getattr(ns, sym.name)
-
-
-def intern(ns, name):
-    from namespace import findOrCreate, intern as nsintern
-    
-    if isinstance(ns, types.ModuleType):
-        return nsintern(ns, name)
-    ns = findOrCreate(Symbol(ns))
-    return nsintern(ns, name)
-    
-def define(ns, name, root):
-    v = intern(ns, name)
-    v.bindRoot(root)
-    return v
-
-
-def internPrivate(nsName, sym):
-    ns = Namespace.findOrCreate(Symbol(nsName))#FIXME: undefined Namespace
-    ret = intern(ns, Symbol(sym))
-    ret.setMeta(Var.privateMeta)
-    return ret
 
 
 class TBox(object):

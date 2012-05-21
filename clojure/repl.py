@@ -10,8 +10,9 @@ from clojure.lang.compiler import Compiler
 from clojure.lang.fileseq import StringReader
 from clojure.lang.globals import currentCompiler
 from clojure.lang.lispreader import read
+from clojure.lang.namespace import Namespace, findItem
 from clojure.lang.symbol import Symbol
-from clojure.lang.var import Var, find as findVar
+from clojure.lang.var import Var
 import clojure.lang.rt as RT
 from clojure.main import VERSION_MSG
 
@@ -92,7 +93,8 @@ def run_repl(opts, comp=None):
                 last3.pop()
                 last3.insert(0, out)
                 for i, value in enumerate(last3, 1):
-                    v = findVar(Symbol("clojure.core", "*%s" % i))
+                    v = findItem(Namespace("clojure.core"),
+                                 Symbol("*{0}".format(i)))
                     if isinstance(value, Var):
                         v.bindRoot(value.deref())
                         v.setMeta(value.meta())

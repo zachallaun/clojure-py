@@ -2576,7 +2576,8 @@
 
 (defmacro var
   [itm]
-  `(clojure.lang.var/find (symbol ~'__name__ ~(name itm))))
+  `(clojure.lang.namespace/findItem (clojure.lang.namespace/findNS ~'__name__)
+                                    (symbol ~(name itm))))
 
 (defn var?
   "Return true if x is a Var"
@@ -2633,14 +2634,14 @@
 (defn find-ns
   "Returns the namespace named by the symbol or nil if it doesn't exist."
   {:added "1.0"}
-  [sym] (clojure.lang.namespace/find sym))
+  [sym] (clojure.lang.namespace/findNS sym))
 
 (defn create-ns
   "Create a new namespace named by the symbol if one doesn't already
   exist, returns it or the already-existing namespace of the same
   name."
   {:added "1.0"}
-  [sym] (clojure.lang.namespace/findOrCreate sym))
+  [sym] (clojure.lang.namespace/Namespace sym))
 
 (defn remove-ns
   "Removes the namespace named by the symbol. Use with caution.
@@ -2667,8 +2668,7 @@
   "Returns the name of the namespace, a symbol."
   {:added "1.0"
    :static true}
-  [ns]
-  (symbol (.-__name__ (the-ns ns))))
+  [ns] (symbol (.-__name__ (the-ns ns))))
 
 (defn ns-map
   "Returns a map of all the mappings for the namespace."

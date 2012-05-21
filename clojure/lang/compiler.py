@@ -17,14 +17,12 @@ from clojure.lang.ipersistentset import IPersistentSet
 from clojure.lang.ipersistentlist import IPersistentList
 from clojure.lang.iseq import ISeq
 from clojure.lang.lispreader import _AMP_, LINE_KEY, garg
-from clojure.lang.namespace import (findItem,
-                                    find as findNamespace,
-                                    findOrCreate as findOrCreateNamespace)
+from clojure.lang.namespace import Namespace, findNS, findItem, intern
 from clojure.lang.persistentlist import PersistentList, EmptyList
 from clojure.lang.persistentvector import PersistentVector
 import clojure.lang.rt as RT
 from clojure.lang.symbol import Symbol
-from clojure.lang.var import Var, define, intern as internVar, threadBindings
+from clojure.lang.var import Var, threadBindings
 from clojure.util.byteplay import *
 import clojure.util.byteplay as byteplay
 import marshal
@@ -159,7 +157,7 @@ def compileDef(comp, form):
 
     comp.pushName(RT.name(sym))
     code = []
-    v = internVar(comp.getNS(), sym)
+    v = intern(comp.getNS(), sym)
 
     v.setDynamic(True)
     if len(form) == 3:
@@ -1234,7 +1232,7 @@ class Compiler(object):
     def __init__(self):
         self.recurPoint = RT.list()
         self.names = None
-        self.ns = clojure_core = findOrCreateNamespace("clojure.core")
+        self.ns = clojure_core = Namespace("clojure.core")
         self.lastlineno = -1
         self.aliases = {}
         self.filename = "<unknown>"
@@ -1367,7 +1365,7 @@ class Compiler(object):
 
         splt = []
         if sym.ns is not None:
-            module = findNamespace(sym.ns)
+            module = findNS(sym.ns)
             if not hasattr(module, RT.name(sym)):
                 raise CompilerException(
                     "{0} does not define {1}".format(module, RT.name(sym)),
@@ -1465,7 +1463,7 @@ class Compiler(object):
         return [(LOAD_CONST, None)]
 
     def setNS(self, ns):
-        self.ns = findOrCreateNamespace(ns)
+        self.ns = Namespace(ns)
 
     def getNS(self):
         return self.ns

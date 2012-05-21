@@ -1,4 +1,5 @@
-from clojure.lang.namespace import findOrCreate as findNamespace
+from clojure.lang.namespace import Namespace
+import clojure.lang.rt as RT
 
 class ProtocolException(Exception):
     pass
@@ -117,7 +118,7 @@ class Protocol(object):
         
         
 def registerFns(ns, fns):
-    ns = findNamespace(ns)
+    ns = Namespace(ns)
     protofns = {}
     for fn in fns:
         fname = ns.__name__ + fn
@@ -162,7 +163,7 @@ def protocolFromType(ns, tp):
             
 
         
-    thens = findNamespace(ns)
+    thens = Namespace(ns)
     proto = Protocol(ns, tp.__name__, fns)
     
     tp.__exactprotocol__ = proto
@@ -209,11 +210,4 @@ def extendProtocolForClass(proto, tp):
                 raise
         
     proto.markImplementor(tp)
-    
-        
-# Fixup globals
-import clojure.lang.rt as RT
-    
-    
-    
-        
+

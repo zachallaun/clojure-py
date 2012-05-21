@@ -4,14 +4,13 @@ import unittest
 sys.path = [os.path.dirname(__file__)+"../"] + sys.path
 
 from clojure.lang.cljkeyword import Keyword
-from clojure.lang.namespace import (findItem,
-                                    findOrCreate as findOrCreateNamespace)
+from clojure.lang.namespace import Namespace, findItem
 from clojure.lang.var import Var, threadBindings
 from clojure.lang.symbol import Symbol
 from clojure.main import requireClj
 
 
-_NS_ = findItem(findOrCreateNamespace("clojure.core"), Symbol("*ns*"))
+_NS_ = findItem(Namespace("clojure.core"), Symbol("*ns*"))
 
 
 def mapTest(ns, var):
