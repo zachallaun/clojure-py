@@ -1,8 +1,5 @@
 from clojure.lang.cljexceptions import (InvalidArgumentException,
-                                        IllegalStateException,
-                                        ArityException,
                                         IllegalArgumentException)
-import clojure.lang.rt as RT
 from clojure.lang.symbol import Symbol
 from clojure.lang.var import Var
 import clojure.standardimports as stdimps
@@ -11,7 +8,6 @@ from types import ModuleType
 
 
 class Namespace(ModuleType):
-
     def __new__(cls, name):
         """Returns a namespace with a given name, creating it if needed.
 
@@ -43,12 +39,16 @@ class Namespace(ModuleType):
 
 
 def findNS(name, fromns=None):
+    """Finds a namespace, possibly as an defined as an alias in another one.
+    """
     if name in getattr(fromns, "__aliases__", {}):
         return fromns.__aliases__[name]
     return sys.modules.get(str(name))
 
 
 def remove(ns):
+    """Removes a namespace from sys.modules.
+    """
     name = findNS(ns).__name__
     if name == "clojure.core":
         raise IllegalArgumentException("Cannot remove clojure.core namespace")
@@ -56,6 +56,8 @@ def remove(ns):
 
 
 def intern(ns, sym):
+    """Interns a non-ns-qualified Symbol in a namespace.
+    """
     sym = Symbol(sym)
     if sym.ns is not None:
         raise InvalidArgumentException(

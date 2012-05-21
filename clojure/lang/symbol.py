@@ -1,5 +1,3 @@
-import types
-
 from clojure.lang.iprintable import IPrintable
 from clojure.lang.iobj import IObj
 from clojure.lang.cljexceptions import ArityException

@@ -1,11 +1,9 @@
-from clojure.lang.symbol import Symbol
-from clojure.lang.persistenthashmap import EMPTY as EMPTY_MAP
 from clojure.lang.atomicreference import AtomicReference
-from clojure.lang.cljexceptions import InvalidArgumentException, ArityException
 from clojure.lang.iprintable import IPrintable
-import weakref
 from clojure.lang.ifn import IFn
 from clojure.lang.named import Named
+from clojure.lang.persistenthashmap import EMPTY as EMPTY_MAP
+from clojure.lang.symbol import Symbol
 
 
 class Keyword(IFn, Named, IPrintable):
@@ -30,10 +28,9 @@ class Keyword(IFn, Named, IPrintable):
     def __hash__(self):
         return self.hash
 
-    def __call__(self, obj, notFound = None):
+    def __call__(self, obj, notFound=None):
         if obj is None:
             return None
-
         if self not in obj:
             return notFound
         return obj[self]
@@ -54,15 +51,11 @@ class Keyword(IFn, Named, IPrintable):
         writer.write(repr(self))
 
 
-def find(self, *args):
-    if len(args) == 1:
-        if isinstance(args[0], Symbol):
-            return interned.val()[args[0]]()
-        if isinstance(args[0], str):
-            return Keyword.find(Symbol(args[0]))
+def find(*args):
+    if len(args) == 1 and isinstance(args[0], Symbol):
+        return Keyword.interned.val()[args[0]]()
     if len(args) == 2:
-        return Keyword.find(Symbol(*args))
-    raise ArityException()
+        return find(Symbol(*args))
 
 
 LINE_KEY = Keyword("line")
