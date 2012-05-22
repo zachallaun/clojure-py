@@ -40,7 +40,7 @@ VERSION = "0.2.4"
 
 
 
-def requireClj(filename, stopafter=None):
+def requireClj(filename, stopafter="let"):
     with open(filename) as fl:
         r = StringReader(fl.read())
 
@@ -60,6 +60,8 @@ def requireClj(filename, stopafter=None):
             #cPickle.dump(s, o)
             try:
                 res = comp.compile(s)
+                print s, res
+                
                 comp.executeCode(res)
                 if stopafter is not None and hasattr(comp.getNS(), stopafter):
                     break

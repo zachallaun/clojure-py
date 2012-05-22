@@ -72,13 +72,13 @@ def run_repl(comp=None):
         return comp.executeCode(res)
 
     while 1:
-        for i, value in enumerate(last3, 1):
-            v = findVar(symbol("clojure.core", "*%s" % i))
-            if isinstance(value, Var):
-                v.bindRoot(value.deref())
-                v.setMeta(value.meta())
-            else:
-                v.bindRoot(value)
+        #for i, value in enumerate(last3, 1):
+        #    v = findVar(symbol("clojure.core", "*%s" % i))
+        #    if isinstance(value, Var):
+        #        v.bindRoot(value.deref())
+        #        v.setMeta(value.meta())
+        #    else:
+        #        v.bindRoot(value)
 
         try:
             line = raw_input(comp.getNS().__name__ + "=> ")

@@ -8,6 +8,8 @@ import sys
 import time
 import fractions
 
+from clojure.util.treadle import treadle as tr
+
 from clojure.lang.cons import Cons
 from clojure.lang.cljexceptions import CompilerException, AbstractMethodCall
 from clojure.lang.cljkeyword import Keyword, keyword
@@ -32,6 +34,8 @@ import clojure.util.byteplay as byteplay
 import marshal
 import types
 
+ConstNone = tr.Const(None)
+
 _MACRO_ = keyword(symbol("macro"))
 _NS_ = symbol("*ns*")
 version = (sys.version_info[0] * 10) + sys.version_info[1]
@@ -45,32 +49,29 @@ class MetaBytecode(object):
     pass
 
 
-class GlobalPtr(MetaBytecode):
+class GlobalPtr(tr.AExpression):
     def __init__(self, ns, name):
         self.ns = ns
         self.name = name
 
+    def size(self, current, max_seen):
+        # +3 just to be safe
+        return current + 1, max(max_seen, current + 3) 
+
     def __repr__(self):
         return "GblPtr<%s/%s>" % (self.ns.__name__, self.name)
 
-    def emit(self, comp, mode):
+    def emit(self, ctx):
         module = self.ns
         val = getattr(module, self.name)
 
         if isinstance(val, Var):
             if not val.isDynamic():
-                val = val.deref()
-                return [(LOAD_CONST, val)]
+                return tr.Const(val.deref()).emit(ctx)
             else:
-                if mode is PTR_MODE_DEREF:
-                    return [(LOAD_CONST, val),
-                            (LOAD_ATTR, "deref"),
-                            (CALL_FUNCTION, 0)]
-                else:
-                    raise CompilerException("Invalid deref mode", mode)
+                return tr.Call(tr.Attr(tr.Const(val), "deref")).emit(ctx)
 
-        return [(LOAD_CONST, module),
-               (LOAD_ATTR, self.name)]
+        return tr.Attr(tr.Const(module), self.name).emit(ctx)
 
 
 def expandMetas(bc, comp):
@@ -130,7 +131,7 @@ def compileNS(comp, form):
     if not isinstance(ns, Symbol):
         ns = comp.executeCode(comp.compile(ns))
     comp.setNS(ns)
-    return [(LOAD_CONST, ns)]
+    return tr.Const(ns)
 
 
 @register_builtin("def")
@@ -152,9 +153,9 @@ def compileDef(comp, form):
 
     v.setDynamic(True)
     if len(form) == 3:
-        code.append((LOAD_CONST, v))
-        code.append((LOAD_ATTR, "bindRoot"))
-        compiledValue = comp.compile(value)
+        code = tr.Call(tr.Attr(tr.Const(v), "bindRoot"),
+                           comp.compile(value))
+            
         if isinstance(value, ISeq) \
            and value.first().getName() == 'fn' \
            and sym.meta() is not None:
@@ -162,10 +163,9 @@ def compileDef(comp, form):
                 compiledValue[0][1].__doc__ = sym.meta()[keyword('doc')]
             except AttributeError:
                 pass
-        code.extend(compiledValue)
-        code.append((CALL_FUNCTION, 1))
     else:
-        code.append((LOAD_CONST, v))
+        code = tr.Const(v)
+        
     v.setMeta(sym.meta())
     comp.popName()
     return code
@@ -395,30 +395,20 @@ def compileIfStar(comp, form):
     cmp = comp.compile(form.next().first())
     body = comp.compile(form.next().next().first())
     if len(form) == 3:
-        body2 = [(LOAD_CONST, None)]
+        body2 = tr.ConstNone
     else:
         body2 = comp.compile(form.next().next().next().first())
 
     elseLabel = Label("IfElse")
     endlabel = Label("IfEnd")
-    condition_name = garg(0).name
-    code = cmp
-    code.append((STORE_FAST, condition_name))
-    code.append((LOAD_FAST, condition_name))
-    code.append((LOAD_CONST, None))
-    code.append((COMPARE_OP, 'is not'))
-    code.extend(emitJump(elseLabel))
-    code.append((LOAD_FAST, condition_name))
-    code.append((LOAD_CONST, False))
-    code.append((COMPARE_OP, 'is not'))
-    # Use is not instead of != as bool is a subclass of int, and
-    # therefore False == 0
-    code.extend(emitJump(elseLabel))
-    code.extend(body)
-    code.append((JUMP_ABSOLUTE, endlabel))
-    code.extend(emitLanding(elseLabel))
-    code.extend(body2)
-    code.append((endlabel, None))
+    condresult = tr.Local(garg(0).name)
+    
+    code = tr.Do(tr.StoreLocal(cmp),
+                 tr.If(tr.And(IsNot(condresult, tr.ConstNone),
+                              IsNot(condresult, tr.ConstFalse)),
+                             body,
+                             body2))
+
     return code
 
 
@@ -472,14 +462,14 @@ def compileFn(comp, name, form, orgform):
 
     code.append((recurlabel, None))
     comp.pushRecur(recur)
-    code.extend(compileImplcitDo(comp, form.next()))
+    code.append(compileImplcitDo(comp, form.next()))
     comp.popRecur()
     code.append((RETURN_VALUE,None))
     comp.popAliases(locals)
 
     clist = map(lambda x: RT.name(x.sym), comp.closureList())
     code = expandMetas(code, comp)
-    c = Code(code, clist, args, lastisargs, False, True, str(symbol(comp.getNS().__name__, name.name)), comp.filename, 0, None)
+    #c = Code(code, clist, args, lastisargs, False, True, str(symbol(comp.getNS().__name__, name.name)), comp.filename, 0, None)
     if not clist:
         c = types.FunctionType(c.to_code(), comp.ns.__dict__, name.name)
 
@@ -586,23 +576,17 @@ def compileMultiFn(comp, name, form):
 
     clist = map(lambda x: RT.name(x.sym), comp.closureList())
     code = expandMetas(code, comp)
-    c = Code(code, clist, argslist, hasvararg, False, True, str(symbol(comp.getNS().__name__, name.name)), comp.filename, 0, None)
+    #c = Code(code, clist, argslist, hasvararg, False, True, str(symbol(comp.getNS().__name__, name.name)), comp.filename, 0, None)
     if not clist:
         c = types.FunctionType(c.to_code(), comp.ns.__dict__, name.name)
     return [(LOAD_CONST, c)], c
 
 
 def compileImplcitDo(comp, form):
-    code = []
-    s = form
-    while s is not None:
-        code.extend(comp.compile(s.first()))
-        s = s.next()
-        if s is not None:
-            code.append((POP_TOP, None))
-    if not len(code):
-        code.append((LOAD_CONST, None))
-    return code
+    def cmpl(f):
+        return comp.compile(f)
+        
+    return tr.Do(*map(cmpl, form))
 
 
 @register_builtin("fn*")
@@ -1319,14 +1303,14 @@ class Compiler(object):
                 return self.compilePropertyAccess(form)
             if form.first().name.startswith(".") and form.first().ns is None:
                 return self.compileMethodAccess(form)
-        c = self.compile(form.first())
+        c = [self.compile(form.first())]
         f = form.next()
         acount = 0
         while f is not None:
-            c.extend(self.compile(f.first()))
+            c.append(self.compile(f.first()))
             acount += 1
             f = f.next()
-        c.append((CALL_FUNCTION, acount))
+        c = tr.Call(*c)
 
         return c
 
@@ -1338,6 +1322,7 @@ class Compiler(object):
         return code
 
     def getAccessCode(self, sym):
+        print sym
         if (sym.ns is not None and sym.ns == self.getNS().__name__) \
            or sym.ns is None:
             if self.getNS() is None:
@@ -1349,7 +1334,7 @@ class Compiler(object):
                            self.getNamesString(False)),
                     None)
             var = getattr(self.getNS(), RT.name(sym))
-            return [GlobalPtr(self.getNS(), RT.name(sym))]
+            return GlobalPtr(self.getNS(), RT.name(sym))
 
         if symbol(sym.ns) in getattr(self.getNS(), "__aliases__", {}):
             sym = symbol(self.getNS().__aliases__[symbol(sym.ns)].__name__, RT.name(sym))
@@ -1361,7 +1346,7 @@ class Compiler(object):
                 raise CompilerException(
                     "{0} does not define {1}".format(module, RT.name(sym)),
                     None)
-            return [GlobalPtr(module, RT.name(sym))]
+            return GlobalPtr(module, RT.name(sym))
 
         code = LOAD_ATTR if sym.ns else LOAD_GLOBAL
         #if not sym.ns and RT.name(sym).find(".") != -1 and RT.name(sym) != "..":
@@ -1410,13 +1395,13 @@ class Compiler(object):
                     c.append([SetLineno, line])
 
             if isinstance(itm, Symbol):
-                c.extend(self.compileSymbol(itm))
+                return self.compileSymbol(itm)
             elif isinstance(itm, PersistentList) or isinstance(itm, Cons):
-                c.extend(self.compileForm(itm))
+                return self.compileForm(itm)
             elif itm is None:
                 c.extend(self.compileNone(itm))
             elif type(itm) in [str, int, types.ClassType, type, Var]:
-                c.extend([(LOAD_CONST, itm)])
+                return tr.Const(itm)
             elif isinstance(itm, IPersistentVector):
                 c.extend(compileVector(self, itm))
             elif isinstance(itm, IPersistentMap):
@@ -1466,24 +1451,12 @@ class Compiler(object):
         ns = self.getNS()
         if code == []:
             return None
-        newcode = expandMetas(code, self)
-        newcode.append((RETURN_VALUE, None))
-        c = Code(newcode, [], [], False, False, False, str(symbol(ns.__name__, "<string>")), self.filename, 0, None)
-        try:
-            c = c.to_code()
-        except:
-            for x in newcode:
-                print x
-            raise
+        print(code)
 
-        # work on .cljs
-        #from clojure.util.freeze import write, read
-        #with open("foo.cljs", "wb") as fl:
-        #    f = write(c, fl)
-
+        
         pushThreadBindings(
             {findItem(findOrCreateNamespace("clojure.core"), _NS_): ns})
-        retval = eval(c, ns.__dict__)
+        retval = code.toFunc()()
         self.getNS().__file__ = self.filename
         popThreadBindings()
         return retval
@@ -1513,7 +1486,7 @@ class Compiler(object):
 
     def executeModule(self, code):
         code.append((RETURN_VALUE, None))
-        c = Code(code, [], [], False, False, False, str(symbol(self.getNS().__name__, "<string>")), self.filename, 0, None)
+        #c = Code(code, [], [], False, False, False, str(symbol(self.getNS().__name__, "<string>")), self.filename, 0, None)
 
         dis.dis(c)
         codeobject = c.to_code()
