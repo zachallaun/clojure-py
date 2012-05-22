@@ -171,17 +171,6 @@ def set(*args):
     return m
 
 
-def getDefaultImports():
-    from clojure.lang.persistentlist import PersistentList
-    import sys
-    import math
-    d = {"String": str,
-         "Integer": int,
-         "Math": math,
-         "clojure.lang.PersistentList": PersistentList,
-         "clojure.lang.RT": sys.modules[__name__]}
-    return d
-
 # need id for print protocol
 _id = AtomicInteger()
 
@@ -341,10 +330,11 @@ def _extendSeqableForManuals():
 
 def _bootstrap_protocols():
     global protocols, seq
-    from clojure.lang.protocol import protocolFromType, extendForAllSubclasses
     from clojure.lang.iseq import ISeq as iseq
-    from clojure.lang.seqable import Seqable as seqable
     from clojure.lang.iprintable import IPrintable
+    from clojure.lang.named import Named
+    from clojure.lang.protocol import protocolFromType, extendForAllSubclasses
+    from clojure.lang.seqable import Seqable as seqable
 
     protocolFromType("clojure.protocols", IPrintable)
     extendForAllSubclasses(IPrintable)
@@ -354,13 +344,11 @@ def _bootstrap_protocols():
     
     protocolFromType("clojure.protocols", iseq)
     extendForAllSubclasses(iseq)
-    import sys 
     protocols = sys.modules["clojure.protocols"]
     seq = protocols.seq
     _extendSeqableForManuals()
     _extendIPrintableForManuals()
     
-    from clojure.lang.named import Named
     protocolFromType("clojure.protocols", Named)
     extendForAllSubclasses(Named)
     global name, namespace
@@ -378,14 +366,10 @@ def _extendNamedForManuals():
 # init is being called each time a .clj is loaded
 initialized = False
 def init():
-    global DEFAULT_IMPORTS, initialized
+    global initialized
     if not initialized:
-        DEFAULT_IMPORTS = map(getDefaultImports())
         _bootstrap_protocols()
         initialized = True
-
-
-DEFAULT_IMPORTS = None
 
 
 class DefaultComparator(Comparator):

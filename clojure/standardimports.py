@@ -1,3 +1,6 @@
+"""Lists the symbols names that should be defined in all clojure namespaces.
+"""
+
 from clojure.lang.persistentlist import PersistentList
 from clojure.lang.ipersistentlist import IPersistentList
 from clojure.lang.ipersistentvector import IPersistentVector

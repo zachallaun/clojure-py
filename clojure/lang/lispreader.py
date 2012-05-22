@@ -6,7 +6,7 @@ import string
 import unicodedata
 
 from clojure.lang.cljexceptions import ReaderException, IllegalStateException
-from clojure.lang.cljkeyword import Keyword, keyword, TAG_KEY, T, LINE_KEY
+from clojure.lang.cljkeyword import Keyword, TAG_KEY, T, LINE_KEY
 from clojure.lang.fileseq import FileSeq, MutatableFileSeq, StringReader
 from clojure.lang.globals import currentCompiler
 from clojure.lang.ipersistentlist import IPersistentList
@@ -20,27 +20,27 @@ from clojure.lang.persistentvector import EMPTY as EMPTY_VECTOR
 import clojure.lang.persistenthashset
 from clojure.lang.persistenthashset import createWithCheck
 import clojure.lang.rt as RT
-from clojure.lang.symbol import Symbol, symbol
-from clojure.lang.var import Var, pushThreadBindings, popThreadBindings, var
+from clojure.lang.symbol import Symbol
+from clojure.lang.var import Var, threadBindings
 import clojure.lang.namespace as namespace
 
-_AMP_ = symbol("&")
-_FN_ = symbol("fn")
-_VAR_ = symbol("var")
-_APPLY_ = symbol("apply")
-_DEREF_ = symbol("deref")
-_HASHMAP_ = symbol("clojure.core", "hashmap")
-_CONCAT_ = symbol("clojure.core", "concat")
-_LIST_ = symbol("clojure.core", "list")
-_SEQ_ = symbol("clojure.core", "seq")
-_VECTOR_ = symbol("clojure.core", "vector")
-_QUOTE_ = symbol("quote")
-_SYNTAX_QUOTE_ = symbol("`")
-_UNQUOTE_ = symbol("~")
-_UNQUOTE_SPLICING_ = symbol("~@")
+_AMP_ = Symbol("&")
+_FN_ = Symbol("fn")
+_VAR_ = Symbol("var")
+_APPLY_ = Symbol("apply")
+_DEREF_ = Symbol("deref")
+_HASHMAP_ = Symbol("clojure.core", "hashmap")
+_CONCAT_ = Symbol("clojure.core", "concat")
+_LIST_ = Symbol("clojure.core", "list")
+_SEQ_ = Symbol("clojure.core", "seq")
+_VECTOR_ = Symbol("clojure.core", "vector")
+_QUOTE_ = Symbol("quote")
+_SYNTAX_QUOTE_ = Symbol("`")
+_UNQUOTE_ = Symbol("~")
+_UNQUOTE_SPLICING_ = Symbol("~@")
 
-ARG_ENV = var(None).setDynamic()
-GENSYM_ENV = var(None).setDynamic()
+ARG_ENV = Var(None).setDynamic()
+GENSYM_ENV = Var(None).setDynamic()
 
 symbolPat = re.compile("[:]?([\\D^/].*/)?([\\D^/][^/]*)")
 
@@ -831,14 +831,14 @@ def matchSymbol(s):
         ns = ns if ns is None else ns[:-1]
         
         if s.startswith("::"):
-            return keyword(currentNSName(), s[2:])
+            return Keyword(currentNSName(), s[2:])
 
 
         iskeyword = s.startswith(':')
         if iskeyword:
-            return keyword(s[1:])
+            return Keyword(s[1:])
         else:
-            return symbol(ns, name)
+            return Symbol(ns, name)
     return None
 
 
@@ -894,25 +894,23 @@ def fnReader(rdr, lparen):
     Return an IPersistentList"""
     if ARG_ENV.deref() is not None:
         raise IllegalStateException("Nested #()s are not allowed")
-    pushThreadBindings(RT.map(ARG_ENV, EMPTY_MAP))
-    rdr.back()
-    form = read(rdr, True, None, True)
-    drefed = ARG_ENV.deref()
-    sargs = sorted(list(filter(lambda x: x != -1, drefed)))
-    args = []
-    if len(sargs):
-        for x in range(1, int(str(sargs[-1])) + 1):
-            if x in drefed:
-                args.append(drefed[x])
-            else:
-                args.append(garg(x))
-        retsym = drefed[-1]
-        if retsym is not None:
-            args.append(_AMP_)
-            args.append(retsym)
-
-    vargs = RT.vector(*args)
-    popThreadBindings()
+    with threadBindings(RT.map(ARG_ENV, EMPTY_MAP)):
+        rdr.back()
+        form = read(rdr, True, None, True)
+        drefed = ARG_ENV.deref()
+        sargs = sorted(list(filter(lambda x: x != -1, drefed)))
+        args = []
+        if len(sargs):
+            for x in range(1, int(str(sargs[-1])) + 1):
+                if x in drefed:
+                    args.append(drefed[x])
+                else:
+                    args.append(garg(x))
+            retsym = drefed[-1]
+            if retsym is not None:
+                args.append(_AMP_)
+                args.append(retsym)
+        vargs = RT.vector(*args)
     return RT.list(_FN_, vargs, form)
 
 
@@ -928,13 +926,10 @@ def isUnquoteSplicing(form):
 
 class SyntaxQuoteReader(object):
     def __call__(self, r, backquote):
-        pushThreadBindings(RT.map(GENSYM_ENV, EMPTY_MAP))
-        try:
+        with threadBindings(RT.map(GENSYM_ENV, EMPTY_MAP)):
             self.rdr = r
             form = read(r, True, None, True)
             return self.syntaxQuote(form)
-        finally:
-            popThreadBindings()
 
     def syntaxQuote(self, form):
         # compiler uses this module, so import it lazily
@@ -950,7 +945,7 @@ class SyntaxQuoteReader(object):
                     raise ReaderException("Gensym literal not in syntax-quote, before", self.rdr)
                 gs = gmap[sym]
                 if gs is None:
-                    gs = symbol(None, "{0}__{1}__auto__".format(sym.name[:-1], RT.nextID()))
+                    gs = Symbol(None, "{0}__{1}__auto__".format(sym.name[:-1], RT.nextID()))
                     GENSYM_ENV.set(gmap.assoc(sym, gs))
                 sym = gs
             elif sym.ns is None and sym.name.endswith("."):
@@ -970,9 +965,9 @@ class SyntaxQuoteReader(object):
                 
                 item = namespace.findItem(ns, sym)
                 if item is None:
-                    sym = symbol(ns.__name__, sym.name)
+                    sym = Symbol(ns.__name__, sym.name)
                 else:
-                    sym = symbol(item.ns.__name__, sym.name)
+                    sym = Symbol(item.ns.__name__, sym.name)
             ret = RT.list(_QUOTE_, sym)
         else:
             if isUnquote(form):
@@ -1028,8 +1023,7 @@ class SyntaxQuoteReader(object):
 
 
 def garg(n):
-    return symbol(None,
-                  "rest" if n == -1 else "p{0}__{1}#".format(n, RT.nextID()))
+    return Symbol("rest" if n == -1 else "p{0}__{1}#".format(n, RT.nextID()))
 
 
 def derefNotImplemented(rdr, _):

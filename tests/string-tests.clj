@@ -1,6 +1,6 @@
 (ns tests.string-tests
     (:require [tests.assertions :as assertions])
-    (:require [tests.utils :only [deftest]])
+    (:use [tests.utils :only [deftest]])
     (:require [clojure.string :as string]))
 
 ;; Please note that just the reference implementation, passing faulty arguments results in undefined behaviour

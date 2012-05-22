@@ -15,7 +15,6 @@
                 (clojure.lang.LineNumberingPushbackReader.))]
     (load-reader rdr)))
 
-
 (defn var-get
   "Gets the value in the var object"
   {:added "1.0"
@@ -48,8 +47,6 @@
       ~@body
       (finally (. clojure.lang.Var (popThreadBindings))))))
 
-
-
 (defmacro lazy-cat
   "Expands to code which yields a lazy sequence of the concatenation
   of the supplied colls.  Each coll expr is not evaluated until it is
@@ -59,7 +56,6 @@
   {:added "1.0"}
   [& colls]
   `(concat ~@(map #(list `lazy-seq %) colls)))
-
 
 (defmacro with-out-str
   "Evaluates exprs in a context in which *out* is bound to a fresh
@@ -183,12 +179,6 @@
   [s]
     (contains? (. clojure.lang.Compiler specials) s))
 
-(defn var?
-  "Returns true if v is of type clojure.lang.Var"
-  {:added "1.0"
-   :static true}
-  [v] (instance? clojure.lang.Var v))
-
 (defn distinct
   "Returns a lazy sequence of the elements of coll with duplicates removed"
   {:added "1.0"
@@ -203,8 +193,6 @@
                           (cons f (step (rest s) (conj seen f))))))
                      xs seen)))]
       (step coll #{})))
-
-
 
 (defn replace
   "Given a map of replacement pairs and a vector/collection, returns a
@@ -307,8 +295,6 @@
   [url]
   (println "WARNING: add-classpath is deprecated")
   (clojure.lang.rt/addURL url))
-
-
 
 (defn hash
   "Returns the hash code of its argument. Note this is the hash code
@@ -518,116 +504,6 @@
                (process-annotation av v)
                (.visitEnd av))))))))
 
-(defn make-hierarchy
-  "Creates a hierarchy object for use with derive, isa? etc."
-  {:added "1.0"
-   :static true}
-  [] {:parents {} :descendants {} :ancestors {}})
-
-(def ^{:private true}
-     global-hierarchy (make-hierarchy))
-
-
-(defn isa?
-  "Returns true if (= child parent), or child is directly or indirectly derived from
-  parent, either via a Java type inheritance relationship or a
-  relationship established via derive. h must be a hierarchy obtained
-  from make-hierarchy, if not supplied defaults to the global
-  hierarchy"
-  {:added "1.0"}
-  ([child parent] (isa? global-hierarchy child parent))
-  ([h child parent]
-   (or (= child parent)
-       (and (class? parent) (class? child)
-            (. ^Class parent isAssignableFrom child))
-       (contains? ((:ancestors h) child) parent)
-       (and (class? child) (some #(contains? ((:ancestors h) %) parent) (supers child)))
-       (and (vector? parent) (vector? child)
-            (= (count parent) (count child))
-            (loop [ret true i 0]
-              (if (or (not ret) (= i (count parent)))
-                ret
-                (recur (isa? h (child i) (parent i)) (inc i))))))))
-
-(defn parents
-  "Returns the immediate parents of tag, either via a Java type
-  inheritance relationship or a relationship established via derive. h
-  must be a hierarchy obtained from make-hierarchy, if not supplied
-  defaults to the global hierarchy"
-  {:added "1.0"}
-  ([tag] (parents global-hierarchy tag))
-  ([h tag] (not-empty
-            (let [tp (get (:parents h) tag)]
-              (if (class? tag)
-                (into1 (set (bases tag)) tp)
-                tp)))))
-
-(defn ancestors
-  "Returns the immediate and indirect parents of tag, either via a Java type
-  inheritance relationship or a relationship established via derive. h
-  must be a hierarchy obtained from make-hierarchy, if not supplied
-  defaults to the global hierarchy"
-  {:added "1.0"}
-  ([tag] (ancestors global-hierarchy tag))
-  ([h tag] (not-empty
-            (let [ta (get (:ancestors h) tag)]
-              (if (class? tag)
-                (let [superclasses (set (supers tag))]
-                  (reduce1 into1 superclasses
-                    (cons ta
-                          (map #(get (:ancestors h) %) superclasses))))
-                ta)))))
-
-(defn descendants
-  "Returns the immediate and indirect children of tag, through a
-  relationship established via derive. h must be a hierarchy obtained
-  from make-hierarchy, if not supplied defaults to the global
-  hierarchy. Note: does not work on Java type inheritance
-  relationships."
-  {:added "1.0"}
-  ([tag] (descendants global-hierarchy tag))
-  ([h tag] (if (class? tag)
-             (throw (java.lang.UnsupportedOperationException. "Can't get descendants of classes"))
-             (not-empty (get (:descendants h) tag)))))
-
-(defn derive
-  "Establishes a parent/child relationship between parent and
-  tag. Parent must be a namespace-qualified symbol or keyword and
-  child can be either a namespace-qualified symbol or keyword or a
-  class. h must be a hierarchy obtained from make-hierarchy, if not
-  supplied defaults to, and modifies, the global hierarchy."
-  {:added "1.0"}
-  ([tag parent]
-   (assert (namespace parent))
-   (assert (or (class? tag) (and (instance? clojure.lang.Named tag) (namespace tag))))
-
-   (alter-var-root #'global-hierarchy derive tag parent) nil)
-  ([h tag parent]
-   (assert (not= tag parent))
-   (assert (or (class? tag) (instance? clojure.lang.Named tag)))
-   (assert (instance? clojure.lang.Named parent))
-
-   (let [tp (:parents h)
-         td (:descendants h)
-         ta (:ancestors h)
-         tf (fn [m source sources target targets]
-              (reduce1 (fn [ret k]
-                        (assoc ret k
-                               (reduce1 conj (get targets k #{}) (cons target (targets target)))))
-                      m (cons source (sources source))))]
-     (or
-      (when-not (contains? (tp tag) parent)
-        (when (contains? (ta tag) parent)
-          (throw (Exception. (print-str tag "already has" parent "as ancestor"))))
-        (when (contains? (ta parent) tag)
-          (throw (Exception. (print-str "Cyclic derivation:" parent "has" tag "as ancestor"))))
-        {:parents (assoc (:parents h) tag (conj (get tp tag #{}) parent))
-         :ancestors (tf (:ancestors h) tag td parent ta)
-         :descendants (tf (:descendants h) parent ta tag td)})
-      h))))
-
-(declare flatten)
-
 (defn underive
   "Removes a parent/child relationship between parent and
   tag. h must be a hierarchy obtained from make-hierarchy, if not
@@ -647,7 +523,6 @@
 	(reduce1 #(apply derive %1 %2) (make-hierarchy)
 		(partition 2 deriv-seq))
 	h))))
-
 
 (defn distinct?
   "Returns true if no two of the arguments are ="
@@ -707,8 +582,6 @@
   [fmt & args]
   (print (apply format fmt args)))
 
-(declare gen-class)
-
 (defmacro with-loading-context [& body]
   `((fn loading# [] 
         (. clojure.lang.Var (pushThreadBindings {clojure.lang.Compiler/LOADER  
@@ -717,65 +590,6 @@
          ~@body
          (finally
           (. clojure.lang.Var (popThreadBindings)))))))
-
-(defmacro ns
-  "Sets *ns* to the namespace named by name (unevaluated), creating it
-  if needed.  references can be zero or more of: (:refer-clojure ...)
-  (:require ...) (:use ...) (:import ...) (:load ...) (:gen-class)
-  with the syntax of refer-clojure/require/use/import/load/gen-class
-  respectively, except the arguments are unevaluated and need not be
-  quoted. (:gen-class ...), when supplied, defaults to :name
-  corresponding to the ns name, :main true, :impl-ns same as ns, and
-  :init-impl-ns true. All options of gen-class are
-  supported. The :gen-class directive is ignored when not
-  compiling. If :gen-class is not supplied, when compiled only an
-  nsname__init.class will be generated. If :refer-clojure is not used, a
-  default (refer 'clojure) is used.  Use of ns is preferred to
-  individual calls to in-ns/require/use/import:
-
-  (ns foo.bar
-    (:refer-clojure :exclude [ancestors printf])
-    (:require (clojure.contrib sql sql.tests))
-    (:use (my.lib this that))
-    (:import (java.util Date Timer Random)
-             (java.sql Connection Statement)))"
-  {:arglists '([name docstring? attr-map? references*])
-   :added "1.0"}
-  [name & references]
-  (let [process-reference
-        (fn [[kname & args]]
-          `(~(symbol "clojure.core" (clojure.core/name kname))
-             ~@(map #(list 'quote %) args)))
-        docstring  (when (string? (first references)) (first references))
-        references (if docstring (next references) references)
-        name (if docstring
-               (vary-meta name assoc :doc docstring)
-               name)
-        metadata   (when (map? (first references)) (first references))
-        references (if metadata (next references) references)
-        name (if metadata
-               (vary-meta name merge metadata)
-               name)
-        gen-class-clause (first (filter #(= :gen-class (first %)) references))
-        gen-class-call
-          (when gen-class-clause
-            (list* `gen-class :name (.replace (str name) \- \_) :impl-ns name :main true (next gen-class-clause)))
-        references (remove #(= :gen-class (first %)) references)
-        ;ns-effect (clojure.core/in-ns name)
-        ]
-    `(do
-       (clojure.core/in-ns '~name)
-       (with-loading-context
-        ~@(when gen-class-call (list gen-class-call))
-        ~@(when (and (not= name 'clojure.core) (not-any? #(= :refer-clojure (first %)) references))
-            `((clojure.core/refer '~'clojure.core)))
-        ~@(map process-reference references)))))
-
-(defmacro refer-clojure
-  "Same as (refer 'clojure.core <filters>)"
-  {:added "1.0"}
-  [& filters]
-  `(clojure.core/refer '~'clojure.core ~@filters))
 
 (defmacro defonce
   "defs name to have the root value of the expr iff the named var has no root value,
@@ -798,11 +612,6 @@
      :doc "A stack of paths currently being loaded by this thread"}
   *pending-paths* ())
 
-(defonce ^:dynamic
-  ^{:private true :doc
-     "True while a verbose load is pending"}
-  *loading-verbosely* false)
-
 (defn- throw-if
   "Throws an exception with a message if pred is true"
   [pred fmt & args]
@@ -814,22 +623,6 @@
           trace (into-array (drop 2 (drop-while boring? raw-trace)))]
       (.setStackTrace exception trace)
       (throw exception))))
-
-(defn- libspec?
-  "Returns true if x is a libspec"
-  [x]
-  (or (symbol? x)
-      (and (vector? x)
-           (or
-            (nil? (second x))
-            (keyword? (second x))))))
-
-(defn- prependss
-  "Prepends a symbol or a seq to coll"
-  [x coll]
-  (if (symbol? x)
-    (cons x coll)
-    (concat x coll)))
 
 (defn- root-resource
   "Returns the root directory path for a lib"
@@ -846,90 +639,6 @@
   (let [d (root-resource lib)]
     (subs d 0 (.lastIndexOf d "/"))))
 
-(declare load)
-
-(defn- load-one
-  "Loads a lib given its name. If need-ns, ensures that the associated
-  namespace exists after loading. If require, records the load so any
-  duplicate loads can be skipped."
-  [lib need-ns require]
-  (load (root-resource lib))
-  (throw-if (and need-ns (not (find-ns lib)))
-            "namespace '%s' not found after loading '%s'"
-            lib (root-resource lib))
-  (when require
-    (dosync
-     (commute *loaded-libs* conj lib))))
-
-(defn- load-all
-  "Loads a lib given its name and forces a load of any libs it directly or
-  indirectly loads. If need-ns, ensures that the associated namespace
-  exists after loading. If require, records the load so any duplicate loads
-  can be skipped."
-  [lib need-ns require]
-  (dosync
-   (commute *loaded-libs* #(reduce1 conj %1 %2)
-            (binding [*loaded-libs* (ref (sorted-set))]
-              (load-one lib need-ns require)
-              @*loaded-libs*))))
-
-(defn- load-lib
-  "Loads a lib with options"
-  [prefix lib & options]
-  (throw-if (and prefix (pos? (.indexOf (name lib) (int \.))))
-            "lib names inside prefix lists must not contain periods")
-  (let [lib (if prefix (symbol (str prefix \. lib)) lib)
-        opts (apply hash-map options)
-        {:keys [as reload reload-all require use verbose]} opts
-        loaded (contains? @*loaded-libs* lib)
-        load (cond reload-all
-                   load-all
-                   (or reload (not require) (not loaded))
-                   load-one)
-        need-ns (or as use)
-        filter-opts (select-keys opts '(:exclude :only :rename))]
-    (binding [*loading-verbosely* (or *loading-verbosely* verbose)]
-      (if load
-        (load lib need-ns require)
-        (throw-if (and need-ns (not (find-ns lib)))
-                  "namespace '%s' not found" lib))
-      (when (and need-ns *loading-verbosely*)
-        (printf "(clojure.core/in-ns '%s)\n" (ns-name *ns*)))
-      (when as
-        (when *loading-verbosely*
-          (printf "(clojure.core/alias '%s '%s)\n" as lib))
-        (alias as lib))
-      (when use
-        (when *loading-verbosely*
-          (printf "(clojure.core/refer '%s" lib)
-          (doseq [opt filter-opts]
-            (printf " %s '%s" (key opt) (print-str (val opt))))
-          (printf ")\n"))
-        (apply refer lib (mapcat seq filter-opts))))))
-
-(defn- load-libs
-  "Loads libs, interpreting libspecs, prefix lists, and flags for
-  forwarding to load-lib"
-  [& args]
-  (let [flags (filter keyword? args)
-        opts (interleave flags (repeat true))
-        args (filter (complement keyword?) args)]
-    ; check for unsupported options
-    (let [supported #{:as :reload :reload-all :require :use :verbose} 
-          unsupported (seq (remove supported flags))]
-      (throw-if unsupported
-                (apply str "Unsupported option(s) supplied: "
-                     (interpose \, unsupported))))
-    ; check a load target was specified
-    (throw-if (not (seq args)) "Nothing specified to load")
-    (doseq [arg args]
-      (if (libspec? arg)
-        (apply load-lib nil (prependss arg opts))
-        (let [[prefix & args] arg]
-          (throw-if (nil? prefix) "prefix cannot be nil")
-          (doseq [arg args]
-            (apply load-lib prefix (prependss arg opts))))))))
-
 (defn- check-cyclic-dependency
   "Detects and rejects non-trivial cyclic load dependencies. The
   exception message shows the dependency chain with the cycle
@@ -944,79 +653,6 @@
       (throw (Exception. (str "Cyclic load dependency: " chain))))))
 
 ;; Public
-
-(defn require
-  "Loads libs, skipping any that are already loaded. Each argument is
-  either a libspec that identifies a lib, a prefix list that identifies
-  multiple libs whose names share a common prefix, or a flag that modifies
-  how all the identified libs are loaded. Use :require in the ns macro
-  in preference to calling this directly.
-
-  Libs
-
-  A 'lib' is a named set of resources in classpath whose contents define a
-  library of Clojure code. Lib names are symbols and each lib is associated
-  with a Clojure namespace and a Java package that share its name. A lib's
-  name also locates its root directory within classpath using Java's
-  package name to classpath-relative path mapping. All resources in a lib
-  should be contained in the directory structure under its root directory.
-  All definitions a lib makes should be in its associated namespace.
-
-  'require loads a lib by loading its root resource. The root resource path
-  is derived from the lib name in the following manner:
-  Consider a lib named by the symbol 'x.y.z; it has the root directory
-  <classpath>/x/y/, and its root resource is <classpath>/x/y/z.clj. The root
-  resource should contain code to create the lib's namespace (usually by using
-  the ns macro) and load any additional lib resources.
-
-  Libspecs
-
-  A libspec is a lib name or a vector containing a lib name followed by
-  options expressed as sequential keywords and arguments.
-
-  Recognized options: :as
-  :as takes a symbol as its argument and makes that symbol an alias to the
-    lib's namespace in the current namespace.
-
-  Prefix Lists
-
-  It's common for Clojure code to depend on several libs whose names have
-  the same prefix. When specifying libs, prefix lists can be used to reduce
-  repetition. A prefix list contains the shared prefix followed by libspecs
-  with the shared prefix removed from the lib names. After removing the
-  prefix, the names that remain must not contain any periods.
-
-  Flags
-
-  A flag is a keyword.
-  Recognized flags: :reload, :reload-all, :verbose
-  :reload forces loading of all the identified libs even if they are
-    already loaded
-  :reload-all implies :reload and also forces loading of all libs that the
-    identified libs directly or indirectly load via require or use
-  :verbose triggers printing information about each load, alias, and refer
-
-  Example:
-
-  The following would load the libraries clojure.zip and clojure.set
-  abbreviated as 's'.
-
-  (require '(clojure zip [set :as s]))"
-  {:added "1.0"}
-
-  [& args]
-  (apply load-libs :require args))
-
-(defn use
-  "Like 'require, but also refers to each lib's namespace using
-  clojure.core/refer. Use :use in the ns macro in preference to calling
-  this directly.
-
-  'use accepts additional options in libspecs: :exclude, :only, :rename.
-  The arguments and semantics for :exclude, :only, and :rename are the same
-  as those documented for clojure.core/refer."
-  {:added "1.0"}
-  [& args] (apply load-libs :require :use args))
 
 (defn loaded-libs
   "Returns a sorted set of symbols naming the currently loaded libs"
@@ -1098,7 +734,6 @@
      (assoc m k (apply update-in (get m k) ks f args))
      (assoc m k (apply f (get m k) args)))))
 
-
 (defn empty?
   "Returns true if coll has no items - same as (not (seq coll)).
   Please use the idiom (seq x) rather than (not (empty? x))"
@@ -1142,21 +777,6 @@
  {:added "1.0"
    :static true}
   [coll] (instance? clojure.lang.Reversible coll))
-
-(def ^:dynamic
- ^{:doc "bound in a repl thread to the most recent value printed"
-   :added "1.0"}
- *1)
-
-(def ^:dynamic
- ^{:doc "bound in a repl thread to the second most recent value printed"
-   :added "1.0"}
- *2)
-
-(def ^:dynamic
- ^{:doc "bound in a repl thread to the third most recent value printed"
-   :added "1.0"}
- *3)
 
 (def ^:dynamic
  ^{:doc "bound in a repl thread to the most recent exception caught by the repl"
@@ -1293,10 +913,6 @@
   coercions will be done without overflow checks. Default: false."
   {:added "1.3"})
 
-(add-doc-and-meta *ns*
-  "A clojure.lang.Namespace object representing the current namespace."
-  {:added "1.0"})
-
 (add-doc-and-meta *in*
   "A java.io.Reader object representing standard input for read operations.
 
@@ -1362,7 +978,6 @@
    :static true}
   [^java.util.concurrent.Future f] (.isDone f))
 
-
 (defmacro letfn 
   "fnspec ==> (fname [params*] exprs) or (fname ([params*] exprs)+)
 
@@ -1400,7 +1015,6 @@
      ([a b] (f (if (nil? a) x a) (if (nil? b) y b)))
      ([a b c] (f (if (nil? a) x a) (if (nil? b) y b) (if (nil? c) z c)))
      ([a b c & ds] (apply f (if (nil? a) x a) (if (nil? b) y b) (if (nil? c) z c) ds)))))
-
 
 ;;;;;;; case ;;;;;;;;;;;;;
 (defn- shift-mask [shift mask x]
@@ -1515,7 +1129,6 @@
                          (into1 #{} (map #(shift-mask shift mask %) skip-check)))]
         [shift mask case-map switch-type skip-check]))))
 
-
 (defmacro case 
   "Takes an expression, and a set of clauses.
 
@@ -1577,8 +1190,6 @@
           :identity
           (let [[shift mask imap switch-type skip-check] (prep-hashes ge default tests thens)]
             `(let [~ge ~e] (case* ~ge ~shift ~mask ~default ~imap ~switch-type :hash-identity ~skip-check))))))))
-
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; helper files ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (alter-meta! (find-ns 'clojure.core) assoc :doc "Fundamental library of the Clojure language")
@@ -1720,7 +1331,6 @@
   {:added "1.1"}
   [& body] `(future-call (^{:once true} fn* [] ~@body)))
 
-
 (defn future-cancel
   "Cancels the future, if possible."
   {:added "1.1"
@@ -1772,7 +1382,6 @@
    :static true}
   [& exprs]
   `(pcalls ~@(map #(list `fn [] %) exprs)))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; clojure version number ;;;;;;;;;;;;;;;;;;;;;;
 
@@ -1856,8 +1465,6 @@
   {:added "1.1"
    :static true}
   [promise val] (promise val))
-
-
 
 (defn flatten
   "Takes any nested combination of sequential things (lists, vectors,

@@ -1,6 +1,6 @@
 (ns tests.re-tests
     (:require [tests.assertions :as assertions])
-    (:require [tests.utils :only [deftest]])
+    (:use [tests.utils :only [deftest]])
     (:require [re]))
 
 (deftest re-pattern-tests

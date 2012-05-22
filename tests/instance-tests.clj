@@ -1,6 +1,6 @@
 (ns tests.instance-tests
     (:require [tests.assertions :as assertions])
-    (:require [tests.utils :only [deftest]]))
+    (:use [tests.utils :only [deftest]]))
 
 (deftest instance-tests
     (assertions/assert-true (instance? (py/type 5) 3))
