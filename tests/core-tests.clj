@@ -1,6 +1,6 @@
 (ns tests.core-tests
     (:require [tests.assertions :as a])
-    (:require [tests.utils :only [deftest]]))
+    (:use [tests.utils :only [deftest]]))
 
 (deftest try-tests
 ;  (a/assert-true (= nil (try)))

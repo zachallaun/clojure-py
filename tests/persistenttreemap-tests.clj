@@ -1,7 +1,7 @@
 (ns tests.persistenttreemap-tests
-    (:require [clojure.lang.persistenttreemap :only [PersistentTreeMap]])
+    (:use [clojure.lang.persistenttreemap :only [PersistentTreeMap]])
     (:require [tests.assertions :as assertions])
-    (:require [tests.utils :only [deftest]]))
+    (:use [tests.utils :only [deftest]]))
 
 (def testmap (-> (PersistentTreeMap)
                  (.assoc "a" 1)

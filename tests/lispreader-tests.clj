@@ -1,6 +1,6 @@
 (ns tests.lispreader-tests
     (:require [tests.assertions :as a])
-    (:require [tests.utils :only [deftest]]))
+    (:use [tests.utils :only [deftest]]))
 
 (deftest literal-char-tests
     (a/assert-equal \tab "\t")

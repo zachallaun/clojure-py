@@ -7,13 +7,11 @@ class AbstractMethodCall(Exception):
 
 
 class ArityException(TypeError):
-    def __init__(self, s=None):
-        TypeError.__init__(self, s)
+    pass
 
 
 class CljException(Exception):
-    def __init__(self, s=None):
-        Exception.__init__(self, s)
+    pass
 
 
 class IllegalStateException(CljException):
@@ -42,9 +40,9 @@ class IllegalArgumentException(Exception):
 
 class ReaderException(Exception):
     def __init__(self, s=None, rdr=None):
-        Exception.__init__(self,
-                           s + ("" if rdr is None
-                                else " at line " + str(rdr.lineCol()[0])))
+        Exception.__init__(
+            self,
+            s + ("" if rdr is None else " at line " + str(rdr.lineCol()[0])))
 
 
 class CompilerException(Exception):
@@ -55,3 +53,8 @@ class CompilerException(Exception):
         if at:
             msg += " at {0}".format(at)
         Exception.__init__(self, msg)
+
+
+class NoNamespaceException(ImportError):
+    def __init__(self, lib, ns):
+        msg = "Importing {0} did not create namespace {1}.".format(lib, ns)

@@ -1,6 +1,6 @@
-from clojure.lang.cljkeyword import keyword
+from clojure.lang.cljkeyword import Keyword
 
-default = keyword("default")
+default = Keyword("default")
 
 class MultiMethodException(Exception):
     def __init__(self, reason):

@@ -1,6 +1,5 @@
-from clojure.lang.var import var as defineVar
+from clojure.lang.var import Var
 
-currentCompiler = defineVar()
+currentCompiler = Var()
 currentCompiler.setDynamic()
-
 

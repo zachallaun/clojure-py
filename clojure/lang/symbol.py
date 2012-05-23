@@ -1,5 +1,3 @@
-import types
-
 from clojure.lang.iprintable import IPrintable
 from clojure.lang.iobj import IObj
 from clojure.lang.cljexceptions import ArityException
@@ -8,18 +6,32 @@ from clojure.lang.named import Named
 
 class Symbol(IObj, IPrintable, Named):
     def __init__(self, *args):
-        if len(args) == 2:
-            self.ns = args[0].name if isinstance(args[0], Symbol) else args[0]
-            self.name = args[1]
+        """Symbol initializer.
+        
+        Valid calls:
+        - Symbol(symbol) -- copy,
+        - Symbol([[mapping,] str,], str) -- metadata, namespace, name.
+        """
+        if len(args) == 1:
+            arg = args[0]
+            if isinstance(arg, Symbol):
+                self._meta, self.ns, self.name = arg._meta, arg.ns, arg.name
+            else:
+                self._meta = None
+                idx = arg.rfind("/")
+                if idx == -1 or arg == "/":
+                    self.ns = None
+                    self.name = arg
+                else:
+                    self.ns = arg[:idx]
+                    self.name = arg[idx + 1:]
+        elif len(args) == 2:
             self._meta = None
+            self.ns, self.name = args
         elif len(args) == 3:
-            self._meta = args[0]
-            self.ns = args[1]
-            self.name = args[2]
+            self._meta, self.ns, self.name = args
         else:
             raise ArityException()
-        if isinstance(self.ns, types.ModuleType):
-            pass
 
     def getNamespace(self):
         return self.ns
@@ -60,25 +72,3 @@ class Symbol(IObj, IPrintable, Named):
         else:
             return self.ns + "/" + self.name
 
-
-def symbol(*args):
-    """Creates a Symbol.
-    
-    Valid calls:
-    - symbol(arg), where arg is a Symbol or a string representing a symbol
-    (ns-qualified or not).
-    - symbol(ns, str).
-    """
-    if len(args) == 1:
-        a = args[0]
-        if isinstance(a, Symbol):
-            return a
-        idx = a.rfind("/")
-        if idx == -1 or a == "/":
-            return Symbol(None, a)
-        else:
-            return Symbol(a[:idx], a[idx + 1:])
-    elif len(args) == 2:
-        return Symbol(args[0], args[1])
-    else:
-        raise ArityException()
