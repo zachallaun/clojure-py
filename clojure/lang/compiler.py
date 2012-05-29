@@ -244,39 +244,28 @@ def compileLoopStar(comp, form):
     if not isinstance(form.first(), PersistentVector):
         raise CompilerException(
             "loop* takes a vector as it's first argument", form)
-    s = form.first()
+    bindings = RT.seq(form.first())
     args = []
     code = []
-    idx = 0
-    while idx < len(s):
-        if len(s) - idx < 2:
-            raise CompilerException(
-                "loop* takes a even number of bindings", form)
-        local = s[idx]
+    if bindings and len(bindings) % 2:
+        raise CompilerException("loop* takes a even number of bindings", form)
+    while bindings:
+        local, bindings = bindings.first(), bindings.next()
+        body, bindings = bindings.first(), bindings.next()
         if not isinstance(local, Symbol) or local.ns is not None:
             raise CompilerException(
                 "bindings must be non-namespaced symbols", form)
-
-        idx += 1
-
-        body = s[idx]
-        if local in comp.aliases:
-            newlocal = Symbol("{0}_{1}".format(local, RT.nextID()))
-            code.extend(comp.compile(body))
-            comp.pushAlias(local, RenamedLocal(newlocal))
-            args.append(local)
-        else:
-            comp.pushAlias(local, RenamedLocal(local))
-            args.append(local)
-            code.extend(comp.compile(body))
-
-        code.extend(comp.getAlias(local).compileSet(comp))
-        idx += 1
-
+        code.extend(comp.compile(body))
+        alias = RenamedLocal(Symbol("{0}_{1}".format(local, RT.nextID()))
+                             if comp.getAlias(local)
+                             else local)
+        comp.pushAlias(local, alias)
+        args.append(local)
+        code.extend(alias.compileSet(comp))
     form = form.next()
     recurlabel = Label("recurLabel")
     recur = {"label": recurlabel,
-             "args": map(lambda x: comp.getAlias(x).compileSet(comp), args)}
+             "args": [comp.getAlias(arg).compileSet(comp) for arg in args]}
     code.append((recurlabel, None))
     comp.pushRecur(recur)
     code.extend(compileImplcitDo(comp, form))
@@ -287,44 +276,31 @@ def compileLoopStar(comp, form):
 
 @register_builtin("let*")
 def compileLetStar(comp, form):
-    if len(form) < 3:
+    if len(form) < 2:
         raise CompilerException("let* takes at least two args", form)
     form = form.next()
     if not isinstance(form.first(), IPersistentVector):
         raise CompilerException(
             "let* takes a vector as it's first argument", form)
-    s = form.first()
+    bindings = RT.seq(form.first())
     args = []
     code = []
-    idx = 0
-    while idx < len(s):
-        if len(s) - idx < 2:
-            raise CompilerException(
-                "let* takes a even number of bindings", form)
-        local = s[idx]
+    if bindings and len(bindings) % 2:
+        raise CompilerException("let* takes a even number of bindings", form)
+    while bindings:
+        local, bindings = bindings.first(), bindings.next()
+        body, bindings = bindings.first(), bindings.next()
         if not isinstance(local, Symbol) or local.ns is not None:
             raise CompilerException(
                 "bindings must be non-namespaced symbols", form)
-
-        idx += 1
-
-        body = s[idx]
-        if comp.getAlias(local) is not None:
-            code.extend(comp.compile(body))
-            newlocal = Symbol("{0}_{1}".format(local, RT.nextID()))
-            comp.pushAlias(local, RenamedLocal(newlocal))
-            args.append(local)
-        else:
-            code.extend(comp.compile(body))
-            comp.pushAlias(local, RenamedLocal(local))
-            args.append(local)
-
-        code.extend(comp.getAlias(local).compileSet(comp))
-
-        idx += 1
-
+        code.extend(comp.compile(body))
+        alias = RenamedLocal(Symbol("{0}_{1}".format(local, RT.nextID()))
+                             if comp.getAlias(local)
+                             else local)
+        comp.pushAlias(local, alias)
+        args.append(local)
+        code.extend(alias.compileSet(comp))
     form = form.next()
-
     code.extend(compileImplcitDo(comp, form))
     comp.popAliases(args)
     return code
@@ -706,16 +682,11 @@ def compileVector(comp, form):
 @register_builtin("recur")
 def compileRecur(comp, form):
     s = form.next()
-    idx = 0
     code = []
-    while s is not None:
-        code.extend(comp.compile(s.first()))
-        if idx >= len(comp.recurPoint.first()["args"]):
-            raise CompilerException("to many arguments to recur", form)
-
-        idx += 1
-        s = s.next()
-
+    if len(s) > len(comp.recurPoint.first()["args"]):
+        raise CompilerException("too many arguments to recur", form)
+    for recur_val in s:
+        code.extend(comp.compile(recur_val))
     sets = comp.recurPoint.first()["args"][:]
     sets.reverse()
     for x in sets:
