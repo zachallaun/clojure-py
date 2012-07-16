@@ -75,6 +75,7 @@ class AExpression(object):
         c = newCode(co_code = code, co_stacksize = max_seen, co_consts = consts, co_varnames = varnames,
                     co_argcount = argcount, co_nlocals = len(varnames), co_names = names)
         import dis
+        print c.co_varnames, c.co_argcount
         dis.dis(c)
         print("---")
         return c
@@ -260,11 +261,28 @@ class Local(AExpression, IAssignable):
 
     def emit(self, ctx):
         if self not in ctx.varnames:
-            ctx.varnames[self] = len(self.varnames)
+            ctx.varnames[self] = len(ctx.varnames)
 
         idx = ctx.varnames[self]
 
         ctx.stream.write(struct.pack("=BH", LOAD_FAST, idx))
+
+
+class Global(AExpression):
+    def __init__(self, name):
+        self.name = name
+
+    def size(self, current, max_count):
+        current += 1
+        return current, max(current, max_count)
+
+    def emit(self, ctx):
+        if self not in ctx.varnames:
+            ctx.varnames[self] = len(ctx.varnames)
+
+        idx = ctx.varnames[self]
+
+        ctx.stream.write(struct.pack("=BH", LOAD_GLOBAL, idx))
 
 class Call(AExpression):
     def __init__(self, method, *exprs):

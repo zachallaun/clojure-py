@@ -29,10 +29,9 @@ from clojure.lang.symbol import Symbol, symbol
 from clojure.lang.var import (
     Var, define, intern as internVar, var as createVar,
     pushThreadBindings, popThreadBindings)
-from clojure.util.byteplay import *
-import clojure.util.byteplay as byteplay
 import marshal
 import types
+import copy
 
 ConstNone = tr.Const(None)
 
@@ -44,6 +43,20 @@ PTR_MODE_GLOBAL = "PTR_MODE_GLOBAL"
 PTR_MODE_DEREF = "PTR_MODE_DEREF"
 
 AUDIT_CONSTS = False
+
+class ResolutionContext(object):
+    def __init__(self, comp):
+        self.aliases = comp.aliases
+        self.recurPoint = comp.recurPoint
+        self.comp = comp
+
+    def __enter__(self):
+        self.comp.aliases = copy.copy(self.comp.aliases)
+        self.comp.recurPoint = copy.copy(self.comp.recurPoint)
+
+    def __exit__(self, type, value, traceback):
+        self.comp.aliases = self.aliases
+        self.comp.recurPoint = self.recurPoint
 
 class MetaBytecode(object):
     pass
@@ -444,53 +457,28 @@ def compileDo(comp, form):
 def compileFn(comp, name, form, orgform):
     locals, args, lastisargs, argsname = unpackArgs(form.first())
 
-    for x in locals:
-        comp.pushAlias(x, FnArgument(x))
+    with ResolutionContext(comp):
+        args = []
+        for x in locals:
+            arg = tr.Argument(x.name)
+            comp.pushAlias(x, arg)
+            args.append(arg)
 
-    if orgform.meta() is not None:
-        line = orgform.meta()[LINE_KEY]
-    else:
-        line = 0
-    code = [(SetLineno,line if line is not None else 0)]
-    if lastisargs:
-        code.extend(cleanRest(argsname.name))
+        if lastisargs:
+            expr = tr.Do(cleanRest(comp.getAlias(argsname)),
+                         compileImplcitDo(comp, form.next()))
+        else:
+            expr = compileImplcitDo(comp, form.next())
 
-    recurlabel = Label("recurLabel")
-
-    recur = {"label": recurlabel,
-    "args": map(lambda x: comp.getAlias(symbol(x)).compileSet(comp), args)}
-
-    code.append((recurlabel, None))
-    comp.pushRecur(recur)
-    code.append(compileImplcitDo(comp, form.next()))
-    comp.popRecur()
-    code.append((RETURN_VALUE,None))
-    comp.popAliases(locals)
-
-    clist = map(lambda x: RT.name(x.sym), comp.closureList())
-    code = expandMetas(code, comp)
-    #c = Code(code, clist, args, lastisargs, False, True, str(symbol(comp.getNS().__name__, name.name)), comp.filename, 0, None)
-    if not clist:
-        c = types.FunctionType(c.to_code(), comp.ns.__dict__, name.name)
-
-    return [(LOAD_CONST, c)], c
+        return tr.Func(args, expr)
 
 
-def cleanRest(name):
-    label = Label("isclean")
-    code = []
-    code.append((LOAD_GLOBAL, "len"))
-    code.append((LOAD_FAST, name))
-    code.append((CALL_FUNCTION, 1))
-    code.append((LOAD_CONST, 0))
-    code.append((COMPARE_OP, "=="))
-    code.extend(emitJump(label))
-    code.append((LOAD_CONST, None))
-    code.append((STORE_FAST, name))
-    if version == 26:
-        code.append((LOAD_CONST, None))
-    code.extend(emitLanding(label))
-    return code
+def cleanRest(local):
+    return tr.StoreLocal(local,
+              tr.If(tr.Equal(tr.Call(tr.Global("len"), local),
+                                     tr.Const(0)),
+                    tr.Const(None),
+                    local))
 
 
 class MultiFn(object):
@@ -628,10 +616,10 @@ def compileFNStar(comp, form):
 
     # form = ([x] x)
     if isinstance(form.first(), IPersistentVector):
-        code, ptr = compileFn(comp, name, form, orgform)
+        expr = compileFn(comp, name, form, orgform)
     # form = (([x] x))
     elif len(form) == 1:
-        code, ptr = compileFn(comp, name, RT.list(*form.first()), orgform)
+        expr = compileFn(comp, name, RT.list(*form.first()), orgform)
     # form = (([x] x) ([x y] x))
     else:
         code, ptr = compileMultiFn(comp, name, form)
@@ -666,7 +654,7 @@ def compileFNStar(comp, form):
         code.extend(selfalias.compileSet(comp))
 
     comp.popAlias(symbol(name)) #closure
-    return code
+    return expr
 
 
 def compileVector(comp, form):
@@ -1216,13 +1204,8 @@ class Compiler(object):
         self.filename = filename
 
     def pushAlias(self, sym, alias):
-        """ Pushes this alias onto the alias stack for the entry sym.
-            if no entry is found, a new one is created """
-        if sym in self.aliases:
-            alias.rest = self.aliases[sym]
-            self.aliases[sym] = alias
-        else:
-            self.aliases[sym] = alias
+        """ Sets the alias for the given symbol """
+        self.aliases[sym] = alias
 
     def getAlias(self, sym):
         """ Retreives to top alias for this entry """
@@ -1364,7 +1347,7 @@ class Compiler(object):
             as an alias, then as a global """
             
         if sym in self.aliases:
-            return self.compileAlias(sym)
+            return self.aliases[sym]
 
         return self.compileAccessList(sym)
 
@@ -1387,12 +1370,12 @@ class Compiler(object):
         try:
             c = []
             lineset = False
-            if getattr(itm, "meta", lambda: None)() is not None:
-                line = itm.meta()[LINE_KEY]
-                if line is not None and line > self.lastlineno:
-                    lineset = True
-                    self.lastlineno = line
-                    c.append([SetLineno, line])
+            #if getattr(itm, "meta", lambda: None)() is not None:
+            #    line = itm.meta()[LINE_KEY]
+            #    if line is not None and line > self.lastlineno:
+            #        lineset = True
+            #        self.lastlineno = line
+            #        c.append([SetLineno, line])
 
             if isinstance(itm, Symbol):
                 return self.compileSymbol(itm)
