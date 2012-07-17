@@ -88,13 +88,20 @@ class GlobalPtr(tr.AExpression):
         module = self.ns
         val = getattr(module, self.name)
 
+        expr = tr.Call(getAttrChain(self.ns + "."+ self.name))
         if isinstance(val, Var):
-            if not val.isDynamic():
-                return tr.Const(val.deref()).emit(ctx)
-            else:
-                return tr.Call(tr.Attr(tr.Const(val), "deref")).emit(ctx)
+            return tr.Call(tr.Attr(expr, "deref"))
 
-        return tr.Attr(tr.Const(module), self.name).emit(ctx)
+        return expr
+        
+def maybeDeref(ns, nsname, sym):
+    val = getattr(ns, sym)
+
+    expr = tr.Call(getAttrChain(nsname.getName() + "."+ sym))
+    if isinstance(val, Var):
+        return tr.Call(tr.Attr(expr, "deref"))
+        
+    return expr
 
 
 def expandMetas(bc, comp):
@@ -1354,7 +1361,8 @@ class Compiler(object):
                            self.getNamesString(False)),
                     None)
             var = getattr(self.getNS(), RT.name(sym))
-            return GlobalPtr(self.getNS(), RT.name(sym))
+            
+            return maybeDeref(self.ns, self.nsString, RT.name(sym))
 
         if symbol(sym.ns) in getattr(self.getNS(), "__aliases__", {}):
             sym = symbol(self.getNS().__aliases__[symbol(sym.ns)].__name__, RT.name(sym))
@@ -1386,7 +1394,7 @@ class Compiler(object):
         if self.inQuote:
             return tr.Call(getAttrChain("clojure.lang.rt.symbol"),
                         tr.Const(sym.getNamespace()),
-                        tr.Const(sym.getName))
+                        tr.Const(sym.getName()))
 
 
         if sym in self.aliases:
@@ -1425,7 +1433,7 @@ class Compiler(object):
             elif isinstance(itm, PersistentList) or isinstance(itm, Cons):
                 return self.compileForm(itm)
             elif itm is None:
-                c.extend(self.compileNone(itm))
+                return self.compileNone(itm)
             elif type(itm) in [str, int, types.ClassType, type, Var]:
                 return tr.Const(itm)
             elif isinstance(itm, IPersistentVector):
@@ -1463,9 +1471,10 @@ class Compiler(object):
 
 
     def compileNone(self, itm):
-        return [(LOAD_CONST, None)]
+        return tr.Const(None)
 
     def setNS(self, ns):
+        self.nsString = ns
         self.ns = findOrCreateNamespace(ns)
 
     def getNS(self):

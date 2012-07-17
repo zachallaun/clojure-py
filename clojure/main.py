@@ -6,7 +6,6 @@ import traceback
 
 from clojure.lang.symbol import symbol
 from clojure.lang.var import Var, intern as internVar
-from clojure.util.byteplay import *
 
 # Create a PEP 302 import hook
 class MetaImporter(object):
