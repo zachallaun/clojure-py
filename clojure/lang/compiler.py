@@ -58,6 +58,16 @@ class ResolutionContext(object):
         self.comp.aliases = self.aliases
         self.comp.recurPoint = self.recurPoint
 
+class Quoted(object):
+    def __init__(self, comp):
+        self.comp = comp
+
+    def __enter__(self):
+        self.comp.inQuote = True
+
+    def __exit__(self, type, value, traceback):
+        self.comp.inQuote = False
+
 class MetaBytecode(object):
     pass
 
@@ -144,7 +154,7 @@ def compileNS(comp, form):
     if not isinstance(ns, Symbol):
         ns = comp.executeCode(comp.compile(ns))
     comp.setNS(ns)
-    return tr.Const(ns)
+    return tr.Const(None)
 
 
 @register_builtin("def")
@@ -162,11 +172,12 @@ def compileDef(comp, form):
 
     comp.pushName(RT.name(sym))
     code = []
-    v = internVar(comp.getNS(), sym)
+    i = getAttrChain("clojure.lang.var.intern")
+    v = tr.Call(i, tr.Const(comp.getNS().__name__), tr.Const(sym.getName()))
 
-    v.setDynamic(True)
+    #v.setDynamic(True)
     if len(form) == 3:
-        code = tr.Call(tr.Attr(tr.Const(v), "bindRoot"),
+        code = tr.Call(tr.Attr(v, "bindRoot"),
                            comp.compile(value))
             
         if isinstance(value, ISeq) \
@@ -177,9 +188,9 @@ def compileDef(comp, form):
             except AttributeError:
                 pass
     else:
-        code = tr.Const(v)
+        code = v
         
-    v.setMeta(sym.meta())
+    #v.setMeta(sym.meta())
     comp.popName()
     return code
 
@@ -370,9 +381,11 @@ def compileDot(comp, form):
 
 @register_builtin("quote")
 def compileQuote(comp, form):
-    if len(form) != 2:
-        raise CompilerException("Quote must only have one argument", form)
-    return [(LOAD_CONST, form.next().first())]
+    with Quoted(comp):
+        if len(form) != 2:
+            raise CompilerException("Quote must only have one argument", form)
+
+        return comp.compile(form.next().first())
 
 
 @register_builtin(symbol("py", "if"))
@@ -1026,6 +1039,26 @@ def compileTryCatchFinally(comp, body, catches, fin):
     return code
 
 
+def compileList(comp, form):
+    args = map(comp.compile, form)
+
+    return tr.Call(tr.Global("list"), *args)
+
+
+def getAttrChain(s):
+    if isinstance(s, Symbol):
+        s = s.getNamespace() + "." + s.getName()
+    if isinstance(s, str):
+        s = s.split(".")
+
+    x = tr.Global(s[0])
+    for c in s[1:]:
+        x = tr.Attr(x, c)
+
+    return x
+
+
+
 """
 We should mention a few words about aliases. Aliases are created when the
 user uses closures, fns, loop, let, or let-macro. For some forms like
@@ -1199,6 +1232,7 @@ class Compiler(object):
         self.lastlineno = -1
         self.aliases = {}
         self.filename = "<unknown>"
+        self.inQuote = False
 
     def setFile(self, filename):
         self.filename = filename
@@ -1274,6 +1308,9 @@ class Compiler(object):
         return c
 
     def compileForm(self, form):
+        if self.inQuote:
+            return compileList(self, form)
+
         if form.first() in builtins:
             return builtins[form.first()](self, form)
         form, ret = macroexpand(form, self)
@@ -1329,7 +1366,8 @@ class Compiler(object):
                 raise CompilerException(
                     "{0} does not define {1}".format(module, RT.name(sym)),
                     None)
-            return GlobalPtr(module, RT.name(sym))
+
+            return getAttrChain(sym.getNamespace() + "." + sym.getName())
 
         code = LOAD_ATTR if sym.ns else LOAD_GLOBAL
         #if not sym.ns and RT.name(sym).find(".") != -1 and RT.name(sym) != "..":
@@ -1345,7 +1383,12 @@ class Compiler(object):
     def compileSymbol(self, sym):
         """ Compiles the symbol. First the compiler tries to compile it
             as an alias, then as a global """
-            
+        if self.inQuote:
+            return tr.Call(getAttrChain("clojure.lang.rt.symbol"),
+                        tr.Const(sym.getNamespace()),
+                        tr.Const(sym.getName))
+
+
         if sym in self.aliases:
             return self.aliases[sym]
 
@@ -1439,7 +1482,7 @@ class Compiler(object):
         
         pushThreadBindings(
             {findItem(findOrCreateNamespace("clojure.core"), _NS_): ns})
-        retval = code.toFunc()()
+        retval = code.toFunc(ns.__dict__)()
         self.getNS().__file__ = self.filename
         popThreadBindings()
         return retval

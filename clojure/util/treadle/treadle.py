@@ -74,15 +74,18 @@ class AExpression(object):
 
         c = newCode(co_code = code, co_stacksize = max_seen, co_consts = consts, co_varnames = varnames,
                     co_argcount = argcount, co_nlocals = len(varnames), co_names = names)
+        print repr(expr)
         import dis
-        print c.co_varnames, c.co_argcount
+        print c.co_varnames, c.co_argcount, len(varnames)
         dis.dis(c)
         print("---")
         return c
 
-    def toFunc(self):
+    def toFunc(self, globals = None):
+        if globals is None:
+            globals = {}
         c = self.toCode()
-        return types.FunctionType(c, {})
+        return types.FunctionType(c, globals)
 
 def assertAllExpressions(exprs):
     for x in exprs:
@@ -111,10 +114,17 @@ class Return(AExpression):
         current, max_seen = self.expr.size(current, max_seen)
         return current - 1, max_seen
 
+    def __repr__(self):
+        return "Return(" + repr(self.expr) + ")"
+
+valid_const_types = {str, int, float, bool, type(None), type(type), types.CodeType}
+
 class Const(AExpression):
     """defines a constant that will generate a LOAD_CONST bytecode. Note: Const objects
        do no intern their constants, that is left to the language implementors"""
     def __init__(self, const):
+        if type(const) not in valid_const_types:
+            raise Exception("Only marshallable types allowed as Consts, got: " + str(const) + str(type(const)))
         if isinstance(const, AExpression):
             raise ExpressionNotAllowedException()
 
@@ -135,6 +145,9 @@ class Const(AExpression):
     def size(self, current, max_seen):
         current += 1
         return current, max(current, max_seen)
+
+    def __repr__(self):
+        return "Const(" + repr(self.value) + ": " + repr(type(self.value).__name__) + ")"
 
 class StoreLocal(AExpression):
     def __init__(self, local, expr):
@@ -277,12 +290,34 @@ class Global(AExpression):
         return current, max(current, max_count)
 
     def emit(self, ctx):
-        if self not in ctx.varnames:
-            ctx.varnames[self] = len(ctx.varnames)
+        if self.name not in ctx.names:
+            ctx.names[self.name] = len(ctx.names)
 
-        idx = ctx.varnames[self]
+        idx = ctx.names[self.name]
 
         ctx.stream.write(struct.pack("=BH", LOAD_GLOBAL, idx))
+
+    def __repr__(self):
+        return "Global(" + self.name+")"
+
+class Import(AExpression):
+    def __init__(self, name):
+        self.name = name
+
+    def size(self, current, max_count):
+        current += 1
+        return current, max(current, max_count)
+
+    def emit(self, ctx):
+        if self.name not in ctx.names:
+            ctx.names[self.name] = len(ctx.names)
+
+        idx = ctx.names[self.name]
+
+        ctx.stream.write(struct.pack("=BH", IMPORT_NAME, idx))
+
+    def __repr__(self):
+        return "Import(" + self.name+")"
 
 class Call(AExpression):
     def __init__(self, method, *exprs):
@@ -306,6 +341,9 @@ class Call(AExpression):
 
         ctx.stream.write(struct.pack("=BH", CALL_FUNCTION, len(self.exprs)))
 
+    def __repr__(self):
+        return "Call(" + repr(self.method) + ", [" + ", ".join(map(repr, self.exprs)) + "])"
+
 class Func(AExpression):
     def __init__(self, args, expr):
         for x in args:
@@ -321,9 +359,11 @@ class Func(AExpression):
 
     def emit(self, ctx):
         if self.value is None:
-            self.value = Const(self.toFunc())
+            self.value = Const(self.toCode())
 
         self.value.emit(ctx)
+        ctx.stream.write(struct.pack("=BH", MAKE_FUNCTION, 0))
+
 
 class Recur(AExpression):
     def __init__(self, *args):
@@ -420,6 +460,9 @@ class Attr(AExpression):
         idx = ctx.names[self.name]
         self.src.emit(ctx)
         ctx.stream.write(struct.pack("=BH", LOAD_ATTR, idx))
+
+    def __repr__(self):
+        return "Attr(" + self.name + ", " + repr(self.src) + ")"
 
 
 class Compare(AExpression):

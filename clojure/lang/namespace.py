@@ -111,7 +111,7 @@ def intern(ns, sym):
 
 
     if isinstance(sym, str):
-        sym = symbol(str)
+        sym = symbol(sym)
 
     if sym.ns is not None:
         raise InvalidArgumentException(
