@@ -94,10 +94,13 @@ class AExpression(object):
         c = self.toCode()
         return types.FunctionType(c, globals)
 
+def assertExpression(expr):
+    if not isinstance(expr, AExpression):
+        raise ExpressionRequiredException();
+
 def assertAllExpressions(exprs):
     for x in exprs:
-        if not isinstance(x, AExpression):
-            raise ExpressionRequiredException();
+        assertExpression(x)
 
 class IAssignable(object):
     """defines an expression that can be on the left side of an assign expression"""
@@ -330,6 +333,8 @@ class Call(AExpression):
     def __init__(self, method, *exprs):
         self.method = method
         self.exprs = exprs
+        assertExpression(self.method)
+        assertAllExpressions(self.exprs)
 
     def size(self, current, max_seen):
         current, max_seen = self.method.size(current, max_seen)

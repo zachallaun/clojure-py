@@ -191,17 +191,12 @@ def compileDef(comp, form):
         code = tr.Call(tr.Attr(v, "bindRoot"),
                            comp.compile(value))
             
-        if isinstance(value, ISeq) \
-           and value.first().getName() == 'fn' \
-           and sym.meta() is not None:
-            try:
-                compiledValue[0][1].__doc__ = sym.meta()[keyword('doc')]
-            except AttributeError:
-                pass
+
     else:
         code = v
 
-    code = tr.Call(tr.Attr(code, "setMeta"), comp.compile(sym.meta()))
+    with Quoted(comp):
+        code = tr.Call(tr.Attr(code, "setMeta"), comp.compile(sym.meta()))
     #v.setMeta(sym.meta())
     comp.popName()
     return code
@@ -384,8 +379,8 @@ def compileDot(comp, form):
         code = tr.Attr(code, attr)
     else:
         code = comp.compile(symbol(clss, attr))
-
-    code = tr.Call(alias, *args)
+    
+    code = tr.Call(code, *args)
     return code
 
 
@@ -409,16 +404,7 @@ def compilePyIf(comp, form):
     else:
         body2 = comp.compile(form.next().next().next().first())
 
-    elseLabel = Label("IfElse")
-    endlabel = Label("IfEnd")
-    code = cmp
-    code.extend(emitJump(elseLabel))
-    code.extend(body)
-    code.append((JUMP_ABSOLUTE, endlabel))
-    code.extend(emitLanding(elseLabel))
-    code.extend(body2)
-    code.append((endlabel, None))
-    return code
+    return tr.If(cmp, body, body2)
 
 
 @register_builtin("if*")
@@ -775,12 +761,12 @@ def compileBuiltin(comp, form):
     if len(form) != 2:
         raise CompilerException("throw requires two arguments", form)
     name = str(form.next().first())
-    return [(LOAD_CONST, getBuiltin(name))]
+    return getBuiltin(name)
 
 
 def getBuiltin(name):
     if hasattr(__builtin__, name):
-        return getattr(__builtin__, name)
+        return tr.Attr(tr.Global("__builtin__"), name)
     raise CompilerException("Python builtin {0} not found".format(name), name)
 
 
@@ -1302,12 +1288,13 @@ class Compiler(object):
             raise CompilerException(
                 "Method access must have at least one argument", form)
         c = self.compile(form.next().first())
-        c.append((LOAD_ATTR, attrname))
+        tr.Attr(c, attrname)
         s = form.next().next()
+        args = []
         while s is not None:
-            c.extend(self.compile(s.first()))
+            args.append(self.compile(s.first()))
             s = s.next()
-        c.append((CALL_FUNCTION, (len(form) - 2)))
+        c = tr.Call(c, *args)
         return c
 
     def compilePropertyAccess(self, form):
@@ -1348,7 +1335,7 @@ class Compiler(object):
 
     def compileAccessList(self, sym):
         if sym.ns == 'py':
-            return [(LOAD_CONST, getBuiltin(RT.name(sym)))]
+            return getBuiltin(RT.name(sym))
 
         code = self.getAccessCode(sym)
         return code
