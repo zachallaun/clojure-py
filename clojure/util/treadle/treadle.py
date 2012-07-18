@@ -29,6 +29,10 @@ class AExpression(object):
         locals = {}
         argcount = 0
 
+        print repr(self)
+
+
+        co_flags = 0
         if isinstance(self, Func):
             expr = self.expr
 
@@ -36,6 +40,10 @@ class AExpression(object):
                 locals[x] = len(locals)
 
             argcount = len(self.args)
+            co_flags = self.flags
+
+            if co_flags & CO_VARARGS:
+                argcount -= 1  # VARARGS don't count as args...strange
 
 
         if not isinstance(expr, Return):
@@ -73,8 +81,7 @@ class AExpression(object):
         names = tuple(names)
 
         c = newCode(co_code = code, co_stacksize = max_seen, co_consts = consts, co_varnames = varnames,
-                    co_argcount = argcount, co_nlocals = len(varnames), co_names = names)
-        print repr(expr)
+                    co_argcount = argcount, co_nlocals = len(varnames), co_names = names, co_flags = co_flags)
         import dis
         print c.co_varnames, c.co_argcount, len(varnames)
         dis.dis(c)
@@ -342,13 +349,19 @@ class Call(AExpression):
         ctx.stream.write(struct.pack("=BH", CALL_FUNCTION, len(self.exprs)))
 
     def __repr__(self):
-        return "Call(" + repr(self.method) + ", [" + ", ".join(map(repr, self.exprs)) + "])"
+        return "Call(" + repr(self.method) + ", -> " + ", ".join(map(repr, self.exprs)) + ")"
 
 class Func(AExpression):
     def __init__(self, args, expr):
         for x in args:
             if not isinstance(x, Argument):
                 raise ArgumentExpressionRequiredException()
+
+        self.flags = 67
+
+        if len(args) and isinstance(args[-1], RestArgument):
+            self.flags |= CO_VARARGS
+
         self.args = args
         self.expr = expr
         self.value = None
@@ -363,6 +376,9 @@ class Func(AExpression):
 
         self.value.emit(ctx)
         ctx.stream.write(struct.pack("=BH", MAKE_FUNCTION, 0))
+
+    def __repr__(self):
+        return "Func(" + repr(map(repr, self.args)) + " -> " + repr(self.expr) + " | " + repr(self.flags) + ")"
 
 
 class Recur(AExpression):
@@ -550,6 +566,11 @@ def _initCompareOps():
 _initCompareOps()
 
 class Argument(Local):
+    def __init__(self, name):
+        Local.__init__(self, name)
+
+
+class RestArgument(Argument):
     def __init__(self, name):
         Local.__init__(self, name)
 

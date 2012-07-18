@@ -14,7 +14,10 @@ from clojure.lang.iseq import ISeq
 from clojure.lang.var import Var
 from clojure.lang.cljexceptions import *
 from clojure.lang.sequential import Sequential
+import clojure.lang.cljkeyword
+import clojure.lang.symbol
 import clojure
+import __builtin__
 
 import dis
 import sys

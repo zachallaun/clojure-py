@@ -94,10 +94,14 @@ class GlobalPtr(tr.AExpression):
 
         return expr
         
-def maybeDeref(ns, nsname, sym):
+def maybeDeref(ns, nsname, sym, curmodulename):
     val = getattr(ns, sym)
 
-    expr = tr.Call(getAttrChain(nsname.getName() + "."+ sym))
+    if curmodulename == nsname:
+        expr = tr.Global(sym)
+    else:
+        expr = getAttrChain(nsname.getName() + "."+ sym)
+
     if isinstance(val, Var):
         return tr.Call(tr.Attr(expr, "deref"))
         
@@ -196,7 +200,8 @@ def compileDef(comp, form):
                 pass
     else:
         code = v
-        
+
+    code = tr.Call(tr.Attr(code, "setMeta"), comp.compile(sym.meta()))
     #v.setMeta(sym.meta())
     comp.popName()
     return code
@@ -376,13 +381,11 @@ def compileDot(comp, form):
     alias = comp.getAlias(clss)
     if alias:
         code = alias.compile(comp)
-        code.append((LOAD_ATTR, attr))
+        code = tr.Attr(code, attr)
     else:
         code = comp.compile(symbol(clss, attr))
 
-    for x in args:
-        code.extend(x)
-    code.append((CALL_FUNCTION, len(args)))
+    code = tr.Call(alias, *args)
     return code
 
 
@@ -478,11 +481,14 @@ def compileFn(comp, name, form, orgform):
     locals, args, lastisargs, argsname = unpackArgs(form.first())
 
     with ResolutionContext(comp):
-        args = []
-        for x in locals:
-            arg = tr.Argument(x.name)
-            comp.pushAlias(x, arg)
-            args.append(arg)
+        trargs = []
+        for x in args:
+            if lastisargs and x == args[-1]:
+                arg = tr.RestArgument(x)
+            else:
+                arg = tr.Argument(x)
+            comp.pushAlias(symbol(x), arg)
+            trargs.append(arg)
 
         if lastisargs:
             expr = tr.Do(cleanRest(comp.getAlias(argsname)),
@@ -490,12 +496,12 @@ def compileFn(comp, name, form, orgform):
         else:
             expr = compileImplcitDo(comp, form.next())
 
-        return tr.Func(args, expr)
+        return tr.Func(trargs, expr)
 
 
 def cleanRest(local):
     return tr.StoreLocal(local,
-              tr.If(tr.Equal(tr.Call(tr.Global("len"), local),
+              tr.If(tr.Equal(tr.Call(getAttrChain("__builtin__.len"), local),
                                      tr.Const(0)),
                     tr.Const(None),
                     local))
@@ -679,10 +685,9 @@ def compileFNStar(comp, form):
 
 def compileVector(comp, form):
     code = []
-    code.extend(comp.compile(symbol("clojure.lang.rt", "vector")))
     for x in form:
-        code.extend(comp.compile(x))
-    code.append((CALL_FUNCTION, len(form)))
+        code.append(comp.compile(x))
+    code = tr.Call(getAttrChain("clojure.lang.rt.vector"), *code)
     return code
 
 
@@ -721,25 +726,25 @@ def compileIs(comp, form):
 
 def compileMap(comp, form):
     s = form.seq()
-    c = 0
     code = []
-    code.extend(comp.compile(symbol("clojure.lang.rt", "map")))
     while s is not None:
         kvp = s.first()
-        code.extend(comp.compile(kvp.getKey()))
-        code.extend(comp.compile(kvp.getValue()))
-        c += 2
+        code.append(comp.compile(kvp.getKey()))
+        code.append(comp.compile(kvp.getValue()))
         s = s.next()
-    code.append([CALL_FUNCTION, c])
+
+    code = tr.Call(getAttrChain("clojure.lang.rt.map"), *code)
     return code
 
 
 def compileKeyword(comp, kw):
-    return [(LOAD_CONST, kw)]
+    return tr.Call(getAttrChain("clojure.lang.cljkeyword.keyword"),
+                   tr.Const(kw.getNamespace()),
+                   tr.Const(kw.getName()))
 
 
 def compileBool(comp, b):
-    return [(LOAD_CONST, b)]
+    return tr.Const(b)
 
 
 @register_builtin("throw")
@@ -1350,7 +1355,7 @@ class Compiler(object):
 
     def getAccessCode(self, sym):
         print sym
-        if (sym.ns is not None and sym.ns == self.getNS().__name__) \
+        if (sym.ns is not None and sym.ns == self.nsString) \
            or sym.ns is None:
             if self.getNS() is None:
                 raise CompilerException("no namespace has been defined", None)
@@ -1362,7 +1367,7 @@ class Compiler(object):
                     None)
             var = getattr(self.getNS(), RT.name(sym))
             
-            return maybeDeref(self.ns, self.nsString, RT.name(sym))
+            return maybeDeref(self.ns, self.nsString, RT.name(sym), self.nsString)
 
         if symbol(sym.ns) in getattr(self.getNS(), "__aliases__", {}):
             sym = symbol(self.getNS().__aliases__[symbol(sym.ns)].__name__, RT.name(sym))
@@ -1392,7 +1397,7 @@ class Compiler(object):
         """ Compiles the symbol. First the compiler tries to compile it
             as an alias, then as a global """
         if self.inQuote:
-            return tr.Call(getAttrChain("clojure.lang.rt.symbol"),
+            return tr.Call(getAttrChain("clojure.lang.symbol.symbol"),
                         tr.Const(sym.getNamespace()),
                         tr.Const(sym.getName()))
 
@@ -1437,13 +1442,13 @@ class Compiler(object):
             elif type(itm) in [str, int, types.ClassType, type, Var]:
                 return tr.Const(itm)
             elif isinstance(itm, IPersistentVector):
-                c.extend(compileVector(self, itm))
+                return compileVector(self, itm)
             elif isinstance(itm, IPersistentMap):
-                c.extend(compileMap(self, itm))
+                return compileMap(self, itm)
             elif isinstance(itm, Keyword):
-                c.extend(compileKeyword(self, itm))
+                return compileKeyword(self, itm)
             elif isinstance(itm, bool):
-                c.extend(compileBool(self, itm))
+                return compileBool(self, itm)
             elif isinstance(itm, EmptyList):
                 c.append((LOAD_CONST, itm))
             elif isinstance(itm, unicode):

@@ -19,7 +19,7 @@ def addDefaultImports(mod):
     import clojure.lang.rt as RT
     import clojure.standardimports as stdimps
     for i in dir(stdimps):
-        if i.startswith("_"):
+        if i.startswith("_") and i != "__builtin__":
             continue
         setattr(mod, i, getattr(stdimps, i))
     if mod.__name__ == "clojure.core":
