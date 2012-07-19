@@ -93,6 +93,23 @@ class AExpression(object):
             globals = {}
         c = self.toCode()
         return types.FunctionType(c, globals)
+        
+    def __getattr__(self, name):
+        """Map in every class in this module as a constructor so we can provide
+        it as a fluent interface"""
+        if name not in globals():
+            raise AttributeError()
+            
+        c = globals()[name]
+        
+        if type(c) != type:
+            raise AttributeError()
+        
+        def consFunc(*args):
+            return c(self, *args)
+            
+        return consFunc
+        
 
 def assertExpression(expr):
     if not isinstance(expr, AExpression):
@@ -235,10 +252,16 @@ class ABinaryOp(AExpression):
         self.a.emit(ctx)
         self.b.emit(ctx)
         ctx.stream.write(struct.pack("=B", self.op))
+        
+     
 
-class Add(ABinaryOp):
+class Slice1(ABinaryOp):
     def __init__(self, a, b):
-        ABinaryOp.__init__(self, a, b, BINARY_ADD)
+        ABinaryOp.__init__(self, a, b, globals()["SLICE+1"])
+        
+class Subscript(ABinaryOp):
+    def __init__(self, a, b):
+        ABinaryOp.__init__(self, a, b, BINARY_SUBSCR)
         
 class And(ABinaryOp):
     def __init__(self, a, b):

@@ -488,7 +488,7 @@ def cleanRest(local):
 
 
 class MultiFn(object):
-    def __init__(self, comp, form):
+    def __init__(self, comp, form, argsv):
         form = RT.seq(form)
         if len(form) < 1:
             raise CompilerException("FN defs must have at least one arg", form)
@@ -498,31 +498,22 @@ class MultiFn(object):
         body = form.next()
 
         self.locals, self.args, self.lastisargs, self.argsname = unpackArgs(argv)
-        endLabel = Label("endLabel")
-        argcode = [(LOAD_CONST, len),
-            (LOAD_FAST, '__argsv__'),
-            (CALL_FUNCTION, 1),
-            (LOAD_CONST, len(self.args) - (1 if self.lastisargs else 0)),
-            (COMPARE_OP, ">=" if self.lastisargs else "==")]
-        argcode.extend(emitJump(endLabel))
+
+        argcode = tr.GreaterOrEqual(tr.Call(getAttrChain("__builtin__.len"), argsv),
+                                   len(self.args) - (1 if self.lastisargs else 0))
+        argscode = []
         for x in range(len(self.args)):
             if self.lastisargs and x == len(self.args) - 1:
                 offset = len(self.args) - 1
-                argcode.extend([(LOAD_FAST, '__argsv__'),
-                    (LOAD_CONST, offset),
-                    (SLICE_1, None),
-                    (STORE_FAST, self.argsname.name)])
-                argcode.extend(cleanRest(self.argsname.name))
+                
+                argscode.append(cleanRest(argsv.Slice1(tr.Const(offset))
+                                               .StoreLocal(self.argsname.getName())))
             else:
-                argcode.extend([(LOAD_FAST, '__argsv__'),
-                    (LOAD_CONST, x),
-                    (BINARY_SUBSCR, None),
-                    (STORE_FAST, self.args[x])])
-
+                argscode.append(argsv.Subscript(tr.Const(x))
+                                     .StoreLocal(self.args[x]))
+                
         for x in self.locals:
-            comp.pushAlias(x, FnArgument(x))
-
-        recurlabel = Label("recurLabel")
+            comp.pushAlias(x, tr.Argument(x))
 
         recur = {"label": recurlabel,
         "args": map(lambda x: comp.getAlias(symbol(x)).compileSet(comp), self.args)}
@@ -542,9 +533,9 @@ class MultiFn(object):
 def compileMultiFn(comp, name, form):
     s = form
     argdefs = []
-
+    argsv = tr.Local("__argsv__")
     while s is not None:
-        argdefs.append(MultiFn(comp, s.first()))
+        argdefs.append(MultiFn(comp, s.first(), argsv))
         s = s.next()
     argdefs = sorted(argdefs, lambda x, y: len(x.args) < len(y.args))
     if len(filter(lambda x: x.lastisargs, argdefs)) > 1:
