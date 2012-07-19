@@ -204,34 +204,24 @@ def compileDef(comp, form):
 
 def compileBytecode(comp, form):
     codename = form.first().name
-    if not hasattr(byteplay, codename):
+    if not hasattr(tr, codename):
         raise CompilerException("bytecode {0} unknown".format(codename), form)
-    bc = getattr(byteplay, codename)
-    hasarg = bc in byteplay.hasarg
+    bc = getattr(tr, codename)
+
     form = form.next()
     arg = None
-    if hasarg:
-        arg = form.first()
-        if not isinstance(arg, (int, str, unicode)) and bc is not LOAD_CONST:
-            raise CompilerException(
-                "first argument to {0} must be int, unicode, or str".format(codename),
-                form)
 
-        arg = evalForm(arg, comp.getNS().__name__)
-        form = form.next()
-
-    se = byteplay.getse(bc, arg)
-    if form != None and se[0] != 0 and (se[0] != len(form) or se[1] > 1):
-        raise CompilerException(
-            "literal bytecode {0} not supported".format(codename), form)
     s = form
     code = []
     while s is not None:
-        code.extend(comp.compile(s.first()))
+        code.append(comp.compile(s.first()))
         s = s.next()
-    code.append((bc, arg))
-    if se[1] == 0:
-        code.append((LOAD_CONST, None))
+
+    try:
+        code = bc(*code)
+    except:
+        print "error compiling "
+
     return code
 
 
@@ -319,37 +309,41 @@ def compileLetStar(comp, form):
     args = []
     code = []
     idx = 0
-    while idx < len(s):
-        if len(s) - idx < 2:
-            raise CompilerException(
-                "let* takes a even number of bindings", form)
-        local = s[idx]
-        if not isinstance(local, Symbol) or local.ns is not None:
-            raise CompilerException(
-                "bindings must be non-namespaced symbols", form)
 
-        idx += 1
+    with ResolutionContext(comp):
+        code = []
+        while idx < len(s):
+            if len(s) - idx < 2:
+                raise CompilerException(
+                    "let* takes a even number of bindings", form)
+            local = s[idx]
+            if not isinstance(local, Symbol) or local.ns is not None:
+                raise CompilerException(
+                    "bindings must be non-namespaced symbols", form)
 
-        body = s[idx]
-        if comp.getAlias(local) is not None:
-            code.extend(comp.compile(body))
-            newlocal = symbol("{0}_{1}".format(local, RT.nextID()))
-            comp.pushAlias(local, RenamedLocal(newlocal))
-            args.append(local)
-        else:
-            code.extend(comp.compile(body))
-            comp.pushAlias(local, RenamedLocal(local))
-            args.append(local)
+            idx += 1
 
-        code.extend(comp.getAlias(local).compileSet(comp))
+            body = s[idx]
 
-        idx += 1
+            if comp.getAlias(local) is not None:
+                cb = (comp.compile(body))
+                newlocal = symbol("{0}_{1}".format(local, RT.nextID()))
+                comp.pushAlias(local, tr.Local(newlocal.getName()))
+                args.append(local)
+            else:
+                cb = comp.compile(body)
+                comp.pushAlias(local, tr.Local(local.getName()))
+                args.append(local)
 
-    form = form.next()
+            code.append(tr.StoreLocal(comp.getAlias(local), cb))
 
-    code.extend(compileImplcitDo(comp, form))
-    comp.popAliases(args)
-    return code
+            idx += 1
+
+        form = form.next()
+        code.append(compileImplcitDo(comp, form))
+        code = tr.Do(*code)
+
+        return code
 
 
 @register_builtin(".")
@@ -704,9 +698,7 @@ def compileIs(comp, form):
         raise CompilerException("is? requires 2 arguments", form)
     fst = form.next().first()
     itm = form.next().next().first()
-    code = comp.compile(fst)
-    code.extend(comp.compile(itm))
-    code.append((COMPARE_OP, "is"))
+    code = tr.Is(comp.compile(fst), comp.compile(itm))
     return code
 
 
@@ -1101,7 +1093,7 @@ class FnArgument(AAlias):
     def compile(self, comp):
         return [(LOAD_FAST, RT.name(self.sym))]
     def compileSet(self, comp):
-        return [(STORE_FAST, RT.name(self.sym))]
+        return
 
 
 class RenamedLocal(AAlias):
@@ -1288,7 +1280,7 @@ class Compiler(object):
             raise CompilerException(
                 "Method access must have at least one argument", form)
         c = self.compile(form.next().first())
-        tr.Attr(c, attrname)
+        c = tr.Attr(c, attrname)
         s = form.next().next()
         args = []
         while s is not None:
@@ -1316,7 +1308,7 @@ class Compiler(object):
         if ret:
             return form
         if isinstance(form.first(), Symbol):
-            if form.first().ns == "py.bytecode":
+            if form.first().ns == "py.treadle":
                 return compileBytecode(self, form)
             if form.first().name.startswith(".-"):
                 return self.compilePropertyAccess(form)

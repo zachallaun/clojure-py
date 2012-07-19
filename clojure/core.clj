@@ -59,6 +59,7 @@
     c. Returns true or false"
    :added "1.0"}
  instance? (fn instance? [c x] (py/isinstance x c)))
+
 (def
  ^{:arglists '([x])
    :doc "Return true if x implements ISeq"
@@ -103,11 +104,11 @@
    :added "1.0"
    :static true}
  first (fn first [s]
-         (py/if (py.bytecode/COMPARE_OP "is not" s nil)
+         (py/if (py.treadle/IsNot s nil)
            (py/if (instance? ISeq s)
              (.first s)
              (let [s (seq s)]
-               (py/if (py.bytecode/COMPARE_OP "is not" s nil)
+               (py/if (py.treadle/IsNot s nil)
                  (.first s)
                  nil)))
            nil)))
@@ -367,9 +368,9 @@
         (py/if (nil? keyvals)
           coll
           (do
-            (py/if (py.bytecode/COMPARE_OP "==" (py/len keyvals) 1)
+            (py/if (py.treadle/COMPARE_OP "==" (py/len keyvals) 1)
               (throw (py/Exception "Even number of args required to hash-map")))
-            (py/if (py.bytecode/COMPARE_OP "in" (first keyvals) coll)
+            (py/if (py.treadle/COMPARE_OP "in" (first keyvals) coll)
               (throw (py/Exception "Duplicate keys found in hash-map")))
             (recur (nnext keyvals)
               (.assoc coll
@@ -577,12 +578,12 @@
   (and thus =) as a value, not an identity, comparison."
   {:added "1.0"}
   ([x] true)
-  ([x y] (py.bytecode/COMPARE_OP "==" x y))
+  ([x y] (py.treadle/COMPARE_OP "==" x y))
   ([x y & more]
-   (py/if (py.bytecode/COMPARE_OP "==" x y)
+   (py/if (py.treadle/COMPARE_OP "==" x y)
      (py/if (next more)
        (recur y (first more) (next more))
-       (py.bytecode/COMPARE_OP "==" y (first more)))
+       (py.treadle/COMPARE_OP "==" y (first more)))
      false)))
 
 (defn not=
@@ -692,7 +693,7 @@
   throw on overflow. See also: inc'"
   {:added "1.2"
    :static true}
-  [x] (py.bytecode/BINARY_ADD x 1))
+  [x] (py.treadle/BINARY_ADD x 1))
 
 (defmacro lazy-seq
   "Takes a body of expressions that returns an ISeq or nil, and yields a
@@ -743,20 +744,20 @@
           false)
         (if (nil? o)
           false
-          (if (py.bytecode/COMPARE_OP "==" (first s) (first o))
+          (if (py.treadle/COMPARE_OP "==" (first s) (first o))
             (recur (next s) (next o))
             false)))))
   (__iter__ [self]
     (loop [s (seq self)]
       (when s
-        (py.bytecode/YIELD_VALUE (first s))
+        (py.treadle/YIELD_VALUE (first s))
         (recur (next s)))))
   (__repr__ [self]
     (loop [c []
            s (seq self)
            cnt 0]
       (if (not (nil? s))
-        (if (py.bytecode/COMPARE_OP "<" cnt 10)
+        (if (py.treadle/COMPARE_OP "<" cnt 10)
           (recur (conj c (str (first s)))
                  (next s)
                  (inc cnt))
@@ -836,30 +837,30 @@
 (deftype ArrayChunk [array off end]
   (__getitem__
     ([self i]
-      (py.bytecode/BINARY_SUBSCR array (py.bytecode/BINARY_ADD off i)))
+      (py.treadle/BINARY_SUBSCR array (py.treadle/BINARY_ADD off i)))
     ([self i not-found]
-      (if (py.bytecode/COMPARE_OP ">=" i 0)
-        (if (py.bytecode/COMPARE_OP "<" i (py/len self))
-          (py.bytecode/BINARY_SUBSCR array i)
+      (if (py.treadle/COMPARE_OP ">=" i 0)
+        (if (py.treadle/COMPARE_OP "<" i (py/len self))
+          (py.treadle/BINARY_SUBSCR array i)
           not-found)
         not-found)))
   (__len__ [self]
-    (py.bytecode/BINARY_SUBTRACT end off))
+    (py.treadle/BINARY_SUBTRACT end off))
   (dropFirst [self]
     (if (= off end)
       (throw (IllegalStateException "dropFirst of empty chunk")))
     (ArrayChunk array (inc off) end))
   (reduce [self f start]
-    (loop [ret (f start (py.bytecode/BINARY_SUBSCR array off))
+    (loop [ret (f start (py.treadle/BINARY_SUBSCR array off))
          x (inc off)]
-       (if (py.bytecode/COMPARE_OP "<" x end)
-       (recur (f ret (py.bytecode/BINARY_SUBSCR array x))
+       (if (py.treadle/COMPARE_OP "<" x end)
+       (recur (f ret (py.treadle/BINARY_SUBSCR array x))
         (inc x))
        ret))))
 
 (deftype ChunkBuffer [buffer end]
   (add [self o]
-    (py.bytecode/STORE_SUBSCR o buffer end)
+    (py.treadle/STORE_SUBSCR o buffer end)
     (py/setattr self "end" (inc end)))
   (chunk [self]
     (let [ret (ArrayChunk buffer 0 end)]
@@ -870,20 +871,20 @@
 (deftype ChunkedCons [_meta chunk _more]
   clojure.lang.aseq/ASeq
   (first [self]
-    (py.bytecode/BINARY_SUBSCR chunk 0))
+    (py.treadle/BINARY_SUBSCR chunk 0))
   (withMeta [self meta]
-    (if (py.bytecode/COMPARE_OP "is not" meta _meta)
+    (if (py.treadle/IsNot meta _meta)
       (ChunkedCons meta chunk _more)
     self))
   (meta [self] _meta)
   (next [self]
-    (if (py.bytecode/COMPARE_OP ">" (py/len chunk) 1)
+    (if (py.treadle/COMPARE_OP ">" (py/len chunk) 1)
       (ChunkedCons nil (.dropFirst chunk) _more)
       (.chunkedNext self)))
   (more [self]
-    (cond (py.bytecode/COMPARE_OP ">" (py/len chunk) 1)
+    (cond (py.treadle/COMPARE_OP ">" (py/len chunk) 1)
             (ChunkedCons nil (.dropFirst chunk) _more)
-          (py.bytecode/COMPARE_OP "is" _more nil)
+          (py.treadle/Is _more nil)
             '()
           :else
             _more))
@@ -898,7 +899,7 @@
       _more)))
 
 (defn chunk-buffer [capacity]
-  (ChunkBuffer (py.bytecode/BINARY_MULTIPLY (py/list [nil]) capacity) 0))
+  (ChunkBuffer (py.treadle/BINARY_MULTIPLY (py/list [nil]) capacity) 0))
 
 (defn chunk-append [b x]
   (.add b x))
@@ -1008,8 +1009,8 @@
   [coll] (reduce1 conj () coll))
 
 ;;; math functions
-(defn >1? [n] (py.bytecode/COMPARE_OP ">" n 1))
-(defn >0? [n] (py.bytecode/COMPARE_OP ">" n 0))
+(defn >1? [n] (py.treadle/COMPARE_OP ">" n 1))
+(defn >0? [n] (py.treadle/COMPARE_OP ">" n 0))
 
 (defn +
   "Returns the sum of nums. (+) returns 0. Does not auto-promote longs, will
@@ -1017,7 +1018,7 @@
   {:added "1.2"}
   ([] 0)
   ([x] x)
-  ([x y] (py.bytecode/BINARY_ADD x y))
+  ([x y] (py.treadle/BINARY_ADD x y))
   ([x y & more]
      (reduce1 + (+ x y) more)))
 
@@ -1027,7 +1028,7 @@
   {:added "1.2"}
   ([] 1)
   ([x] x)
-  ([x y] (py.bytecode/BINARY_MULTIPLY x y))
+  ([x y] (py.treadle/BINARY_MULTIPLY x y))
   ([x y & more]
      (reduce1 * (* x y) more)))
 
@@ -1036,7 +1037,7 @@
   divided by all of the denominators."
   {:added "1.0"}
   ([x] (/ 1 x))
-  ([x y] (py.bytecode/BINARY_DIVIDE x y))
+  ([x y] (py.treadle/BINARY_DIVIDE x y))
   ([x y & more]
    (reduce1 / (/ x y) more)))
 
@@ -1045,8 +1046,8 @@
   x and returns the result. Does not auto-promote longs, will throw on
   overflow. See also: -'"
   {:added "1.2"}
-  ([x] (py.bytecode/UNARY_NEGATIVE x))
-  ([x y] (py.bytecode/BINARY_SUBTRACT x y))
+  ([x] (py.treadle/UNARY_NEGATIVE x))
+  ([x y] (py.treadle/BINARY_SUBTRACT x y))
   ([x y & more]
      (reduce1 - (- x y) more)))
 
@@ -1056,7 +1057,7 @@
   {:added "1.0"
    :static true}
   ([x] true)
-  ([x y] (py.bytecode/COMPARE_OP "<" x y))
+  ([x y] (py.treadle/COMPARE_OP "<" x y))
   ([x y & more]
    (if (< x y)
      (if (next more)
@@ -1069,7 +1070,7 @@
   false."
   {:added "1.0"}
   ([x] true)
-  ([x y] (py.bytecode/COMPARE_OP "<=" x y))
+  ([x y] (py.treadle/COMPARE_OP "<=" x y))
   ([x y & more]
    (if (<= x y)
      (if (next more)
@@ -1082,7 +1083,7 @@
   false."
   {:added "1.0"}
   ([x] true)
-  ([x y] (py.bytecode/COMPARE_OP ">" x y))
+  ([x y] (py.treadle/COMPARE_OP ">" x y))
   ([x y & more]
    (if (> x y)
      (if (next more)
@@ -1095,7 +1096,7 @@
   false."
   {:added "1.0"}
   ([x] true)
-  ([x y] (py.bytecode/COMPARE_OP ">=" x y))
+  ([x y] (py.treadle/COMPARE_OP ">=" x y))
   ([x y & more]
    (if (>= x y)
      (if (next more)
@@ -1108,7 +1109,7 @@
   otherwise false"
   {:added "1.0"}
   ([x] true)
-  ([x y] (py.bytecode/COMPARE_OP "==" x y))
+  ([x y] (py.treadle/COMPARE_OP "==" x y))
   ([x y & more]
    (if (== x y)
      (if (next more)
@@ -1120,7 +1121,7 @@
   "Returns a number one less than num. Does not auto-promote longs, will throw
   on overflow. See also: dec'"
   {:added "1.2"}
-  [x] (py.bytecode/BINARY_SUBTRACT x 1))
+  [x] (py.treadle/BINARY_SUBTRACT x 1))
 
 (defn max
   "Returns the greatest of the nums."
@@ -1141,7 +1142,7 @@
 (defn zero?
   "Returns true if num is zero, else false"
   {:added "1.0"}
-  [x] (py.bytecode/COMPARE_OP "==" x 0))
+  [x] (py.treadle/COMPARE_OP "==" x 0))
 
 (defn pos?
   "Returns true if num is greater than zero, else false"
@@ -1157,10 +1158,10 @@
   "quot[ient] of dividing numerator by denominator."
   {:added "1.0"}
   [num div]
-    (let [q (py.bytecode/BINARY_FLOOR_DIVIDE num div)]
+    (let [q (py.treadle/BINARY_FLOOR_DIVIDE num div)]
       (if (>= q 0)
         q
-        (if (= 0 (py.bytecode/BINARY_MODULO num div))
+        (if (= 0 (py.treadle/BINARY_MODULO num div))
           q
           (inc q)))))
 
@@ -1168,7 +1169,7 @@
   "modulus of dividing numerator by denominator. Truncates toward negative infinity."
   {:added "1.0"}
   [num div]
-    (py.bytecode/BINARY_MODULO num div))
+    (py.treadle/BINARY_MODULO num div))
 
 (defn rem
   "remainder of dividing numerator by denominator."
@@ -1181,45 +1182,45 @@
 (defn bit-not
   "Bitwise complement"
   {:added "1.0"}
-  [x] (py.bytecode/UNARY_INVERT x))
+  [x] (py.treadle/UNARY_INVERT x))
 
 (defn bit-and
   "Bitwise and"
    {:added "1.0"}
-   ([x y] (py.bytecode/BINARY_AND x y))
+   ([x y] (py.treadle/BINARY_AND x y))
    ([x y & more]
      (reduce1 bit-and (bit-and x y) more)))
 
 (defn bit-or
   "Bitwise or"
   {:added "1.0"}
-  ([x y] (py.bytecode/BINARY_OR x y))
+  ([x y] (py.treadle/BINARY_OR x y))
   ([x y & more]
     (reduce1 bit-or (bit-or x y) more)))
 
 (defn bit-xor
   "Bitwise exclusive or"
   {:added "1.0"}
-  ([x y] (py.bytecode/BINARY_XOR x y))
+  ([x y] (py.treadle/BINARY_XOR x y))
   ([x y & more]
     (reduce1 bit-xor (bit-xor x y) more)))
 
 (defn bit-and-not
   "Bitwise and with complement"
   {:added "1.0"}
-  ([x y] (py.bytecode/BINARY_AND x (py.bytecode/UNARY_NOT y)))
+  ([x y] (py.treadle/BINARY_AND x (py.treadle/UNARY_NOT y)))
   ([x y & more]
     (reduce1 bit-and-not (bit-and-not x y) more)))
 
 (defn bit-shift-left
   "Bitwise shift left"
   {:added "1.0"}
-  [x n] (py.bytecode/BINARY_LSHIFT x n))
+  [x n] (py.treadle/BINARY_LSHIFT x n))
 
 (defn bit-shift-right
   "Bitwise shift right"
   {:added "1.0"}
-  [x n] (py.bytecode/BINARY_RSHIFT x n))
+  [x n] (py.treadle/BINARY_RSHIFT x n))
 
 (defn bit-clear
   "Clear bit at index n"
@@ -1239,7 +1240,7 @@
 (defn bit-test
   "Test bit at index n"
   {:added "1.0"}
-  [x n] (py.bytecode/COMPARE_OP "==" (bit-and (bit-shift-right x n) 1) 1))
+  [x n] (py.treadle/COMPARE_OP "==" (bit-and (bit-shift-right x n) 1) 1))
 
 (defn integer?
   "Returns true if n is an integer"
@@ -1335,7 +1336,7 @@
         (nil? coll)
           false
         :else
-          (py.bytecode/COMPARE_OP "in" key coll)))
+          (py.treadle/COMPARE_OP "in" key coll)))
 
 (defn get
   "Returns the value mapped to key, not-found or nil if key not present."
@@ -1347,7 +1348,7 @@
            (.valAt map key not-found)
          :else
            (if (contains? map key)
-               (py.bytecode/BINARY_SUBSCR map key)
+               (py.treadle/BINARY_SUBSCR map key)
                not-found))))
 
 (defn dissoc
@@ -2130,7 +2131,7 @@
 (defn nth
   ([coll x]
     (if (py/hasattr coll "__getitem__")
-      (py.bytecode/BINARY_SUBSCR coll x)
+      (py.treadle/BINARY_SUBSCR coll x)
       (first (drop x coll))))
   ([coll x default]
     (if (contains? coll x)
@@ -2509,7 +2510,7 @@
                                            ~gb (chunk-buffer size#)]
                                        (if (loop [~gi (int 0)]
                                              (if (< ~gi size#)
-                                               (let [~bind (py.bytecode/BINARY_SUBSCR c# ~gi)]
+                                               (let [~bind (py.treadle/BINARY_SUBSCR c# ~gi)]
                                                  ~(do-cmod mod-pairs))
                                                true))
                                          (chunk-cons
@@ -2538,7 +2539,7 @@
 (defmacro import*
   ([module syms]
     (let [module (.-name module)
-          copies (map #(list 'py.bytecode/STORE_GLOBAL
+          copies (map #(list 'py.treadle/STORE_GLOBAL
                              (name %)
                              (list 'py/getattr 'itms (name %)))
                         syms)
@@ -2760,7 +2761,7 @@
   {:added "1.0"
    :static true}
   [fmt & args]
-  (py.bytecode/BINARY_MODULO fmt args))
+  (py.treadle/BINARY_MODULO fmt args))
 
 (defn throw-if
   "Throws an exception with a message if pred is true."
@@ -3619,7 +3620,7 @@
 (defn identical?
   "Tests if 2 arguments are the same object"
   {:added "1.0"}
-  ([x y] (py.bytecode/COMPARE_OP "is" x y)))
+  ([x y] (py.treadle/Is x y)))
 
 (defn into
   "Returns a new coll consisting of to-coll with all of the items of
