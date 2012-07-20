@@ -79,9 +79,20 @@ class AExpression(object):
         for k, v in list(ctx.names.items()):
             names[v] = k
         names = tuple(names)
+        
+        freevars = [None] * (len(ctx.freevars))
+        for k, v in list(ctx.freevars.items()):
+            freevars[v] = k.name
+        freevars = tuple(freevars)
+        freevars = ()
+        
+        if freevars:
+            self.isClosure = True
+            co_flags ^= CO_NOFREE
 
         c = newCode(co_code = code, co_stacksize = max_seen, co_consts = consts, co_varnames = varnames,
-                    co_argcount = argcount, co_nlocals = len(varnames), co_names = names, co_flags = co_flags)
+                    co_argcount = argcount, co_nlocals = len(varnames), co_names = names, co_flags = co_flags,
+                    co_freevars = freevars)
         import dis
         print c.co_varnames, c.co_argcount, len(varnames)
         dis.dis(c)
@@ -313,8 +324,9 @@ class Local(AExpression, IAssignable):
 
         ctx.stream.write(struct.pack("=BH", LOAD_FAST, idx))
 
-class Closure(AExpression, IAssignable):
+class Closure(Local, IAssignable):
     def __init__(self, name):
+        assert isinstance(name, str)
         self.name = name
 
     def emit(self, ctx):
@@ -413,8 +425,16 @@ class Func(AExpression):
         if self.value is None:
             self.value = Const(self.toCode())
 
-        self.value.emit(ctx)
-        ctx.stream.write(struct.pack("=BH", MAKE_FUNCTION, 0))
+        
+        if ctx.freevars:
+            for k, v in ctx.freevars:
+                k.emit(ctx)
+                ctx.stream.write(struct.pack("=BH", LOAD_CLOSURE, v))
+            ctx.stream.write(struct.pack("=BH", BUILD_TUPLE, len(ctx.freevars)))
+            self.value.emit(ctx)
+            ctx.stream.write(struct.pack("=B", MAKE_CLOSURE))
+        else:
+            ctx.stream.write(struct.pack("=BH", MAKE_FUNCTION, 0))
 
     def __repr__(self):
         return "Func(" + repr(map(repr, self.args)) + " -> " + repr(self.expr) + " | " + repr(self.flags) + ")"
@@ -630,6 +650,7 @@ class Context(object):
         self.varnames = varnames
         self.recurPoint = recurPoint
         self.names = {}
+        self.freevars = {}
 
 
 

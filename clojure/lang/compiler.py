@@ -569,7 +569,7 @@ def compileFNStar(comp, form):
     if len(comp.aliases) > 0: # we might have closures to deal with
         for x in comp.aliases:
 
-            comp.pushAlias(x, Closure(x))
+            comp.pushAlias(x, tr.Closure(x.getName()))
             aliases.append(x)
         haslocalcaptures = True
 
@@ -596,7 +596,7 @@ def compileFNStar(comp, form):
     # closure cell. Then after we create the closure with MAKE_CLOSURE we'll
     # populate this var with the correct value
 
-    selfalias = Closure(name)
+    selfalias = tr.Closure(name.getName())
     comp.pushAlias(name, selfalias)
 
     # form = ([x] x)
@@ -612,31 +612,8 @@ def compileFNStar(comp, form):
     if pushed:
         comp.popName()
 
-    clist = comp.closureList()
     fcode = []
 
-    if haslocalcaptures:
-        comp.popAliases(aliases)
-
-    if clist:
-        for x in clist:
-            if x is not selfalias:   #we'll populate selfalias later
-                fcode.extend(comp.getAlias(x.sym).compile(comp))  # Load our local version
-                fcode.append((STORE_DEREF, RT.name(x.sym)))            # Store it in a Closure Cell
-            fcode.append((LOAD_CLOSURE, RT.name(x.sym)))           # Push the cell on the stack
-        fcode.append((BUILD_TUPLE, len(clist)))
-        fcode.extend(code)
-        fcode.append((MAKE_CLOSURE, 0))
-        code = fcode
-
-    if selfalias in clist:
-        prefix = []
-        prefix.append((LOAD_CONST, None))
-        prefix.extend(selfalias.compileSet(comp))
-        prefix.extend(code)
-        code = prefix
-        code.append((DUP_TOP, None))
-        code.extend(selfalias.compileSet(comp))
 
     return expr
 
@@ -760,7 +737,7 @@ def compileLetMacro(comp, form):
         s = s.next()
     body = form.next()
     code = compileImplcitDo(comp, body)
-    comp.popAliases(syms)
+
     return code
 
 
@@ -1086,21 +1063,6 @@ class RenamedLocal(AAlias):
         return [(STORE_FAST, RT.name(self.newsym))]
 
 
-class Closure(AAlias):
-    """Represents a value that is contained in a closure"""
-    def __init__(self, sym, rest = None):
-        AAlias.__init__(self, rest)
-        self.sym = sym
-        self.isused = False  ## will be set to true whenever this is compiled
-    def isUsed(self):
-        return self.isused
-    def compile(self, comp):
-        self.isused = True
-        return [(LOAD_DEREF, RT.name(self.sym))]
-    def compileSet(self, comp):
-        return [(STORE_DEREF, RT.name(self.sym))]
-
-
 class LocalMacro(AAlias):
     """represents a value that represents a local macro"""
     def __init__(self, sym, macroform, rest = None):
@@ -1357,14 +1319,6 @@ class Compiler(object):
         if alias is None:
             raise CompilerException("Unknown Local {0}".format(sym), None)
         return alias.compile(self)
-
-    def closureList(self):
-        closures = []
-        for x in self.aliases:
-            alias = self.aliases[x]
-            if isinstance(alias, Closure) and alias.isUsed():
-                closures.append(alias)
-        return closures
 
     def compile(self, itm):
         try:
