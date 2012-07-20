@@ -79,7 +79,7 @@ class GlobalPtr(tr.AExpression):
 
     def size(self, current, max_seen):
         # +3 just to be safe
-        return current + 1, max(max_seen, current + 3) 
+        return current + 1, max(max_seen, current + 3)
 
     def __repr__(self):
         return "GblPtr<%s/%s>" % (self.ns.__name__, self.name)
@@ -93,7 +93,7 @@ class GlobalPtr(tr.AExpression):
             return tr.Call(tr.Attr(expr, "deref"))
 
         return expr
-        
+
 def maybeDeref(ns, nsname, sym, curmodulename):
     val = getattr(ns, sym)
 
@@ -104,7 +104,7 @@ def maybeDeref(ns, nsname, sym, curmodulename):
 
     if isinstance(val, Var):
         return tr.Call(tr.Attr(expr, "deref"))
-        
+
     return expr
 
 
@@ -178,7 +178,7 @@ def compileDef(comp, form):
         value = form.next().next().first()
     if sym.ns is None:
         ns = comp.getNS()
-    else:                                        
+    else:
         ns = sym.ns
 
     comp.pushName(RT.name(sym))
@@ -190,7 +190,7 @@ def compileDef(comp, form):
     if len(form) == 3:
         code = tr.Call(tr.Attr(v, "bindRoot"),
                            comp.compile(value))
-            
+
 
     else:
         code = v
@@ -373,7 +373,7 @@ def compileDot(comp, form):
         code = tr.Attr(code, attr)
     else:
         code = comp.compile(symbol(clss, attr))
-    
+
     code = tr.Call(code, *args)
     return code
 
@@ -418,7 +418,7 @@ def compileIfStar(comp, form):
     elseLabel = Label("IfElse")
     endlabel = Label("IfEnd")
     condresult = tr.Local(garg(0).name)
-    
+
     code = tr.Do(tr.StoreLocal(cmp),
                  tr.If(tr.And(IsNot(condresult, tr.ConstNone),
                               IsNot(condresult, tr.ConstFalse)),
@@ -489,51 +489,44 @@ def cleanRest(local):
 
 class MultiFn(object):
     def __init__(self, comp, form, argsv):
-        form = RT.seq(form)
-        if len(form) < 1:
-            raise CompilerException("FN defs must have at least one arg", form)
-        argv = form.first()
-        if not isinstance(argv, PersistentVector):
-            raise CompilerException("FN arg list must be a vector", form)
-        body = form.next()
+        with ResolutionContext():
+            form = RT.seq(form)
+            if len(form) < 1:
+                raise CompilerException("FN defs must have at least one arg", form)
+            argv = form.first()
+            if not isinstance(argv, PersistentVector):
+                raise CompilerException("FN arg list must be a vector", form)
+            body = form.next()
 
-        self.locals, self.args, self.lastisargs, self.argsname = unpackArgs(argv)
+            self.locals, self.args, self.lastisargs, self.argsname = unpackArgs(argv)
 
-        argcode = tr.GreaterOrEqual(tr.Call(getAttrChain("__builtin__.len"), argsv),
-                                   len(self.args) - (1 if self.lastisargs else 0))
-        argscode = []
-        for x in range(len(self.args)):
-            if self.lastisargs and x == len(self.args) - 1:
-                offset = len(self.args) - 1
-                
-                argscode.append(cleanRest(argsv.Slice1(tr.Const(offset))
-                                               .StoreLocal(self.argsname.getName())))
-            else:
-                argscode.append(argsv.Subscript(tr.Const(x))
-                                     .StoreLocal(self.args[x]))
-                
-        for x in self.locals:
-            comp.pushAlias(x, tr.Argument(x))
+            argcode = tr.GreaterOrEqual(
+                tr.Call(getAttrChain("__builtin__.len"), argsv),
+                len(self.args) - (1 if self.lastisargs else 0))
+            argscode = []
+            for x in range(len(self.args)):
+                if self.lastisargs and x == len(self.args) - 1:
+                    offset = len(self.args) - 1
 
-        recur = {"label": recurlabel,
-        "args": map(lambda x: comp.getAlias(symbol(x)).compileSet(comp), self.args)}
+                    argscode.append(cleanRest(argsv.Slice1(tr.Const(offset))
+                                              .StoreLocal(self.argsname.getName())))
+                else:
+                    argscode.append(argsv.Subscript(tr.Const(x))
+                                    .StoreLocal(self.args[x]))
 
-        bodycode = [(recurlabel, None)]
-        comp.pushRecur(recur)
-        bodycode.extend(compileImplcitDo(comp, body))
-        bodycode.append((RETURN_VALUE, None))
-        bodycode.extend(emitLanding(endLabel))
-        comp.popRecur()
-        comp.popAliases(self.locals)
+            for x in self.locals:
+                comp.pushAlias(x, tr.Argument(x))
 
-        self.argcode = argcode
-        self.bodycode = bodycode
+            bodycode = compileImplcitDo(comp, body).Return()
+
+            self.argcode = argcode
+            self.bodycode = bodycode
 
 
 def compileMultiFn(comp, name, form):
     s = form
     argdefs = []
-    argsv = tr.Local("__argsv__")
+    argsv = tr.Argument("__argsv__")
     while s is not None:
         argdefs.append(MultiFn(comp, s.first(), argsv))
         s = s.next()
@@ -547,30 +540,25 @@ def compileMultiFn(comp, name, form):
     if len(argdefs) == 1 and not argdefs[0].lastisargs:
         hasvararg = False
         argslist = argdefs[0].args
-        code.extend(argdefs[0].bodycode)
+        code.append(argdefs[0].bodycode)
     else:
         hasvararg = True
-        argslist = ["__argsv__"]
         for x in argdefs:
-            code.extend(x.argcode)
+            code.append(tr.If(x.argcode, x.bodycode))
             code.extend(x.bodycode)
 
-        code.append((LOAD_CONST, Exception))
-        code.append((CALL_FUNCTION, 0))
-        code.append((RAISE_VARARGS, 1))
+        code.append(tr.Global("Exception")
+                      .Call(tr.Const("Bad Arity")
+                      .Raise()))
 
-    clist = map(lambda x: RT.name(x.sym), comp.closureList())
-    code = expandMetas(code, comp)
-    #c = Code(code, clist, argslist, hasvararg, False, True, str(symbol(comp.getNS().__name__, name.name)), comp.filename, 0, None)
-    if not clist:
-        c = types.FunctionType(c.to_code(), comp.ns.__dict__, name.name)
-    return [(LOAD_CONST, c)], c
+
+    return tr.Func([argsv], tr.Do(*code))
 
 
 def compileImplcitDo(comp, form):
     def cmpl(f):
         return comp.compile(f)
-        
+
     return tr.Do(*map(cmpl, form))
 
 
@@ -650,7 +638,6 @@ def compileFNStar(comp, form):
         code.append((DUP_TOP, None))
         code.extend(selfalias.compileSet(comp))
 
-    comp.popAlias(symbol(name)) #closure
     return expr
 
 
@@ -1228,19 +1215,6 @@ class Compiler(object):
             return self.aliases[sym]
         return None
 
-    def popAlias(self, sym):
-        """ Removes the top alias for this entry. If the entry would be
-            empty after this pop, the entry is deleted """
-        if sym in self.aliases and self.aliases[sym].rest is None:
-            del self.aliases[sym]
-            return
-        self.aliases[sym] = self.aliases[sym].rest
-        return
-
-    def popAliases(self, syms):
-        for x in syms:
-            self.popAlias(x)
-
     def pushRecur(self, label):
         """ Pushes a new recursion label. All recur calls will loop back to this point """
         self.recurPoint = RT.cons(label, self.recurPoint)
@@ -1336,7 +1310,7 @@ class Compiler(object):
                            self.getNamesString(False)),
                     None)
             var = getattr(self.getNS(), RT.name(sym))
-            
+
             return maybeDeref(self.ns, self.nsString, RT.name(sym), self.nsString)
 
         if symbol(sym.ns) in getattr(self.getNS(), "__aliases__", {}):
@@ -1463,7 +1437,7 @@ class Compiler(object):
             return None
         print(code)
 
-        
+
         pushThreadBindings(
             {findItem(findOrCreateNamespace("clojure.core"), _NS_): ns})
         retval = code.toFunc(ns.__dict__)()

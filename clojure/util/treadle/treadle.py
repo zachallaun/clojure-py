@@ -93,27 +93,27 @@ class AExpression(object):
             globals = {}
         c = self.toCode()
         return types.FunctionType(c, globals)
-        
+
     def __getattr__(self, name):
         """Map in every class in this module as a constructor so we can provide
         it as a fluent interface"""
         if name not in globals():
-            raise AttributeError()
-            
+            raise AttributeError("Can't find " + name)
+
         c = globals()[name]
-        
+
         if type(c) != type:
-            raise AttributeError()
-        
+            raise AttributeError("Can't find "+name)
+
         def consFunc(*args):
             return c(self, *args)
-            
+
         return consFunc
-        
+
 
 def assertExpression(expr):
     if not isinstance(expr, AExpression):
-        raise ExpressionRequiredException();
+        raise ExpressionRequiredException("Expected AExpression, got " + str(type(expr)));
 
 def assertAllExpressions(exprs):
     for x in exprs:
@@ -252,20 +252,20 @@ class ABinaryOp(AExpression):
         self.a.emit(ctx)
         self.b.emit(ctx)
         ctx.stream.write(struct.pack("=B", self.op))
-        
-     
+
+
 
 class Slice1(ABinaryOp):
     def __init__(self, a, b):
         ABinaryOp.__init__(self, a, b, globals()["SLICE+1"])
-        
+
 class Subscript(ABinaryOp):
     def __init__(self, a, b):
         ABinaryOp.__init__(self, a, b, BINARY_SUBSCR)
-        
+
 class And(ABinaryOp):
     def __init__(self, a, b):
-        ABinaryOp.__init__(self, a, b, BINARY_AND)        
+        ABinaryOp.__init__(self, a, b, BINARY_AND)
 
 class Subtract(ABinaryOp):
     def __init__(self, a, b):
@@ -313,6 +313,17 @@ class Local(AExpression, IAssignable):
 
         ctx.stream.write(struct.pack("=BH", LOAD_FAST, idx))
 
+class Closure(AExpression, IAssignable):
+    def __init__(self, name):
+        self.name = name
+
+    def emit(self, ctx):
+        if self not in ctx.freevars:
+            ctx.freevars[self] = len(ctx.freevars)
+
+        idx = ctx.freevars[self]
+
+        ctx.stream.write(struct.pack("=BH", LOAD_DEREF, idx))
 
 class Global(AExpression):
     def __init__(self, name):
@@ -449,34 +460,34 @@ class AbstractBuilder(AExpression):
         for x in self.exprs:
             x.emit(ctx)
         ctx.stream.write(struct.pack("=BH", self.buildbc, len(self.exprs)))
-        
+
 class Dict(AExpression):
     """Builds a dict from the given expressions"""
     def __init__(self, *exprs):
         assertAllExpressions(exprs)
         self.exprs = exprs
-    
+
     def size(self, current, max_seen):
         current += 1
         max_seen = max(current, max_seen)
-        
+
         for i in range(0, len(self.exprs), 2):
             current, max_seen = self.exprs[i+1].size(current, max_seen)
             current, max_seen = self.exprs[i].size(current, max_seen)
             current -= 2
-        
+
         return current, max_seen
-        
+
     def emit(self, ctx):
         ctx.stream.write(struct.pack("=BH", BUILD_MAP, int(len(self.exprs) / 2)))
-        
+
         for i in range(0, len(self.exprs), 2):
             self.exprs[i+1].emit(ctx)  # Key is popped first, so push value first
             self.exprs[i].emit(ctx)
             ctx.stream.write(struct.pack("=B", STORE_MAP))
-        
-        
-            
+
+
+
 
 class Tuple(AbstractBuilder):
     def __init__(self, *exprs):
@@ -526,7 +537,7 @@ class Compare(AExpression):
         self.expr2.emit(ctx)
 
         ctx.stream.write(struct.pack("=BH", COMPARE_OP, self.op))
-        
+
 
 class Raise(AExpression):
     def __init__(self, expr):
