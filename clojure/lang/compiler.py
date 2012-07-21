@@ -46,11 +46,11 @@ AUDIT_CONSTS = False
 
 class ResolutionContext(object):
     def __init__(self, comp):
-        self.aliases = comp.aliases
-        self.recurPoint = comp.recurPoint
         self.comp = comp
 
     def __enter__(self):
+        self.aliases = self.comp.aliases
+        self.recurPoint = self.comp.recurPoint
         self.comp.aliases = copy.copy(self.comp.aliases)
         self.comp.recurPoint = copy.copy(self.comp.recurPoint)
 
@@ -481,15 +481,18 @@ def compileFn(comp, name, form, orgform):
 
 def cleanRest(local):
     return tr.StoreLocal(local,
-              tr.If(tr.Equal(tr.Call(getAttrChain("__builtin__.len"), local),
-                                     tr.Const(0)),
-                    tr.Const(None),
-                    local))
+                         getAttrChain("__builtin__.len")
+                                    .Call(local)
+                                    .Equal(tr.Const(0))
+                                    .If(tr.Const(None), local))
+
+
+
 
 
 class MultiFn(object):
     def __init__(self, comp, form, argsv):
-        with ResolutionContext():
+        with ResolutionContext(comp):
             form = RT.seq(form)
             if len(form) < 1:
                 raise CompilerException("FN defs must have at least one arg", form)
@@ -502,7 +505,7 @@ class MultiFn(object):
 
             argcode = tr.GreaterOrEqual(
                 tr.Call(getAttrChain("__builtin__.len"), argsv),
-                len(self.args) - (1 if self.lastisargs else 0))
+                tr.Const(len(self.args) - (1 if self.lastisargs else 0)))
             argscode = []
             for x in range(len(self.args)):
                 if self.lastisargs and x == len(self.args) - 1:
@@ -515,7 +518,7 @@ class MultiFn(object):
                                     .StoreLocal(self.args[x]))
 
             for x in self.locals:
-                comp.pushAlias(x, tr.Argument(x))
+                comp.pushAlias(x, tr.Argument(x.getName()))
 
             bodycode = compileImplcitDo(comp, body).Return()
 
@@ -545,7 +548,6 @@ def compileMultiFn(comp, name, form):
         hasvararg = True
         for x in argdefs:
             code.append(tr.If(x.argcode, x.bodycode))
-            code.extend(x.bodycode)
 
         code.append(tr.Global("Exception")
                       .Call(tr.Const("Bad Arity")
@@ -564,58 +566,48 @@ def compileImplcitDo(comp, form):
 
 @register_builtin("fn*")
 def compileFNStar(comp, form):
-    haslocalcaptures = False
-    aliases = []
-    if len(comp.aliases) > 0: # we might have closures to deal with
-        for x in comp.aliases:
+    with ResolutionContext(comp):
+        if len(comp.aliases) > 0: # we might have closures to deal with
+            for x in comp.aliases:
+                comp.pushAlias(x, tr.Closure(comp.getAlias(x).name, comp.getAlias(x)))
 
-            comp.pushAlias(x, tr.Closure(x.getName()))
-            aliases.append(x)
-        haslocalcaptures = True
-
-    orgform = form
-    if len(form) < 2:
-        raise CompilerException("2 or more arguments to fn* required", form)
-    form = form.next()
-    name = form.first()
-    pushed = False
-
-    if not isinstance(name, Symbol):
-        name = comp.getNamesString() + "_auto_"
-    else:
-        comp.pushName(name.name)
-        pushed = True
+        orgform = form
+        if len(form) < 2:
+            raise CompilerException("2 or more arguments to fn* required", form)
         form = form.next()
+        name = form.first()
+        pushed = False
 
-    name = symbol(name)
+        if not isinstance(name, Symbol):
+            name = comp.getNamesString() + "_auto_"
+        else:
+            comp.pushName(name.name)
+            pushed = True
+            form = form.next()
 
-    # This is fun stuff here. The idea is that we want closures to be able
-    # to call themselves. But we can't get a pointer to a closure until after
-    # it's created, which is when we actually run this code. So, we're going to
-    # create a tmp local that is None at first, then pass that in as a possible
-    # closure cell. Then after we create the closure with MAKE_CLOSURE we'll
-    # populate this var with the correct value
+        name = symbol(name)
 
-    selfalias = tr.Closure(name.getName())
-    comp.pushAlias(name, selfalias)
-
-    # form = ([x] x)
-    if isinstance(form.first(), IPersistentVector):
-        expr = compileFn(comp, name, form, orgform)
-    # form = (([x] x))
-    elif len(form) == 1:
-        expr = compileFn(comp, name, RT.list(*form.first()), orgform)
-    # form = (([x] x) ([x y] x))
-    else:
-        code, ptr = compileMultiFn(comp, name, form)
-
-    if pushed:
-        comp.popName()
-
-    fcode = []
+        # This is fun stuff here. The idea is that we want closures to be able
+        # to call themselves. But we can't get a pointer to a closure until after
+        # it's created, which is when we actually run this code. So, we're going to
+        # create a tmp local that is None at first, then pass that in as a possible
+        # closure cell. Then after we create the closure with MAKE_CLOSURE we'll
+        # populate this var with the correct value
 
 
-    return expr
+        # form = ([x] x)
+        if isinstance(form.first(), IPersistentVector):
+            expr = compileFn(comp, name, form, orgform)
+        # form = (([x] x))
+        elif len(form) == 1:
+            expr = compileFn(comp, name, RT.list(*form.first()), orgform)
+        # form = (([x] x) ([x y] x))
+        else:
+            expr = compileMultiFn(comp, name, form)
+
+
+
+        return expr
 
 
 def compileVector(comp, form):
@@ -628,23 +620,8 @@ def compileVector(comp, form):
 
 @register_builtin("recur")
 def compileRecur(comp, form):
-    s = form.next()
-    idx = 0
-    code = []
-    while s is not None:
-        code.extend(comp.compile(s.first()))
-        if idx >= len(comp.recurPoint.first()["args"]):
-            raise CompilerException("to many arguments to recur", form)
+    return tr.Recur(*map(comp.compile, form.next()))
 
-        idx += 1
-        s = s.next()
-
-    sets = comp.recurPoint.first()["args"][:]
-    sets.reverse()
-    for x in sets:
-        code.extend(x)
-    code.append((JUMP_ABSOLUTE, comp.recurPoint.first()["label"]))
-    return code
 
 
 @register_builtin("is?")

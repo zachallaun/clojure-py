@@ -79,13 +79,13 @@ class AExpression(object):
         for k, v in list(ctx.names.items()):
             names[v] = k
         names = tuple(names)
-        
+
         freevars = [None] * (len(ctx.freevars))
         for k, v in list(ctx.freevars.items()):
             freevars[v] = k.name
         freevars = tuple(freevars)
-        freevars = ()
-        
+
+        self.isClosure = False
         if freevars:
             self.isClosure = True
             co_flags ^= CO_NOFREE
@@ -94,15 +94,14 @@ class AExpression(object):
                     co_argcount = argcount, co_nlocals = len(varnames), co_names = names, co_flags = co_flags,
                     co_freevars = freevars)
         import dis
-        print c.co_varnames, c.co_argcount, len(varnames)
         dis.dis(c)
         print("---")
-        return c
+        return c, ctx.freevars
 
     def toFunc(self, globals = None):
         if globals is None:
             globals = {}
-        c = self.toCode()
+        c, f = self.toCode()
         return types.FunctionType(c, globals)
 
     def __getattr__(self, name):
@@ -310,6 +309,7 @@ class Do(AExpression):
 
 class Local(AExpression, IAssignable):
     def __init__(self, name):
+        assert isinstance(name, str)
         self.name = name
 
     def size(self, current, max_count):
@@ -325,11 +325,13 @@ class Local(AExpression, IAssignable):
         ctx.stream.write(struct.pack("=BH", LOAD_FAST, idx))
 
 class Closure(Local, IAssignable):
-    def __init__(self, name):
-        assert isinstance(name, str)
+    def __init__(self, name, src):
+        assertExpression(src)
         self.name = name
+        self.src = src
 
     def emit(self, ctx):
+
         if self not in ctx.freevars:
             ctx.freevars[self] = len(ctx.freevars)
 
@@ -337,8 +339,21 @@ class Closure(Local, IAssignable):
 
         ctx.stream.write(struct.pack("=BH", LOAD_DEREF, idx))
 
+    def emitPreamble(self, ctx):
+        if self not in ctx.freevars:
+            ctx.freevars[self] = len(ctx.freevars)
+
+        idx = ctx.freevars[self]
+
+        self.src.emit(ctx)
+        ctx.stream.write(struct.pack("=BHBH", STORE_DEREF, idx, LOAD_CLOSURE, idx))
+
+    def __repr__(self):
+        return "Closure(" + repr(self.src) + ", " + self.name + ")"
+
 class Global(AExpression):
     def __init__(self, name):
+        assert isinstance(name, str)
         self.name = name
 
     def size(self, current, max_count):
@@ -423,17 +438,18 @@ class Func(AExpression):
 
     def emit(self, ctx):
         if self.value is None:
-            self.value = Const(self.toCode())
+            self.code, self.usedFreeVars = self.toCode()
+            self.value = Const(self.code)
 
-        
-        if ctx.freevars:
-            for k, v in ctx.freevars:
-                k.emit(ctx)
-                ctx.stream.write(struct.pack("=BH", LOAD_CLOSURE, v))
+        print self.usedFreeVars
+        if self.usedFreeVars:
+            for x in self.usedFreeVars:
+                x.emitPreamble(ctx)
             ctx.stream.write(struct.pack("=BH", BUILD_TUPLE, len(ctx.freevars)))
             self.value.emit(ctx)
-            ctx.stream.write(struct.pack("=B", MAKE_CLOSURE))
+            ctx.stream.write(struct.pack("=BH", MAKE_CLOSURE, 0))
         else:
+            self.value.emit(ctx)
             ctx.stream.write(struct.pack("=BH", MAKE_FUNCTION, 0))
 
     def __repr__(self):
@@ -542,6 +558,7 @@ class Attr(AExpression):
 
 class Compare(AExpression):
     def __init__(self, expr1, expr2, op):
+        assertAllExpressions([expr1, expr2])
         self.expr1 = expr1
         self.expr2 = expr2
         self.op = op

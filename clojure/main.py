@@ -39,14 +39,14 @@ VERSION = "0.2.4"
 
 
 
-def requireClj(filename, stopafter="vector"):
+def requireClj(filename, stopafter="rest"):
     with open(filename) as fl:
         r = StringReader(fl.read())
 
     RT.init()
     comp = Compiler()
     comp.setFile(filename)
-    
+
     pushThreadBindings({currentCompiler: comp})
 
     #o = open(filename+".cljc", "w")
@@ -60,7 +60,7 @@ def requireClj(filename, stopafter="vector"):
             try:
                 res = comp.compile(s)
                 print s, res
-                
+
                 comp.executeCode(res)
                 if stopafter is not None and hasattr(comp.getNS(), stopafter):
                     break
@@ -80,11 +80,11 @@ import clojure.core
 def main():
     RT.init()
     comp = Compiler()
-    
+
     pushThreadBindings({currentCompiler: comp})
-    
+
     try:
-    
+
         if not sys.argv[1:]:
             import clojure.repl
             clojure.repl.enable_readline()
