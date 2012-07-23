@@ -676,8 +676,15 @@
     (a/assert-equal (get-in foo [:x]) {:y [1]})
     (a/assert-equal (get-in foo [:z]) nil)
 
+    (a/assert-equal (assoc-in foo [:x :z] 1)
+                    {:x {:y [1] :z 1}})
+    (a/assert-equal (assoc-in foo [:x :a :b] 1)
+                    {:x {:y [1] :a {:b 1}}})
+
     (a/assert-equal (update-in foo [:x :y] conj 2)
-                    {:x {:y [1 2]}})))
+                    {:x {:y [1 2]}})
+    (a/assert-equal (update-in foo [:x :z] conj 1)
+                    {:x {:y [1], :z '(1)}})))
 
 (deftest do-tests
     (a/assert-equal (do) nil)
