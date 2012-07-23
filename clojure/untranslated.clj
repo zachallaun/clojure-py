@@ -50,7 +50,7 @@
 (defmacro lazy-cat
   "Expands to code which yields a lazy sequence of the concatenation
   of the supplied colls.  Each coll expr is not evaluated until it is
-  needed. 
+  needed.
 
   (lazy-cat xs ys zs) === (concat (lazy-seq xs) (lazy-seq ys) (lazy-seq zs))"
   {:added "1.0"}
@@ -188,7 +188,7 @@
                    (lazy-seq
                     ((fn [[f :as xs] seen]
                       (when-let [s (seq xs)]
-                        (if (contains? seen f) 
+                        (if (contains? seen f)
                           (recur (rest s) seen)
                           (cons f (step (rest s) (conj seen f))))))
                      xs seen)))]
@@ -286,7 +286,7 @@
   ([n f] (take n (repeatedly f))))
 
 (defn add-classpath
-  "DEPRECATED 
+  "DEPRECATED
 
   Adds the url (String or URL object) to the classpath per
   URLClassLoader.addURL"
@@ -327,8 +327,8 @@
 
 (defmacro amap
   "Maps an expression across an array a, using an index named idx, and
-  return value named ret, initialized to a clone of a, then setting 
-  each element of ret to the evaluation of expr, returning the new 
+  return value named ret, initialized to a clone of a, then setting
+  each element of ret to the evaluation of expr, returning the new
   array ret."
   {:added "1.0"}
   [a idx ret expr]
@@ -343,7 +343,7 @@
 
 (defmacro areduce
   "Reduces an expression across an array a, using an index named idx,
-  and return value named ret, initialized to init, setting ret to the 
+  and return value named ret, initialized to init, setting ret to the
   evaluation of expr at each step, returning ret."
   {:added "1.0"}
   [a idx ret init expr]
@@ -453,10 +453,10 @@
        (.isAssignableFrom java.lang.annotation.Annotation c)))
 
 (defn- is-runtime-annotation? [^Class c]
-  (boolean 
+  (boolean
    (and (is-annotation? c)
-        (when-let [^java.lang.annotation.Retention r 
-                   (.getAnnotation c java.lang.annotation.Retention)] 
+        (when-let [^java.lang.annotation.Retention r
+                   (.getAnnotation c java.lang.annotation.Retention)]
           (= (.value r) java.lang.annotation.RetentionPolicy/RUNTIME)))))
 
 (defn- descriptor [^Class c] (clojure.asm.Type/getDescriptor c))
@@ -469,11 +469,11 @@
                    (add-annotation avec "value" vval))
                  (.visitEnd avec))
    (symbol? v) (let [ev (eval v)]
-                 (cond 
+                 (cond
                   (instance? java.lang.Enum ev)
                   (.visitEnum av name (descriptor (class ev)) (str ev))
                   (class? ev) (.visit av name (clojure.asm.Type/getType ev))
-                  :else (throw (IllegalArgumentException. 
+                  :else (throw (IllegalArgumentException.
                                 (str "Unsupported annotation value: " v " of class " (class ev))))))
    (seq? v) (let [[nested nv] v
                   c (resolve nested)
@@ -483,7 +483,7 @@
    :else (.visit av name v)))
 
 (defn- process-annotation [av v]
-  (if (map? v) 
+  (if (map? v)
     (doseq [[k v] v]
       (add-annotation av (name k) v))
     (add-annotation av "value" v)))
@@ -497,9 +497,9 @@
            (when (is-annotation? c)
                                         ;this is known duck/reflective as no common base of ASM Visitors
              (let [av (if i
-                        (.visitParameterAnnotation visitor i (descriptor c) 
+                        (.visitParameterAnnotation visitor i (descriptor c)
                                                    (is-runtime-annotation? c))
-                        (.visitAnnotation visitor (descriptor c) 
+                        (.visitAnnotation visitor (descriptor c)
                                           (is-runtime-annotation? c)))]
                (process-annotation av v)
                (.visitEnd av))))))))
@@ -512,17 +512,17 @@
   ([tag parent] (alter-var-root #'global-hierarchy underive tag parent) nil)
   ([h tag parent]
     (let [parentMap (:parents h)
-	  childsParents (if (parentMap tag)
-			  (disj (parentMap tag) parent) #{})
-	  newParents (if (not-empty childsParents)
-		       (assoc parentMap tag childsParents)
-		       (dissoc parentMap tag))
-	  deriv-seq (flatten (map #(cons (key %) (interpose (key %) (val %)))
-				       (seq newParents)))]
+          childsParents (if (parentMap tag)
+                          (disj (parentMap tag) parent) #{})
+          newParents (if (not-empty childsParents)
+                       (assoc parentMap tag childsParents)
+                       (dissoc parentMap tag))
+          deriv-seq (flatten (map #(cons (key %) (interpose (key %) (val %)))
+                                       (seq newParents)))]
       (if (contains? (parentMap tag) parent)
-	(reduce1 #(apply derive %1 %2) (make-hierarchy)
-		(partition 2 deriv-seq))
-	h))))
+        (reduce1 #(apply derive %1 %2) (make-hierarchy)
+                (partition 2 deriv-seq))
+        h))))
 
 (defn distinct?
   "Returns true if no two of the arguments are ="
@@ -583,8 +583,8 @@
   (print (apply format fmt args)))
 
 (defmacro with-loading-context [& body]
-  `((fn loading# [] 
-        (. clojure.lang.Var (pushThreadBindings {clojure.lang.Compiler/LOADER  
+  `((fn loading# []
+        (. clojure.lang.Var (pushThreadBindings {clojure.lang.Compiler/LOADER
                                                  (.getClassLoader (.getClass ^Object loading#))}))
         (try
          ~@body
@@ -691,25 +691,6 @@
 
 ;;;;;;;;;;;;; nested associative ops ;;;;;;;;;;;
 
-(defn get-in
-  "Returns the value in a nested associative structure,
-  where ks is a sequence of keys. Returns nil if the key
-  is not present, or the not-found value if supplied."
-  {:added "1.2"
-   :static true}
-  ([m ks]
-     (reduce1 get m ks))
-  ([m ks not-found]
-     (loop [sentinel (Object.)
-            m m
-            ks (seq ks)]
-       (if ks
-         (let [m (get m (first ks) sentinel)]
-           (if (identical? sentinel m)
-             not-found
-             (recur sentinel m (next ks))))
-         m))))
-
 (defn assoc-in
   "Associates a value in a nested associative structure, where ks is a
   sequence of keys and v is the new value and returns a new nested structure.
@@ -720,19 +701,6 @@
   (if ks
     (assoc m k (assoc-in (get m k) ks v))
     (assoc m k v)))
-
-(defn update-in
-  "'Updates' a value in a nested associative structure, where ks is a
-  sequence of keys and f is a function that will take the old value
-  and any supplied args and return the new value, and returns a new
-  nested structure.  If any levels do not exist, hash-maps will be
-  created."
-  {:added "1.0"
-   :static true}
-  ([m [k & ks] f & args]
-   (if ks
-     (assoc m k (apply update-in (get m k) ks f args))
-     (assoc m k (apply f (get m k) args)))))
 
 (defn empty?
   "Returns true if coll has no items - same as (not (seq coll)).
@@ -959,7 +927,7 @@
   {:added "1.0"})
 
 (add-doc-and-meta *read-eval*
-  "When set to logical false, the EvalReader (#=(...)) is disabled in the 
+  "When set to logical false, the EvalReader (#=(...)) is disabled in the
   read/load in the thread-local binding.
   Example: (binding [*read-eval* false] (read-string \"#=(eval (def x 3))\"))
 
@@ -978,7 +946,7 @@
    :static true}
   [^java.util.concurrent.Future f] (.isDone f))
 
-(defmacro letfn 
+(defmacro letfn
   "fnspec ==> (fname [params*] exprs) or (fname ([params*] exprs)+)
 
   Takes a vector of function specs and a body, and generates a set of
@@ -986,8 +954,8 @@
   in all of the definitions of the functions, as well as the body."
   {:added "1.0", :forms '[(letfn [fnspecs*] exprs*)],
    :special-form true, :url nil}
-  [fnspecs & body] 
-  `(letfn* ~(vec (interleave (map first fnspecs) 
+  [fnspecs & body]
+  `(letfn* ~(vec (interleave (map first fnspecs)
                              (map #(cons `fn %) fnspecs)))
            ~@body))
 
@@ -1129,7 +1097,7 @@
                          (into1 #{} (map #(shift-mask shift mask %) skip-check)))]
         [shift mask case-map switch-type skip-check]))))
 
-(defmacro case 
+(defmacro case
   "Takes an expression, and a set of clauses.
 
   Each clause can take the form of either:
@@ -1156,7 +1124,7 @@
 
   [e & clauses]
   (let [ge (with-meta (gensym) {:tag Object})
-        default (if (odd? (count clauses)) 
+        default (if (odd? (count clauses))
                   (last clauses)
                   `(throw (IllegalArgumentException. (str "No matching clause: " ~ge))))]
     (if (> 2 (count clauses))
@@ -1293,7 +1261,7 @@
     (.write w (str content))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; futures (needs proxy);;;;;;;;;;;;;;;;;;
-(defn future-call 
+(defn future-call
   "Takes a function of no args and yields a future object that will
   invoke the function in another thread, and will cache the result and
   return it on all subsequent calls to deref/@. If the computation has
@@ -1304,8 +1272,8 @@
   [f]
   (let [f (binding-conveyor-fn f)
         fut (.submit clojure.lang.Agent/soloExecutor ^Callable f)]
-    (reify 
-     clojure.lang.IDeref 
+    (reify
+     clojure.lang.IDeref
      (deref [_] (.get fut))
      clojure.lang.IBlockingDeref
      (deref
@@ -1321,7 +1289,7 @@
       (isCancelled [_] (.isCancelled fut))
       (isDone [_] (.isDone fut))
       (cancel [_ interrupt?] (.cancel fut interrupt?)))))
-  
+
 (defmacro future
   "Takes a body of expressions and yields a future object that will
   invoke the body in another thread, and will cache the result and
@@ -1405,14 +1373,14 @@
       clojure-version)))
 
 (add-doc-and-meta *clojure-version*
-  "The version info for Clojure core, as a map containing :major :minor 
-  :incremental and :qualifier keys. Feature releases may increment 
-  :minor and/or :major, bugfix releases will increment :incremental. 
+  "The version info for Clojure core, as a map containing :major :minor
+  :incremental and :qualifier keys. Feature releases may increment
+  :minor and/or :major, bugfix releases will increment :incremental.
   Possible values of :qualifier include \"GA\", \"SNAPSHOT\", \"RC-x\" \"BETA-x\""
   {:added "1.0"})
 
 (defn
-  clojure-version 
+  clojure-version
   "Returns clojure version as a printable string."
   {:added "1.0"}
   []
@@ -1438,7 +1406,7 @@
   []
   (let [d (java.util.concurrent.CountDownLatch. 1)
         v (atom d)]
-    (reify 
+    (reify
      clojure.lang.IDeref
        (deref [_] (.await d) @v)
      clojure.lang.IBlockingDeref
@@ -1446,7 +1414,7 @@
         [_ timeout-ms timeout-val]
         (if (.await d timeout-ms java.util.concurrent.TimeUnit/MILLISECONDS)
           @v
-          timeout-val))  
+          timeout-val))
      clojure.lang.IPending
       (isRealized [this]
        (zero? (.getCount d)))
@@ -1476,13 +1444,13 @@
   (filter (complement sequential?)
           (rest (tree-seq sequential? seq x))))
 
-(defn group-by 
+(defn group-by
   "Returns a map of the elements of coll keyed by the result of
   f on each element. The value at each key will be a vector of the
   corresponding elements, in the order they appeared in coll."
   {:added "1.2"
    :static true}
-  [f coll]  
+  [f coll]
   (persistent!
    (reduce
     (fn [ret x]

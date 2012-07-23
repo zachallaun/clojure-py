@@ -3720,6 +3720,40 @@
   ([x] (Atom x))
   ([x & options] (setup-reference (atom x) options)))
 
+;;;;;;;;;;;;; nested associative ops ;;;;;;;;;;;
+
+(defn get-in
+  "Returns the value in a nested associative structure,
+  where ks is a sequence of keys. Returns nil if the key
+  is not present, or the not-found value if supplied."
+  {:added "1.2"
+   :static true}
+  ([m ks]
+     (reduce1 get m ks))
+  ([m ks not-found]
+     (loop [sentinel (py/object)
+            m m
+            ks (seq ks)]
+       (if ks
+         (let [m (get m (first ks) sentinel)]
+           (if (identical? sentinel m)
+             not-found
+             (recur sentinel m (next ks))))
+         m))))
+
+(defn update-in
+  "'Updates' a value in a nested associative structure, where ks is a
+  sequence of keys and f is a function that will take the old value
+  and any supplied args and return the new value, and returns a new
+  nested structure.  If any levels do not exist, hash-maps will be
+  created."
+  {:added "1.0"
+   :static true}
+  ([m [k & ks] f & args]
+   (if ks
+     (assoc m k (apply update-in (get m k) ks f args))
+     (assoc m k (apply f (get m k) args)))))
+
 ;;; misc
 (defmacro declare
   "defs the supplied var names with no bindings, useful for making forward declarations."
