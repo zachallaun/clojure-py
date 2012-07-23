@@ -703,12 +703,6 @@
    :static true}
   [x] (instance? clojure.lang.IFn x))
 
-(defn associative?
- "Returns true if coll implements Associative"
- {:added "1.0"
-  :static true}
-  [coll] (instance? clojure.lang.Associative coll))
-
 (defn sorted?
  "Returns true if coll implements Sorted"
  {:added "1.0"

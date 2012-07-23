@@ -1304,6 +1304,12 @@
    :static true}
   [coll] (instance? clojure.lang/Sequential coll))
 
+(defn associative?
+ "Returns true if coll implements Associative"
+ {:added "1.0"
+  :static true}
+  [coll] (instance? clojure.lang.associative/Associative coll))
+
 (defn count
   "Returns the number of items in the collection. (count nil) returns 0.  Also
   works on strings, arrays, and Java Collections and Maps"
