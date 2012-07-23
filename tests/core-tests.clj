@@ -348,6 +348,11 @@
     (a/assert-false (contains? [1 1 1] 4))
     (a/assert-false (contains? {:a 4} :b)))
 
+(deftest conj-tests
+    (a/assert-equal (conj [1] 2) [1 2])
+    (a/assert-equal (conj '(1) 2) '(2 1))
+    (a/assert-equal (conj nil 1) '(1)))
+
 (deftest get-tests
     (a/assert-equal (get {:a 1} :a) 1)
     (a/assert-equal (get "abc" 1) "b"))
