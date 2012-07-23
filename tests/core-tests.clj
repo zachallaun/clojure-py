@@ -718,7 +718,22 @@
          (a/assert-equal (py/hash (FooRecord 1 2))
                          (py/hash foo))
          (a/assert-not-equal (py/hash (FooRecord 2 2))
-                             (py/hash foo))))
+                             (py/hash foo)))
+    (let [bar (->FooRecord 1 2)]
+         (a/assert-equal (:x bar) 1)
+         (a/assert-equal (:y bar) 2)
+         (a/assert-equal (get bar "x") 1)
+         (a/assert-equal (get bar 'x) 1)
+         (a/assert-equal (vec (keys bar)) ["x" "y"])
+         (a/assert-equal (count bar) 2)
+         (a/assert-equal (:x (.without bar "x")) nil)
+         (a/assert-equal (deref bar) 42)
+         (a/assert-equal (FooRecord 1 2) bar)
+         (a/assert-not-equal (FooRecord 2 2) bar)
+         (a/assert-equal (py/hash (FooRecord 1 2))
+                         (py/hash bar))
+         (a/assert-not-equal (py/hash (FooRecord 2 2))
+                             (py/hash bar))))
 
 (deftest extend-tests
     (extend py/int ISeq {:seq (fn [self] 42)})
@@ -826,12 +841,12 @@
 
 (deftest extends?-tests
     (a/assert-true (extends? (type '()) ISeq))
-    (a/assert-false (extends? (type 1) ISeq))) 
+    (a/assert-false (extends? (type 1) ISeq)))
 
 (deftest satisfies?-tests
     (a/assert-true (satisfies? ISeq '()))
-    (a/assert-false (satisfies? ISeq 1))) 
-    
+    (a/assert-false (satisfies? ISeq 1)))
+
 (deftest letfn-tests
     (letfn [(twice [x]
                  (* x 2))
