@@ -191,7 +191,7 @@
    :added "1.0"}
  _conj (fn _conj [coll x]
          (py/if (nil? coll)
-           clojure.lang.persistentlist/EMPTY
+           (.cons clojure.lang.persistentlist/EMPTY x)
            (.cons coll x))))
 
 (def
