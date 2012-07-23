@@ -670,7 +670,14 @@
     (a/assert-true (empty? []))
     (a/assert-false (empty? [1])))
 
+(deftest nested-assoc-tests
+  (let [foo {:x {:y [1]}}]
+    (a/assert-equal (get-in foo [:x :y]) [1])
+    (a/assert-equal (get-in foo [:x]) {:y [1]})
+    (a/assert-equal (get-in foo [:z]) nil)
 
+    (a/assert-equal (update-in foo [:x :y] conj 2)
+                    {:x {:y [1 2]}})))
 
 (deftest do-tests
     (a/assert-equal (do) nil)
