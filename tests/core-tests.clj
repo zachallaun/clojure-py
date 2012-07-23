@@ -348,6 +348,11 @@
     (a/assert-false (contains? [1 1 1] 4))
     (a/assert-false (contains? {:a 4} :b)))
 
+(deftest conj-tests
+    (a/assert-equal (conj [1] 2) [1 2])
+    (a/assert-equal (conj '(1) 2) '(2 1))
+    (a/assert-equal (conj nil 1) '(1)))
+
 (deftest get-tests
     (a/assert-equal (get {:a 1} :a) 1)
     (a/assert-equal (get "abc" 1) "b"))
@@ -826,12 +831,12 @@
 
 (deftest extends?-tests
     (a/assert-true (extends? (type '()) ISeq))
-    (a/assert-false (extends? (type 1) ISeq))) 
+    (a/assert-false (extends? (type 1) ISeq)))
 
 (deftest satisfies?-tests
     (a/assert-true (satisfies? ISeq '()))
-    (a/assert-false (satisfies? ISeq 1))) 
-    
+    (a/assert-false (satisfies? ISeq 1)))
+
 (deftest letfn-tests
     (letfn [(twice [x]
                  (* x 2))
