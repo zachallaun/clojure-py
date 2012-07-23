@@ -854,3 +854,10 @@
                  (* (twice y) 3))]
          (a/assert-equal (twice 15) 30)
          (a/assert-equal (six-times 15) 90)))
+
+(deftest atom-tests
+  (let [x (atom {})]
+    (a/assert-equal @x {})
+    (a/assert-equal (reset! x []) [])
+    (a/assert-equal (swap! x conj 1) [1])
+    (a/assert-equal (swap! x conj 2 3 4 5 6) [1 2 3 4 5 6])))

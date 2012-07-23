@@ -11,7 +11,7 @@ class Atom(ARef):
     """A thread-safe mutable object."""
     def __init__(self, state, meta=None):
         """Instantiate an Atom to the given state.
-        
+
         state -- any object
         meta -- meta data to attach"""
         super(Atom, self).__init__(meta)
@@ -23,7 +23,7 @@ class Atom(ARef):
         """Change this Atom's current state.
 
         args must be one of:
-        
+
         * IFn
         * IFn, object
         * IFn, object, object
@@ -34,21 +34,19 @@ class Atom(ARef):
         Return the result of calling IFn with the current state of this Atom
         as its first argument and the remaining arguments to this method."""
         func = None
-        if len(args) == 1:
+
+        if 0 < len(args) <= 3:
             ifn = args[0]
-            func = lambda v: ifn(v)
-        elif len(args) == 2:
-            ifn, arg = args
-            func = lambda v: ifn(v, arg) 
-        elif len(args) == 3:
-            ifn, arg1, arg2 = args
-            func = lambda v: ifn(v, arg1, arg2)
+            args = args[1:]
+            func = lambda v: ifn(v, *args)
         elif len(args) == 4:
-            ifn, arg2, arg3, arg4 = args
-            func = lambda v: apply(ifn, v, arg2, arg3, list(arg4))
+            ifn = args[0]
+            arg1, arg2, args = args[1:]
+            func = lambda v: ifn(v, arg1, arg2, *args)
         else:
             raise ArityException("Atom.swap() expected 1 to 4 arguments,"
                                  " got: ({})".format(len(args)))
+
         while True:
             val = self.deref()
             newv = func(val)
@@ -79,7 +77,7 @@ class Atom(ARef):
 
         A validator, if one exists is called prior to resetting.
         Any watches are notified after resetting.
-        
+
         Return newval"""
         oldval = self._state.get()
         self.validate(newval)

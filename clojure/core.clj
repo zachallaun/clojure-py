@@ -3702,6 +3702,18 @@
    :static true}
   [atom newval] (.reset atom newval))
 
+(defn swap!
+  "Atomically swaps the value of atom to be:
+  (apply f current-value-of-atom args). Note that f may be called
+  multiple times, and thus should be free of side effects. Returns
+  the value that was swapped in."
+  {:added "1.0"
+   :static true}
+  ([atom f] (.swap atom f))
+  ([atom f x] (.swap atom f x))
+  ([atom f x y] (.swap atom f x y))
+  ([atom f x y & args] (.swap atom f x y args)))
+
 (defn atom
   "Creates and returns an Atom with an initial value of x and zero or
   more options (in any order):
