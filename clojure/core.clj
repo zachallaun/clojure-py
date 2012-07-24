@@ -450,20 +450,92 @@
   [test & body]
   (list 'clojure.core/if test nil (cons 'do body)))
 
-(defn false?
-  "Returns true if x is the value false, false otherwise."
-  {:added "1.0"}
-  [x] (.__eq__ x false))
-
-(defn true?
-  "Returns true if x is the value true, false otherwise."
-  {:added "1.0"}
-  [x] (.__eq__ x true))
-
 (defn not
   "Returns true if x is logical false, false otherwise."
   {:added "1.0"}
   [x] (py/if x false true))
+
+(defmacro cond
+  "Takes a set of test/expr pairs. It evaluates each test one at a time.  If a
+  test returns logical true, cond evaluates and returns the value of the
+  corresponding expr and doesn't evaluate any of the other tests or exprs.
+  (cond) returns nil."
+  {:added "1.0"}
+  [& clauses]
+    (when clauses
+      (list 'py/if (first clauses)
+        (py/if (next clauses)
+          (second clauses)
+          (throw (IllegalArgumentException "cond requires an even number of forms")))
+        (cons 'clojure.core/cond (next (next clauses))))))
+
+(defn spread
+  {:private true}
+  [arglist]
+  (cond
+    (nil? arglist) nil
+    (nil? (next arglist)) (seq (first arglist))
+    :else (cons (first arglist) (spread (next arglist)))))
+
+(defn list*
+  "Creates a new list containing the items prepended to the rest, the
+  last of which will be treated as a sequence."
+  {:added "1.0"}
+  ([args] (seq args))
+  ([a args] (cons a args))
+  ([a b args] (cons a (cons b args)))
+  ([a b c args] (cons a (cons b (cons c args))))
+  ([a b c d & more]
+    (cons a (cons b (cons c (cons d (spread more)))))))
+
+(defn apply
+  "Applies fn f to the argument list formed by prepending intervening arguments
+  to args."
+  {:added "1.0"
+   :static true}
+  ([f args]
+     (applyTo f (seq args)))
+  ([f x args]
+     (applyTo f (list* x args)))
+  ([f x y args]
+     (applyTo f (list* x y args)))
+  ([f x y z args]
+     (applyTo f (list* x y z args)))
+  ([f a b c d & args]
+     (applyTo f (cons a (cons b (cons c (cons d (spread args))))))))
+
+(defn =
+  "Equality. Returns true if x equals y, false if not. Same as Java x.equals(y)
+  except it also works for nil, and compares numbers and collections in a
+  type-independent manner.  Clojure's immutable data structures define equals()
+  (and thus =) as a value, not an identity, comparison."
+  {:added "1.0"}
+  ([x] true)
+  ([x y] (py.bytecode/COMPARE_OP "==" x y))
+  ([x y & more]
+   (py/if (py.bytecode/COMPARE_OP "==" x y)
+     (py/if (next more)
+       (recur y (first more) (next more))
+       (py.bytecode/COMPARE_OP "==" y (first more)))
+     false)))
+
+(defn not=
+  "Same as (not (= obj1 obj2))"
+  {:added "1.0"}
+  ([x] false)
+  ([x y] (not (= x y)))
+  ([x y & more]
+   (not (apply = x y more))))
+
+(defn false?
+  "Returns true if x is the value false, false otherwise."
+  {:added "1.0"}
+  [x] (= x false))
+
+(defn true?
+  "Returns true if x is the value true, false otherwise."
+  {:added "1.0"}
+  [x] (= x true))
 
 (defn str
   "With no args, returns the empty string. With one arg x, returns x.__str__().
@@ -519,55 +591,6 @@
   name
   clojure.lang.rt/name)
 
-(defmacro cond
-  "Takes a set of test/expr pairs. It evaluates each test one at a time.  If a
-  test returns logical true, cond evaluates and returns the value of the
-  corresponding expr and doesn't evaluate any of the other tests or exprs.
-  (cond) returns nil."
-  {:added "1.0"}
-  [& clauses]
-    (when clauses
-      (list 'py/if (first clauses)
-        (py/if (next clauses)
-          (second clauses)
-          (throw (IllegalArgumentException "cond requires an even number of forms")))
-        (cons 'clojure.core/cond (next (next clauses))))))
-
-(defn spread
-  {:private true}
-  [arglist]
-  (cond
-    (nil? arglist) nil
-    (nil? (next arglist)) (seq (first arglist))
-    :else (cons (first arglist) (spread (next arglist)))))
-
-(defn list*
-  "Creates a new list containing the items prepended to the rest, the
-  last of which will be treated as a sequence."
-  {:added "1.0"}
-  ([args] (seq args))
-  ([a args] (cons a args))
-  ([a b args] (cons a (cons b args)))
-  ([a b c args] (cons a (cons b (cons c args))))
-  ([a b c d & more]
-    (cons a (cons b (cons c (cons d (spread more)))))))
-
-(defn apply
-  "Applies fn f to the argument list formed by prepending intervening arguments
-  to args."
-  {:added "1.0"
-   :static true}
-  ([f args]
-     (applyTo f (seq args)))
-  ([f x args]
-     (applyTo f (list* x args)))
-  ([f x y args]
-     (applyTo f (list* x y args)))
-  ([f x y z args]
-     (applyTo f (list* x y z args)))
-  ([f a b c d & args]
-     (applyTo f (cons a (cons b (cons c (cons d (spread args))))))))
-
 (defn vary-meta
   "Returns an object of the same type and value as obj, with (apply f (meta
   obj) args) as its metadata."
@@ -575,29 +598,6 @@
    :static true}
  [obj f & args]
   (with-meta obj (apply f (meta obj) args)))
-
-(defn =
-  "Equality. Returns true if x equals y, false if not. Same as Java x.equals(y)
-  except it also works for nil, and compares numbers and collections in a
-  type-independent manner.  Clojure's immutable data structures define equals()
-  (and thus =) as a value, not an identity, comparison."
-  {:added "1.0"}
-  ([x] true)
-  ([x y] (py.bytecode/COMPARE_OP "==" x y))
-  ([x y & more]
-   (py/if (py.bytecode/COMPARE_OP "==" x y)
-     (py/if (next more)
-       (recur y (first more) (next more))
-       (py.bytecode/COMPARE_OP "==" y (first more)))
-     false)))
-
-(defn not=
-  "Same as (not (= obj1 obj2))"
-  {:added "1.0"}
-  ([x] false)
-  ([x y] (not (= x y)))
-  ([x y & more]
-   (not (apply = x y more))))
 
 (defn identical?
   "Tests if 2 arguments are the same object"

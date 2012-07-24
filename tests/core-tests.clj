@@ -39,6 +39,12 @@
       (try (py.bytecode/BINARY_ADD 10 10)
           (finally (py/print "finally")))))
 
+(deftest true?-and-false?-tests
+  (a/assert-true (true? true))
+  (a/assert-false (true? false))
+  (a/assert-true (false? false))
+  (a/assert-false (false? true)))
+
 (deftest if-not-tests
     (a/assert-true (if-not false true))
     (a/assert-false (if-not true true false))
