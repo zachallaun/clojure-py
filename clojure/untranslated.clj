@@ -47,16 +47,6 @@
       ~@body
       (finally (. clojure.lang.Var (popThreadBindings))))))
 
-(defmacro lazy-cat
-  "Expands to code which yields a lazy sequence of the concatenation
-  of the supplied colls.  Each coll expr is not evaluated until it is
-  needed.
-
-  (lazy-cat xs ys zs) === (concat (lazy-seq xs) (lazy-seq ys) (lazy-seq zs))"
-  {:added "1.0"}
-  [& colls]
-  `(concat ~@(map #(list `lazy-seq %) colls)))
-
 (defmacro with-out-str
   "Evaluates exprs in a context in which *out* is bound to a fresh
   StringWriter.  Returns the string created by any nested printing
@@ -133,19 +123,6 @@
   (when (instance? ExceptionInfo ex)
     (.getData ^ExceptionInfo ex)))
 
-(defmacro assert
-  "Evaluates expr and throws an exception if it does not evaluate to
-  logical true."
-  {:added "1.0"}
-  ([x]
-     (when *assert*
-       `(when-not ~x
-          (throw (new AssertionError (str "Assert failed: " (pr-str '~x)))))))
-  ([x message]
-     (when *assert*
-       `(when-not ~x
-          (throw (new AssertionError (str "Assert failed: " ~message "\n" (pr-str '~x))))))))
-
 (defn test
   "test [v] finds fn at key :test in var metadata and calls it,
   presuming failure will throw exception"
@@ -201,13 +178,13 @@
   {:added "1.0"
    :static true}
   [smap coll]
-    (if (vector? coll)
-      (reduce1 (fn [v i]
-                (if-let [e (find smap (nth v i))]
-                        (assoc v i (val e))
-                        v))
-              coll (range (count coll)))
-      (map #(if-let [e (find smap %)] (val e) %) coll)))
+  (if (vector? coll)
+    (reduce1 (fn [v i]
+               (if-let [e (find smap (nth v i))]
+                 (assoc v i (val e))
+                 v))
+             coll (range (count coll)))
+    (map #(if-let [e (find smap %)] (val e) %) coll)))
 
 (defmacro dosync
   "Runs the exprs (in an implicit do) in a transaction that encompasses

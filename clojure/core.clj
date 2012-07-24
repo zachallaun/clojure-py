@@ -89,15 +89,6 @@
  vector? (fn vector? [x] (instance? clojure.lang.ipersistentvector/IPersistentVector x)))
 
 (def
- ^{:arglists '([& args])
-   :doc "Clojure version of RT.assoc"
-   :added "1.0"}
- _assoc (fn* assoc [col k v]
-          (py/if col
-            (.assoc col k v)
-            (clojure.lang.rt/map k v))))
-
-(def
  ^{:arglists '([coll])
    :doc "Returns the first item in the collection. Calls seq on its argument.
   If coll is nil, returns nil."
@@ -206,6 +197,15 @@
           (py/if (nil? xs)
             (conj coll x)
             (recur (conj coll x) (first xs) (next xs))))))
+
+(def
+ ^{:arglists '([& args])
+   :doc "Clojure version of RT.assoc"
+   :added "1.0"}
+ _assoc (fn* assoc [col k v]
+          (py/if col
+            (.assoc col k v)
+            (clojure.lang.rt/map k v))))
 
 (def
  ^{:arglists '([map key val] [map key val & kvs])
