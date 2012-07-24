@@ -670,6 +670,17 @@
     (a/assert-true (empty? []))
     (a/assert-false (empty? [1])))
 
+(deftest assoc-tests
+  (let [foo [0 1 2 3]
+        bar {:x 1 :y 2}]
+    (a/assert-equal (assoc foo 0 :x) [:x 1 2 3])
+    (a/assert-equal (assoc foo 4 :x) [0 1 2 3 :x])
+    (a/assert-equal (assoc bar :x :a) {:x :a :y 2})
+    (a/assert-equal (assoc bar :z 3) {:x 1 :y 2 :z 3})
+    (tests.assertions/assert-exception
+     clojure.lang.cljexceptions/IllegalArgumentException
+     (assoc foo :x :fail))))
+
 (deftest nested-assoc-tests
   (let [foo {:x {:y [1]}}]
     (a/assert-equal (get-in foo [:x :y]) [1])

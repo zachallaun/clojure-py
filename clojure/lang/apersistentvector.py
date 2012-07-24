@@ -11,7 +11,7 @@ from clojure.lang.indexableseq import IndexableSeq
 from clojure.lang.ipersistentset import IPersistentSet
 from clojure.lang.ipersistentvector import IPersistentVector
 from clojure.lang.cljexceptions import AbstractMethodCall, ArityException
-from clojure.lang.cljexceptions import IndexOutOfBoundsException
+from clojure.lang.cljexceptions import IndexOutOfBoundsException, IllegalArgumentException
 
 class APersistentVector(IPersistentVector, IPrintable):
     """Pseudo-Abstract class to define a persistent vector.
@@ -70,7 +70,7 @@ class APersistentVector(IPersistentVector, IPrintable):
 
     # Placing these print methods here will cover:
     # MapEntry, PersistentVector, and SubVec
-    
+
     def writeAsString(self, writer):
         """Write [...] to writer.
 
@@ -124,6 +124,12 @@ class APersistentVector(IPersistentVector, IPrintable):
                                                         type(self).__name__,
                                                         id(self),
                                                         sio.getvalue())
+
+    def assoc(self, i, val):
+        if isinstance(i, int):
+            return self.assocN(i, val)
+        else:
+            raise IllegalArgumentException("Key must be an integer")
 
 # ======================================================================
 # SubVec

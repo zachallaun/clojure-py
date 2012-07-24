@@ -40,3 +40,9 @@
     (if (py.bytecode/COMPARE_OP "!=" x y)
         true
         (fail x " equals " y)))
+
+(defmacro assert-exception
+  [exception body]
+  `(tests.assertions/assert-equal ~exception
+                 (try ~body
+                      (~'catch py/Exception e# (class e#)))))
